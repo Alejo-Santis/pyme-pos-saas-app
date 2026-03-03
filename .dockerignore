@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Dependencias (se instalan dentro del contenedor)
+node_modules
+vendor
+
+# Entornos locales
+.env
+.env.local
+.env.*.local
+
+# Cache y almacenamiento temporal
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+bootstrap/cache/*.php
+
+# Archivos de IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Docker
+docker-compose*.yml
+docker/
+
+# Documentación y tests (opcional en prod)
+docs/
+tests/
+
+# Builds y coverage
+coverage/
+.phpunit.result.cache
