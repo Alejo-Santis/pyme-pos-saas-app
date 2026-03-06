@@ -18,6 +18,8 @@ return [
     'central_domains' => [
         '127.0.0.1',
         'localhost',
+        'nextpossaas-app.test',         // Laragon local
+        env('CENTRAL_DOMAIN', 'nextpossaas-app.test'),
     ],
 
     /**
@@ -28,7 +30,11 @@ return [
      */
     'bootstrappers' => [
         Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class,
-        Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class,
+        // CacheTenancyBootstrapper deshabilitado: usamos CACHE_STORE=file
+        // Con file cache no se necesita aislamiento por tenant vía tags.
+        // El bootstrapper disparaba auto-create de la tabla cache en el schema
+        // del tenant (ya creada por MigrateDatabase) → error "relación ya existe".
+        // Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class,
         Stancl\Tenancy\Bootstrappers\FilesystemTenancyBootstrapper::class,
         Stancl\Tenancy\Bootstrappers\QueueTenancyBootstrapper::class,
         // Stancl\Tenancy\Bootstrappers\RedisTenancyBootstrapper::class, // Note: phpredis is needed

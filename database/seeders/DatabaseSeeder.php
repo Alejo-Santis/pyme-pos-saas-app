@@ -2,24 +2,25 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Seed de la base de datos (schema public — landlord).
+     *
+     * Orden:
+     * 1. Catálogos globales hardcoded (DIAN, tipos, clasificaciones)
+     * 2. Catálogos masivos desde CSV (países, departamentos, municipios,
+     *    unidades de medida, medios de pago, monedas, impuestos)
+     * 3. Planes SaaS base
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            GlobalCatalogsSeeder::class,
+            CsvCatalogsSeeder::class,
+            PlansSeeder::class,
         ]);
     }
 }

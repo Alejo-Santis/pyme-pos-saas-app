@@ -841,7 +841,7 @@
 841	aire seco tonelada métrica	MD
 842	miligramo por pie cuadrado por lado	MF
 843	miligramo	MGM
-844	megahercio	MGM
+844	megahercio	MHZ
 845	milla cuadrada	MIK
 846	mil	MIL
 847	minuto	MIN
@@ -907,8 +907,8 @@
 907	onza	ONZ
 908	Dos paquetes	OP
 909	hora extra	OT
-910	onza av	ONZ
-911	onza líquida (US)	OZA
+910	onza av	OZA
+911	onza líquida (US)	OZL
 912	onza líquida (Reino Unido)	OZI
 913	pagina – electronica	P0
 914	por ciento	P1
@@ -936,7 +936,7 @@
 936	libra por pulgada de longitud	PO
 937	página por pulgada	PQ
 938	par	PR
-939	fuerza de libra por pulgada cuadrada	PD
+939	fuerza de libra por pulgada cuadrada	PSI
 940	pinta	PT
 941	pinta seca	PTD
 942	pinta (Reino Unido)	PTI
@@ -1008,7 +1008,7 @@
 1008	piedra (Reino Unido)	ITS
 1009	tonelada (US) o tonelada corta (UK / US)	STN
 1010	patinar	SV
-1011	madeja	SO
+1011	madeja	SKN
 1012	envío	SX
 1013	Línea de telecomunicaciones en servicio.	T0
 1014	mil libras brutas	T1

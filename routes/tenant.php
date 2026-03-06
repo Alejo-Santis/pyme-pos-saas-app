@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Auth\Controllers\LoginController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyBySubdomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -11,7 +12,7 @@ use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 | Rutas del Tenant (por empresa)
 |--------------------------------------------------------------------------
 | Estas rutas corren dentro del schema del tenant (empresa cliente).
-| Son accesibles desde el subdominio: {empresa}.colsaas.co
+| Son accesibles desde el subdominio: {empresa}.nextpossaas.test
 |
 | InitializeTenancyBySubdomain identifica el tenant por subdominio
 | y cambia la conexión de base de datos al schema de esa empresa.
@@ -23,10 +24,20 @@ Route::middleware([
     PreventAccessFromCentralDomains::class,
 ])->group(function () {
 
-    // ─── Dashboard ────────────────────────────────────────────────────────
+    // ─── Auth (públicas dentro del tenant) ────────────────────────────────
+    Route::middleware('guest')->group(function () {
+        Route::get('/login',  [LoginController::class, 'show'])->name('login');
+        Route::post('/login', [LoginController::class, 'store'])->name('login.store');
+    });
+
+    Route::post('/logout', [LoginController::class, 'destroy'])
+        ->middleware('auth')
+        ->name('logout');
+
+    // ─── Rutas protegidas ─────────────────────────────────────────────────
     Route::middleware(['auth'])->group(function () {
 
-        Route::get('/dashboard', fn () => inertia('Dashboard'))->name('dashboard');
+        Route::get('/dashboard', \App\Modules\Core\Controllers\DashboardController::class)->name('dashboard');
 
         // ─── Configuración de empresa ─────────────────────────────────────
         Route::prefix('config')->name('config.')->group(function () {

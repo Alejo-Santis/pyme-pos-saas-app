@@ -32,7 +32,7 @@ return new class extends Migration
         // Tipos de moneda (COP, USD, EUR...)
         Schema::create('type_currencies', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('name', 50);
+            $table->string('name', 150); // algunos nombres ISO son largos (unidades compuestas)
             $table->string('code', 10)->unique(); // ISO 4217 (ej: "COP", "USD")
             $table->timestamps();
         });

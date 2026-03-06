@@ -5,7 +5,25 @@
       "Bash(php artisan tinker 2)",
       "Bash(1:*)",
       "Bash(php artisan db:show)",
-      "Bash(xargs grep -l \"makeCredentials\\\\|setConnection\")"
+      "Bash(xargs grep -l \"makeCredentials\\\\|setConnection\")",
+      "Bash(php artisan migrate:status)",
+      "Bash(php artisan db:seed)",
+      "Bash(php artisan db:seed --class=CsvCatalogsSeeder)",
+      "Bash(sed -i 's/^844\\\\tmegahercio\\\\tMGM$/844\\\\tmegahercio\\\\tMHZ/' database/csv/unit_measures.csv)",
+      "Bash(sed -i 's/^910\\\\tonza av\\\\tONZ$/910\\\\tonza av\\\\tOZA/' database/csv/unit_measures.csv)",
+      "Bash(sed -i 's/^939\\\\tfuerza de libra por pulgada cuadrada\\\\tPD$/939\\\\tfuerza de libra por pulgada cuadrada\\\\tPSI/' database/csv/unit_measures.csv)",
+      "Bash(sed -i 's/^1011\\\\tmadeja\\\\tSO$/1011\\\\tmadeja\\\\tSKN/' database/csv/unit_measures.csv)",
+      "Bash(php artisan:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(npm run build)",
+      "Bash(sed -i 's|<a href=\"\"#\"\" class=\"\"text-blue-400 text-sm hover:text-blue-300 transition\"\">|<span class=\"\"text-blue-400 text-sm cursor-pointer hover:text-blue-300 transition\"\">|' resources/js/Pages/Auth/Login.svelte)",
+      "Bash(sed -i 's|¿Olvidaste tu contraseña?</a>|¿Olvidaste tu contraseña?</span>|' resources/js/Pages/Auth/Login.svelte)",
+      "Bash(python3 -c \":*)",
+      "Bash(php -r \":*)",
+      "Bash(xargs grep -l \"price\")",
+      "Bash(php artisan tinker --execute=\":*)",
+      "Bash(grep -o \"Stancl[^,]*\\\\|Jobs[^,]*\\\\|MigrateDatabase[^,]*\\\\|Illuminate\\\\\\\\Database\\\\\\\\Migrations[^,]*\")",
+      "Bash(grep -o \"#[0-9]* C:\\\\\\\\laragon[^#]*MigrateDatabase[^#]*\")"
     ]
   }
 }
