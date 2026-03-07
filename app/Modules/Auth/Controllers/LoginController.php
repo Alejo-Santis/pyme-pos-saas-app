@@ -14,10 +14,13 @@ class LoginController extends Controller
 {
     /**
      * Muestra el formulario de login del tenant.
+     * Detecta ?registered=1 para mostrar notificación de bienvenida tras el registro.
      */
-    public function show(): Response
+    public function show(Request $request): Response
     {
-        return Inertia::render('Auth/Login');
+        return Inertia::render('Auth/Login', [
+            'justRegistered' => $request->boolean('registered'),
+        ]);
     }
 
     /**

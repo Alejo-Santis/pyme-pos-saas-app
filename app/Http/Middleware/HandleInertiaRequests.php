@@ -29,13 +29,21 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
-            // Usuario autenticado (null si no hay sesión)
+            // Usuario autenticado — lazy closure para que se evalúe DESPUÉS de InitializeTenancyByDomain.
+            // Try/catch por si el dominio central no tiene tabla users (schema public no tiene users).
             'auth' => [
-                'user' => $request->user() ? [
-                    'id'    => $request->user()->id,
-                    'name'  => $request->user()->name,
-                    'email' => $request->user()->email,
-                ] : null,
+                'user' => function () use ($request) {
+                    try {
+                        $user = $request->user();
+                        return $user ? [
+                            'id'    => $user->id,
+                            'name'  => $user->name,
+                            'email' => $user->email,
+                        ] : null;
+                    } catch (\Throwable) {
+                        return null;
+                    }
+                },
             ],
 
             // Mensajes flash (toasts, notificaciones)

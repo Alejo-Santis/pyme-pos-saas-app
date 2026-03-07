@@ -1,11 +1,120 @@
 @import 'tailwindcss';
+@import '@mdi/font/css/materialdesignicons.min.css';
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap');
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
+@source '../**/*.svelte';
 @source '../**/*.js';
 
+/* ── Paleta de colores NextPOS SaaS (azul, diferente al violeta de xedoc) ── */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+  /* Tipografía */
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+
+  /* Primary — Azul marca NextPOS */
+  --color-primary:        #2563eb;   /* blue-600  */
+  --color-primary-soft:   #eff6ff;   /* blue-50   */
+  --color-primary-dark:   #1d4ed8;   /* blue-700  */
+  --color-primary-darker: #1e40af;   /* blue-800  */
+
+  /* Estados */
+  --color-success:        #0acf97;
+  --color-success-soft:   #e4faf4;
+  --color-danger:         #fa5c7c;
+  --color-danger-soft:    #feecf0;
+  --color-warning:        #ffc35a;
+  --color-warning-soft:   #fff8ec;
+  --color-info:           #39afd1;
+  --color-info-soft:      #eaf6fb;
+
+  /* Sidebar */
+  --color-sidebar:        #1e3a5f;   /* azul marino oscuro */
+  --color-sidebar-hover:  #1d4ed8;   /* blue-700 */
+  --color-topbar:         #ffffff;
+
+  /* Fondos */
+  --color-body:           #f4f7fe;   /* fondo del área de contenido */
+
+  /* Grises de texto (mismo sistema que xedoc) */
+  --color-gray-100:       #f6f7fb;
+  --color-gray-200:       #eef2f7;
+  --color-gray-300:       #dee2e6;
+  --color-gray-500:       #adb5bd;
+  --color-gray-700:       #6c757d;
+  --color-gray-800:       #495057;
+  --color-gray-900:       #313a46;
+
+  /* Sombras */
+  --shadow-card: 0px 0px 35px 0px rgba(154, 161, 171, 0.15);
+  --shadow-btn:  0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+/* ── Reset y base ──────────────────────────────────────────────────────────── */
+body {
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  background-color: var(--color-body);
+  color: var(--color-gray-700);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar personalizada ───────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb  { background: #ced4da; border-radius: 3px; }
+::-webkit-scrollbar-track  { background: transparent; }
+
+/* ── Efecto lift en botones ────────────────────────────────────────────────── */
+.btn-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-btn);
+}
+
+/* ── Animación modales (slide-up) ──────────────────────────────────────────── */
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.modal-animate {
+  animation: slideUp 0.22s ease forwards;
+}
+
+/* ── Tabla compacta ────────────────────────────────────────────────────────── */
+.table-compact td,
+.table-compact th {
+  padding: 3px 6px;
+  font-size: 0.85rem;
+}
+.table-compact thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f6f7fb;
+  border-bottom: 1px solid #eef2f7;
+}
+
+/* ── Campo requerido (punto indicador) ─────────────────────────────────────── */
+.required::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-danger);
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ── Print ─────────────────────────────────────────────────────────────────── */
+@media print {
+  body      { font-size: 12px; }
+  .no-print { display: none !important; }
+  .sidebar,
+  .topbar   { display: none !important; }
+  .content  { margin: 0 !important; padding: 0 !important; }
 }

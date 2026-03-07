@@ -12,10 +12,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ─── Onboarding público ────────────────────────────────────────────────────
-Route::middleware('guest')->group(function () {
-    Route::get('/register',  [RegisterController::class, 'show'])->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
-});
+// Sin middleware 'guest': el dominio central no tiene tabla users en public schema.
+// El registro es una página pública para crear nuevas empresas tenant.
+Route::get('/register',  [RegisterController::class, 'show'])->name('register');
+Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
 
 // ─── Panel super-admin ─────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin'])->group(function () {

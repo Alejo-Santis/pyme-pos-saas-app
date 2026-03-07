@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Auth\Controllers\LoginController;
 use Illuminate\Support\Facades\Route;
-use Stancl\Tenancy\Middleware\InitializeTenancyBySubdomain;
+use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 
 /*
@@ -12,15 +12,15 @@ use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 | Rutas del Tenant (por empresa)
 |--------------------------------------------------------------------------
 | Estas rutas corren dentro del schema del tenant (empresa cliente).
-| Son accesibles desde el subdominio: {empresa}.nextpossaas.test
+| Son accesibles desde el subdominio: {empresa}.nextpossaas-app.test
 |
-| InitializeTenancyBySubdomain identifica el tenant por subdominio
-| y cambia la conexión de base de datos al schema de esa empresa.
+| InitializeTenancyByDomain identifica el tenant por dominio completo
+| (ej: santinet.nextpossaas-app.test) y cambia la conexión al schema.
 */
 
 Route::middleware([
     'web',
-    InitializeTenancyBySubdomain::class,
+    InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
 ])->group(function () {
 

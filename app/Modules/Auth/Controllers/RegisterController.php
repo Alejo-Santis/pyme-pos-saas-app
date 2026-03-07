@@ -49,7 +49,8 @@ class RegisterController extends Controller
 
         $tenant = null;
         $centralDomain = env('CENTRAL_DOMAIN', 'nextpossaas-app.test');
-        $domain = $request->company_slug . '.' . $centralDomain;
+        $subdomain = $request->company_slug;                        // ej: "santinet"
+        $domain    = $subdomain . '.' . $centralDomain;             // ej: "santinet.nextpossaas-app.test"
 
         try {
             // ── Fase 1: Crear el tenant SIN transacción activa ────────────────
@@ -70,6 +71,7 @@ class RegisterController extends Controller
             // ── Fase 1b: Dominio y suscripción (transaccional en landlord) ────
             DB::beginTransaction();
 
+            // InitializeTenancyByDomain busca el dominio completo (ej: "santinet.nextpossaas-app.test").
             $tenant->domains()->create(['domain' => $domain]);
 
             $tenant->subscriptions()->create([
@@ -128,11 +130,11 @@ class RegisterController extends Controller
             return back()->withErrors(['general' => $mensajeError])->withInput();
         }
 
-        // 5. Redirigir al login del subdominio del tenant
-        $loginUrl = 'http://' . $domain . '/login';
+        // 5. Redirigir al login del subdominio del tenant.
+        // ?registered=1 le indica al LoginController que muestre el mensaje de bienvenida,
+        // ya que el flash de sesión no cruza entre dominios distintos (central → tenant).
+        $loginUrl = 'http://' . $domain . '/login?registered=1';
 
-        return redirect($loginUrl)->with('success',
-            "¡Empresa creada exitosamente! Inicia sesión con tu cuenta de administrador. Tienes {$plan->trial_days} días de prueba gratuita."
-        );
+        return redirect($loginUrl);
     }
 }

@@ -23,7 +23,12 @@
       "Bash(xargs grep -l \"price\")",
       "Bash(php artisan tinker --execute=\":*)",
       "Bash(grep -o \"Stancl[^,]*\\\\|Jobs[^,]*\\\\|MigrateDatabase[^,]*\\\\|Illuminate\\\\\\\\Database\\\\\\\\Migrations[^,]*\")",
-      "Bash(grep -o \"#[0-9]* C:\\\\\\\\laragon[^#]*MigrateDatabase[^#]*\")"
+      "Bash(grep -o \"#[0-9]* C:\\\\\\\\laragon[^#]*MigrateDatabase[^#]*\")",
+      "Read(//c/laragon/www/xedoc-laravel-svelte/resources/js/Pages/Core/App//**)",
+      "Read(//c/laragon/www/xedoc-laravel-svelte/resources/js/Pages/Core/Components//**)",
+      "Read(//c/laragon/www/xedoc-laravel-svelte/resources/js/Pages/**)",
+      "Bash(npm install chart.js --save)",
+      "Bash(npm install @mdi/font)"
     ]
   }
 }
