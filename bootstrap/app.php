@@ -20,6 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
+
+        // Alias de middleware custom
+        $middleware->alias([
+            'admin.auth'  => \App\Http\Middleware\AdminAuthenticate::class,
+            'onboarding'  => \App\Http\Middleware\CheckOnboardingCompleted::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

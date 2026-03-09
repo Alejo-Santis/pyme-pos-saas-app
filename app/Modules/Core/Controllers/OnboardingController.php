@@ -1,0 +1,138 @@
+<?php
+
+namespace App\Modules\Core\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Core\Models\Company;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class OnboardingController extends Controller
+{
+    /**
+     * Muestra el wizard de onboarding.
+     * Carga los catálogos globales desde el schema public.
+     */
+    public function show(): Response
+    {
+        // Catálogos globales (schema public, accesibles via search_path)
+        $organizations = DB::table('type_organizations')->orderBy('id')->get(['id', 'name', 'code']);
+        $regimes       = DB::table('type_regimes')->orderBy('id')->get(['id', 'name', 'code']);
+        $liabilities   = DB::table('type_liabilities')->orderBy('name')->get(['id', 'name', 'code']);
+        $docTypes      = DB::table('type_document_identifications')->orderBy('id')->get(['id', 'name', 'code']);
+        $departments   = DB::table('departments')->orderBy('name')->get(['id', 'name', 'code']);
+        $municipalities = DB::table('municipalities')->orderBy('name')->get(['id', 'name', 'code', 'department_id']);
+        $countries     = DB::table('countries')->orderBy('name')->get(['id', 'name', 'code']);
+
+        // Empresa existente (si volvió al wizard sin terminar)
+        $company = Company::first();
+
+        return Inertia::render('Onboarding', compact(
+            'organizations',
+            'regimes',
+            'liabilities',
+            'docTypes',
+            'departments',
+            'municipalities',
+            'countries',
+            'company',
+        ));
+    }
+
+    /**
+     * Guarda los datos de la empresa (Paso 1).
+     */
+    public function saveCompany(Request $request)
+    {
+        $data = $request->validate([
+            'identification_number'           => 'required|string|max:20',
+            'dv'                              => 'required|string|size:1',
+            'business_name'                   => 'required|string|max:255',
+            'trade_name'                      => 'nullable|string|max:255',
+            'type_document_identification_id' => 'required|integer',
+            'type_organization_id'            => 'required|integer',
+            'type_regime_id'                  => 'required|integer',
+            'type_liability_id'               => 'required|integer',
+            'country_id'                      => 'required|integer',
+            'municipality_id'                 => 'required|integer',
+            'email'                           => 'required|email|max:255',
+            'phone'                           => 'nullable|string|max:20',
+            'address'                         => 'required|string|max:255',
+        ]);
+
+        Company::updateOrCreate(
+            ['identification_number' => $data['identification_number']],
+            $data
+        );
+
+        return back()->with('success', 'Datos de la empresa guardados correctamente.');
+    }
+
+    /**
+     * Guarda la resolución DIAN (Paso 2) y completa el onboarding.
+     */
+    public function saveResolution(Request $request)
+    {
+        $request->validate([
+            'resolution'      => 'required|string|max:50',
+            'resolution_date' => 'required|date',
+            'prefix'          => 'nullable|string|max:10',
+            'from'            => 'required|integer|min:1',
+            'to'              => 'required|integer|gt:from',
+            'date_from'       => 'required|date',
+            'date_to'         => 'required|date|after:date_from',
+        ]);
+
+        $company = Company::firstOrFail();
+
+        // type_document_id = 1 (Factura de Venta) — ajustable luego en Configuración
+        // type_document_operation_id = 1 (FEV) — ajustable luego
+        $company->resolutions()->updateOrCreate(
+            ['resolution' => $request->resolution],
+            [
+                'uuid'                        => \Illuminate\Support\Str::uuid(),
+                'type_document_id'            => 1,
+                'type_document_operation_id'  => 1,
+                'resolution'                  => $request->resolution,
+                'resolution_date'             => $request->resolution_date,
+                'prefix'                      => $request->prefix,
+                'from'                        => $request->from,
+                'to'                          => $request->to,
+                'current_number'              => $request->from,
+                'date_from'                   => $request->date_from,
+                'date_to'                     => $request->date_to,
+                'is_active'                   => true,
+            ]
+        );
+
+        // Marcar onboarding completado en el usuario actual
+        auth()->user()->update(['onboarding_completed' => true]);
+
+        return redirect()->route('dashboard')->with('success', '¡Configuración completada! Bienvenido a NextPOS SaaS.');
+    }
+
+    /**
+     * Completa el onboarding saltando la configuración DIAN (puede hacerse después).
+     */
+    public function complete(Request $request)
+    {
+        auth()->user()->update(['onboarding_completed' => true]);
+
+        return redirect()->route('dashboard')->with('success', '¡Bienvenido a NextPOS SaaS! Puedes configurar la facturación DIAN desde Configuración.');
+    }
+
+    /**
+     * Municipios de un departamento (para el select en cascada del wizard).
+     */
+    public function municipalities(int $departmentId)
+    {
+        $municipalities = DB::table('municipalities')
+            ->where('department_id', $departmentId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        return response()->json($municipalities);
+    }
+}

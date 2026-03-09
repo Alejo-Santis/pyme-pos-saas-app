@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Auth\Controllers\LoginController;
+use App\Modules\Core\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -37,52 +38,66 @@ Route::middleware([
     // ─── Rutas protegidas ─────────────────────────────────────────────────
     Route::middleware(['auth'])->group(function () {
 
-        Route::get('/dashboard', \App\Modules\Core\Controllers\DashboardController::class)->name('dashboard');
-
-        // ─── Configuración de empresa ─────────────────────────────────────
-        Route::prefix('config')->name('config.')->group(function () {
-            // Pendiente: Fase 5
+        // ─── Onboarding wizard (configuración inicial) ────────────────────
+        Route::prefix('onboarding')->name('onboarding.')->group(function () {
+            Route::get('/',                 [OnboardingController::class, 'show'])->name('show');
+            Route::post('/company',         [OnboardingController::class, 'saveCompany'])->name('company');
+            Route::post('/resolution',      [OnboardingController::class, 'saveResolution'])->name('resolution');
+            Route::post('/complete',        [OnboardingController::class, 'complete'])->name('complete');
+            Route::get('/municipalities/{departmentId}', [OnboardingController::class, 'municipalities'])->name('municipalities');
         });
 
-        // ─── Terceros ─────────────────────────────────────────────────────
-        Route::prefix('third-parties')->name('third-parties.')->group(function () {
-            // Pendiente: Fase 6
-        });
+        // ─── Rutas que requieren onboarding completado ────────────────────
+        Route::middleware(['onboarding'])->group(function () {
 
-        // ─── Inventario ───────────────────────────────────────────────────
-        Route::prefix('inventory')->name('inventory.')->group(function () {
-            // Pendiente: Fase 7
-        });
+            Route::get('/dashboard', \App\Modules\Core\Controllers\DashboardController::class)->name('dashboard');
 
-        // ─── Facturación electrónica ──────────────────────────────────────
-        Route::prefix('invoices')->name('invoices.')->group(function () {
-            // Pendiente: Fase 8
-        });
+            // ─── Configuración de empresa ─────────────────────────────────
+            Route::prefix('config')->name('config.')->group(function () {
+                // Pendiente: Fase 5
+            });
 
-        // ─── Caja y bancos ────────────────────────────────────────────────
-        Route::prefix('cash')->name('cash.')->group(function () {
-            // Pendiente: Fase 9
-        });
+            // ─── Terceros ─────────────────────────────────────────────────
+            Route::prefix('third-parties')->name('third-parties.')->group(function () {
+                // Pendiente: Fase 6
+            });
 
-        // ─── POS ──────────────────────────────────────────────────────────
-        Route::prefix('pos')->name('pos.')->group(function () {
-            // Pendiente: Fase 10
-        });
+            // ─── Inventario ───────────────────────────────────────────────
+            Route::prefix('inventory')->name('inventory.')->group(function () {
+                // Pendiente: Fase 7
+            });
 
-        // ─── Contabilidad ─────────────────────────────────────────────────
-        Route::prefix('accounting')->name('accounting.')->group(function () {
-            // Pendiente: Fase 11
-        });
+            // ─── Facturación electrónica ──────────────────────────────────
+            Route::prefix('invoices')->name('invoices.')->group(function () {
+                // Pendiente: Fase 8
+            });
 
-        // ─── Compras ──────────────────────────────────────────────────────
-        Route::prefix('purchases')->name('purchases.')->group(function () {
-            // Pendiente: Fase 12
-        });
+            // ─── Caja y bancos ────────────────────────────────────────────
+            Route::prefix('cash')->name('cash.')->group(function () {
+                // Pendiente: Fase 9
+            });
 
-        // ─── Reportes ─────────────────────────────────────────────────────
-        Route::prefix('reports')->name('reports.')->group(function () {
-            // Pendiente: Fase 13
-        });
+            // ─── POS ──────────────────────────────────────────────────────
+            Route::prefix('pos')->name('pos.')->group(function () {
+                // Pendiente: Fase 10
+            });
+
+            // ─── Contabilidad ─────────────────────────────────────────────
+            Route::prefix('accounting')->name('accounting.')->group(function () {
+                // Pendiente: Fase 11
+            });
+
+            // ─── Compras ──────────────────────────────────────────────────
+            Route::prefix('purchases')->name('purchases.')->group(function () {
+                // Pendiente: Fase 12
+            });
+
+            // ─── Reportes ─────────────────────────────────────────────────
+            Route::prefix('reports')->name('reports.')->group(function () {
+                // Pendiente: Fase 13
+            });
+
+        }); // fin middleware onboarding
 
     });
 

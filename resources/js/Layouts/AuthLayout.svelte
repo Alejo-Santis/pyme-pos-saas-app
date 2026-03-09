@@ -3,7 +3,7 @@
 </script>
 
 <!-- Fondo con círculos concéntricos SVG (inspirado en Xedoc, adaptado a Tailwind) -->
-<div class="relative min-h-screen bg-slate-100 flex items-center justify-center p-4 overflow-hidden">
+<div class="relative min-h-screen bg-body flex items-center justify-center p-4 overflow-hidden">
 
   <!-- Fondo SVG círculos concéntricos en tono azul primario -->
   <div class="absolute inset-0 pointer-events-none">
@@ -22,7 +22,7 @@
   <div class="relative w-full max-w-md z-10">
 
     <!-- Cabecera de la tarjeta: banda azul con logo -->
-    <div class="bg-blue-600 rounded-t-2xl py-6 text-center shadow-md">
+    <div class="bg-primary rounded-t-2xl py-6 text-center shadow-md">
       <div class="flex items-center justify-center gap-2">
         <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
           <i class="mdi mdi-lightning-bolt text-white text-lg"></i>

@@ -32,6 +32,7 @@ class HandleInertiaRequests extends Middleware
             // Usuario autenticado — lazy closure para que se evalúe DESPUÉS de InitializeTenancyByDomain.
             // Try/catch por si el dominio central no tiene tabla users (schema public no tiene users).
             'auth' => [
+                // Usuario tenant (guard 'web') — lazy para evaluar después de InitializeTenancyByDomain
                 'user' => function () use ($request) {
                     try {
                         $user = $request->user();
@@ -39,6 +40,19 @@ class HandleInertiaRequests extends Middleware
                             'id'    => $user->id,
                             'name'  => $user->name,
                             'email' => $user->email,
+                        ] : null;
+                    } catch (\Throwable) {
+                        return null;
+                    }
+                },
+                // Usuario admin (guard 'admin', panel landlord)
+                'admin' => function () {
+                    try {
+                        $admin = \Illuminate\Support\Facades\Auth::guard('admin')->user();
+                        return $admin ? [
+                            'id'    => $admin->id,
+                            'name'  => $admin->name,
+                            'email' => $admin->email,
                         ] : null;
                     } catch (\Throwable) {
                         return null;

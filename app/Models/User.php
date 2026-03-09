@@ -28,6 +28,7 @@ class User extends Authenticatable
         'phone',
         'avatar',
         'is_active',
+        'onboarding_completed',
     ];
 
     /**
@@ -44,9 +45,10 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'is_active'         => 'boolean',
+            'email_verified_at'     => 'datetime',
+            'password'              => 'hashed',
+            'is_active'             => 'boolean',
+            'onboarding_completed'  => 'boolean',
         ];
     }
 }

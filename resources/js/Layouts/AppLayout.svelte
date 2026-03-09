@@ -84,8 +84,7 @@
   }
 
   // Dropdown en modo horizontal
-  function toggleDropdown(e, idx) {
-    e.stopPropagation()
+  function toggleDropdown(idx) {
     activeDropdown = activeDropdown === idx ? null : idx
   }
 
@@ -94,15 +93,12 @@
   }
 </script>
 
-<!-- Cierra dropdowns al hacer clic fuera -->
-<svelte:window onclick={closeDropdowns} />
-
 <!-- ══════════════════════════════════════════════════════════════════════════════
      MODO VERTICAL (sidebar)
 ═══════════════════════════════════════════════════════════════════════════════ -->
 {#if navMode === 'vertical'}
 
-<div class="flex h-screen bg-slate-100 overflow-hidden">
+<div class="flex h-screen bg-body overflow-hidden">
 
   <!-- Sidebar azul -->
   <aside class="flex flex-col bg-primary-dark transition-all duration-300 shrink-0 {sidebarOpen ? 'w-60' : 'w-16'}">
@@ -237,10 +233,10 @@
 ═══════════════════════════════════════════════════════════════════════════════ -->
 {#if navMode === 'horizontal'}
 
-<div class="flex flex-col h-screen bg-slate-100 overflow-hidden">
+<div class="flex flex-col h-screen bg-body overflow-hidden">
 
   <!-- Barra de navegación superior azul -->
-  <header class="bg-primary-dark shrink-0 shadow-md">
+  <header class="bg-primary-dark shrink-0 shadow-md overflow-visible">
 
     <!-- Primera fila: logo + controles de usuario -->
     <div class="flex items-center justify-between px-4 h-14 border-b border-white/10">
@@ -287,7 +283,7 @@
     </div>
 
     <!-- Segunda fila: grupos de navegación -->
-    <nav class="flex items-center px-2 h-10 gap-1 overflow-x-auto">
+    <nav class="flex items-center px-2 h-10 gap-1">
 
       {#each navGroups as group, idx}
         {#if !group.label}
@@ -308,7 +304,7 @@
           <!-- Grupos con label → dropdown -->
           <div class="relative">
             <button
-              onclick={(e) => toggleDropdown(e, idx)}
+              onclick={() => toggleDropdown(idx)}
               class="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors cursor-pointer
                 {groupHasActive(group) || activeDropdown === idx
                   ? 'bg-white/20 text-white font-medium'
@@ -320,6 +316,9 @@
             </button>
 
             {#if activeDropdown === idx}
+              <!-- Overlay invisible: clic fuera cierra el dropdown -->
+              <div class="fixed inset-0 z-40" onclick={closeDropdowns}></div>
+              <!-- Panel del dropdown (z-50 > z-40 para quedar encima del overlay) -->
               <div class="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-50">
                 {#each group.items as item}
                   <a
@@ -330,7 +329,7 @@
                         ? 'bg-primary-soft text-primary-dark font-medium'
                         : 'text-slate-700 hover:bg-slate-50 hover:text-primary'}"
                   >
-                    <i class="mdi {item.icon} text-base {isActive(item.href) ? 'text-blue-600' : 'text-slate-400'}"></i>
+                    <i class="mdi {item.icon} text-base {isActive(item.href) ? 'text-primary' : 'text-slate-400'}"></i>
                     {item.label}
                   </a>
                 {/each}
