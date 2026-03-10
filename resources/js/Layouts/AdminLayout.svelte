@@ -1,5 +1,5 @@
 <script>
-  import { page, router } from '@inertiajs/svelte'
+  import { page, router, inertia } from '@inertiajs/svelte'
 
   let { children } = $props()
 
@@ -46,6 +46,7 @@
     <nav class="flex-1 py-4 px-2 space-y-0.5">
       {#each navItems as item}
         <a
+          use:inertia
           href={item.href}
           class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
             {isActive(item.href)

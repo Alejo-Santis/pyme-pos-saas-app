@@ -3,7 +3,13 @@
 declare(strict_types=1);
 
 use App\Modules\Auth\Controllers\LoginController;
+use App\Modules\Core\Controllers\EstablishmentController;
 use App\Modules\Core\Controllers\OnboardingController;
+use App\Modules\Core\Controllers\ThirdPartyController;
+use App\Modules\Core\Controllers\WarehouseController;
+use App\Modules\Inventory\Controllers\ItemCategoryController;
+use App\Modules\Inventory\Controllers\ItemController;
+use App\Modules\Invoice\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -52,24 +58,62 @@ Route::middleware([
 
             Route::get('/dashboard', \App\Modules\Core\Controllers\DashboardController::class)->name('dashboard');
 
-            // ─── Configuración de empresa ─────────────────────────────────
+            // ─── Configuración de empresa (Fase 5) ───────────────────────
             Route::prefix('config')->name('config.')->group(function () {
-                // Pendiente: Fase 5
+                // Establecimientos
+                Route::get('/establishments',                   [EstablishmentController::class, 'index'])->name('establishments');
+                Route::post('/establishments',                  [EstablishmentController::class, 'store'])->name('establishments.store');
+                Route::put('/establishments/{establishment}',   [EstablishmentController::class, 'update'])->name('establishments.update');
+                Route::delete('/establishments/{establishment}',[EstablishmentController::class, 'destroy'])->name('establishments.destroy');
+
+                // Bodegas
+                Route::get('/warehouses',              [WarehouseController::class, 'index'])->name('warehouses');
+                Route::post('/warehouses',             [WarehouseController::class, 'store'])->name('warehouses.store');
+                Route::put('/warehouses/{warehouse}',  [WarehouseController::class, 'update'])->name('warehouses.update');
+                Route::delete('/warehouses/{warehouse}',[WarehouseController::class, 'destroy'])->name('warehouses.destroy');
             });
 
-            // ─── Terceros ─────────────────────────────────────────────────
+            // ─── Terceros (Fase 6) ────────────────────────────────────────
             Route::prefix('third-parties')->name('third-parties.')->group(function () {
-                // Pendiente: Fase 6
+                Route::get('/',                            [ThirdPartyController::class, 'index'])->name('index');
+                Route::get('/create',                      [ThirdPartyController::class, 'create'])->name('create');
+                Route::post('/',                           [ThirdPartyController::class, 'store'])->name('store');
+                Route::get('/{thirdParty}/edit',           [ThirdPartyController::class, 'edit'])->name('edit');
+                Route::put('/{thirdParty}',                [ThirdPartyController::class, 'update'])->name('update');
+                Route::delete('/{thirdParty}',             [ThirdPartyController::class, 'destroy'])->name('destroy');
+                Route::patch('/{thirdParty}/toggle',       [ThirdPartyController::class, 'toggleStatus'])->name('toggle');
             });
 
-            // ─── Inventario ───────────────────────────────────────────────
+            // ─── Inventario (Fase 7) ──────────────────────────────────────
             Route::prefix('inventory')->name('inventory.')->group(function () {
-                // Pendiente: Fase 7
+
+                // Ítems / productos
+                Route::get('/',                    [ItemController::class, 'index'])->name('index');
+                Route::get('/create',              [ItemController::class, 'create'])->name('create');
+                Route::post('/',                   [ItemController::class, 'store'])->name('store');
+                Route::get('/{item}/edit',         [ItemController::class, 'edit'])->name('edit');
+                Route::put('/{item}',              [ItemController::class, 'update'])->name('update');
+                Route::delete('/{item}',           [ItemController::class, 'destroy'])->name('destroy');
+                Route::patch('/{item}/toggle',     [ItemController::class, 'toggleStatus'])->name('toggle');
+
+                // Categorías de ítems
+                Route::prefix('categories')->name('categories.')->group(function () {
+                    Route::get('/',                         [ItemCategoryController::class, 'index'])->name('index');
+                    Route::post('/',                        [ItemCategoryController::class, 'store'])->name('store');
+                    Route::put('/{itemCategory}',           [ItemCategoryController::class, 'update'])->name('update');
+                    Route::delete('/{itemCategory}',        [ItemCategoryController::class, 'destroy'])->name('destroy');
+                });
             });
 
-            // ─── Facturación electrónica ──────────────────────────────────
+            // ─── Facturación electrónica (Fase 8) ────────────────────────
             Route::prefix('invoices')->name('invoices.')->group(function () {
-                // Pendiente: Fase 8
+                Route::get('/',                    [InvoiceController::class, 'index'])->name('index');
+                Route::get('/create',              [InvoiceController::class, 'create'])->name('create');
+                Route::post('/',                   [InvoiceController::class, 'store'])->name('store');
+                Route::get('/{document}',          [InvoiceController::class, 'show'])->name('show');
+                Route::get('/{document}/edit',     [InvoiceController::class, 'edit'])->name('edit');
+                Route::put('/{document}',          [InvoiceController::class, 'update'])->name('update');
+                Route::delete('/{document}',       [InvoiceController::class, 'destroy'])->name('destroy');
             });
 
             // ─── Caja y bancos ────────────────────────────────────────────

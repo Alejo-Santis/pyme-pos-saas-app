@@ -1,5 +1,5 @@
 <script>
-  import { page, router } from '@inertiajs/svelte'
+  import { page, router, inertia } from '@inertiajs/svelte'
   import { onMount } from 'svelte'
 
   let { children } = $props()
@@ -46,8 +46,9 @@
     {
       label: 'Inventario',
       items: [
-        { href: '/inventory', icon: 'mdi-package-variant-closed', label: 'Artículos' },
-        { href: '/purchases', icon: 'mdi-cart-outline',           label: 'Compras' },
+        { href: '/inventory',            icon: 'mdi-package-variant-closed', label: 'Artículos' },
+        { href: '/inventory/categories', icon: 'mdi-tag-multiple-outline',    label: 'Categorías' },
+        { href: '/purchases',            icon: 'mdi-cart-outline',            label: 'Compras' },
       ],
     },
     {
@@ -64,15 +65,22 @@
       ],
     },
     {
-      label: 'Sistema',
+      label: 'Configuración',
       items: [
-        { href: '/config', icon: 'mdi-cog-outline', label: 'Configuración' },
+        { href: '/config/establishments', icon: 'mdi-store-outline', label: 'Establecimientos' },
+        { href: '/config/warehouses',     icon: 'mdi-warehouse',     label: 'Bodegas' },
       ],
     },
   ]
 
+  // Todos los hrefs del nav (para detectar coincidencias más específicas)
+  const allNavHrefs = $derived(navGroups.flatMap(g => g.items.map(i => i.href)))
+
   function isActive(href) {
-    return currentPath === href || currentPath.startsWith(href + '/')
+    if (currentPath === href) return true
+    if (!currentPath.startsWith(href + '/')) return false
+    // No marcar activo si un item más específico también coincide con la ruta actual
+    return !allNavHrefs.some(other => other !== href && currentPath.startsWith(other))
   }
 
   function groupHasActive(group) {
@@ -132,6 +140,7 @@
             {#each group.items as item}
               <li>
                 <a
+                  use:inertia
                   href={item.href}
                   class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors group
                     {isActive(item.href)
@@ -290,6 +299,7 @@
           <!-- Ítems sin grupo van directo (ej: Inicio) -->
           {#each group.items as item}
             <a
+              use:inertia
               href={item.href}
               class="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors
                 {isActive(item.href)
@@ -322,6 +332,7 @@
               <div class="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-50">
                 {#each group.items as item}
                   <a
+                    use:inertia
                     href={item.href}
                     onclick={closeDropdowns}
                     class="flex items-center gap-2.5 px-3 py-2 text-sm transition-colors

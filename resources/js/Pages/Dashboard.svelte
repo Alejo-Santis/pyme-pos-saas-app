@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { router } from '@inertiajs/svelte'
+  import { router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import {
     Chart, BarController, BarElement, LineController, LineElement,
@@ -102,7 +102,7 @@
       <i class="mdi mdi-cube text-5xl opacity-90"></i>
       <div>
         <p class="text-xs font-semibold uppercase tracking-wide opacity-80">Productos creados</p>
-        <a href="/inventory" class="text-white text-3xl font-bold leading-none">{(stats.items ?? 0).toLocaleString()}</a>
+        <a use:inertia href="/inventory" class="text-white text-3xl font-bold leading-none">{(stats.items ?? 0).toLocaleString()}</a>
       </div>
     </div>
 
@@ -112,7 +112,7 @@
       <i class="mdi mdi-account-multiple text-5xl opacity-90"></i>
       <div>
         <p class="text-xs font-semibold uppercase tracking-wide opacity-80">Usuarios Activos</p>
-        <a href="/config" class="text-white text-3xl font-bold leading-none">{(stats.users ?? 0).toLocaleString()}</a>
+        <a use:inertia href="/config" class="text-white text-3xl font-bold leading-none">{(stats.users ?? 0).toLocaleString()}</a>
       </div>
     </div>
 
@@ -122,7 +122,7 @@
       <i class="mdi mdi-account-tie text-5xl opacity-90"></i>
       <div>
         <p class="text-xs font-semibold uppercase tracking-wide opacity-80">Terceros</p>
-        <a href="/third-parties" class="text-white text-3xl font-bold leading-none">{(stats.third_parties ?? 0).toLocaleString()}</a>
+        <a use:inertia href="/third-parties" class="text-white text-3xl font-bold leading-none">{(stats.third_parties ?? 0).toLocaleString()}</a>
       </div>
     </div>
 
@@ -132,7 +132,7 @@
       <i class="mdi mdi-file-document-multiple-outline text-5xl opacity-90"></i>
       <div>
         <p class="text-xs font-semibold uppercase tracking-wide opacity-80">Comprob. Contable</p>
-        <a href="/accounting" class="text-white text-3xl font-bold leading-none">{(stats.accounting_receipts ?? 0).toLocaleString()}</a>
+        <a use:inertia href="/accounting" class="text-white text-3xl font-bold leading-none">{(stats.accounting_receipts ?? 0).toLocaleString()}</a>
       </div>
     </div>
 

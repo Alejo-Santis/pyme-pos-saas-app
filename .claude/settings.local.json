@@ -28,7 +28,11 @@
       "Read(//c/laragon/www/xedoc-laravel-svelte/resources/js/Pages/Core/Components//**)",
       "Read(//c/laragon/www/xedoc-laravel-svelte/resources/js/Pages/**)",
       "Bash(npm install chart.js --save)",
-      "Bash(npm install @mdi/font)"
+      "Bash(npm install @mdi/font)",
+      "Bash(node -e \"const m = require\\(''./node_modules/@inertiajs/svelte/dist/index.cjs''\\); console.log\\(Object.keys\\(m\\)\\)\")",
+      "Bash(node -e \"import\\(''./node_modules/@inertiajs/svelte/dist/index.js''\\).then\\(m => console.log\\(Object.keys\\(m\\)\\)\\).catch\\(e => console.log\\(e.message\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\(''./node_modules/@inertiajs/svelte/package.json''\\).version\\)\")",
+      "Bash(node -e \"const p=require\\(''./node_modules/@inertiajs/svelte/package.json''\\); console.log\\(p.version\\)\")"
     ]
   }
 }

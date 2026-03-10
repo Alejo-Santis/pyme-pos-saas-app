@@ -1,6 +1,6 @@
 <script>
   import AdminLayout from '@/Layouts/AdminLayout.svelte'
-  import { router } from '@inertiajs/svelte'
+  import { router, inertia } from '@inertiajs/svelte'
 
   let { tenant = {}, subscriptions = [], plans = [] } = $props()
 
@@ -44,7 +44,7 @@
 
     <!-- Header -->
     <div class="flex items-center gap-4">
-      <a href="/admin/tenants" class="text-slate-400 hover:text-slate-600 transition">
+      <a use:inertia href="/admin/tenants" class="text-slate-400 hover:text-slate-600 transition">
         <i class="mdi mdi-arrow-left text-xl"></i>
       </a>
       <div class="flex-1">

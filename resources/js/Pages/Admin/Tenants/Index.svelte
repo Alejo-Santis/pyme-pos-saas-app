@@ -1,6 +1,6 @@
 <script>
   import AdminLayout from '@/Layouts/AdminLayout.svelte'
-  import { router } from '@inertiajs/svelte'
+  import { router, inertia } from '@inertiajs/svelte'
 
   let { tenants = { data: [] }, plans = [], filters = {} } = $props()
 
@@ -152,6 +152,7 @@
                   <td class="px-4 py-3 text-slate-500 text-xs">{tenant.created_at}</td>
                   <td class="px-4 py-3">
                     <a
+                      use:inertia
                       href="/admin/tenants/{tenant.id}"
                       class="text-primary hover:text-primary-dark transition"
                       title="Ver detalle"
@@ -176,6 +177,7 @@
             {#each tenants.links as link}
               {#if link.url}
                 <a
+                  use:inertia
                   href={link.url}
                   class="px-3 py-1 rounded text-xs transition
                     {link.active

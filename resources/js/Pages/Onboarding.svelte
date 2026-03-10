@@ -1,5 +1,5 @@
 <script>
-  import { useForm, router } from '@inertiajs/svelte'
+  import { useForm, router, inertia } from '@inertiajs/svelte'
 
   let {
     organizations  = [],
@@ -575,6 +575,7 @@
         </div>
 
         <a
+          use:inertia
           href="/dashboard"
           class="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white
                  font-semibold rounded-lg px-8 py-3 text-sm transition"

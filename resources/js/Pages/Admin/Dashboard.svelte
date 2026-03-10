@@ -1,6 +1,7 @@
 <script>
   import AdminLayout from '@/Layouts/AdminLayout.svelte'
   import { onMount } from 'svelte'
+  import { inertia } from '@inertiajs/svelte'
 
   let { stats = {}, monthlyGrowth = {}, recentTenants = [] } = $props()
 
@@ -151,7 +152,7 @@
       <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-semibold text-slate-700">Últimas empresas registradas</h3>
-          <a href="/admin/tenants" class="text-xs text-primary hover:underline">Ver todas</a>
+          <a use:inertia href="/admin/tenants" class="text-xs text-primary hover:underline">Ver todas</a>
         </div>
 
         {#if recentTenants.length === 0}
@@ -167,7 +168,7 @@
                     </span>
                   </div>
                   <div>
-                    <a href="/admin/tenants/{tenant.id}" class="text-sm font-medium text-slate-700 hover:text-primary">
+                    <a use:inertia href="/admin/tenants/{tenant.id}" class="text-sm font-medium text-slate-700 hover:text-primary">
                       {tenant.name}
                     </a>
                     <p class="text-xs text-slate-400">{tenant.plan}</p>
