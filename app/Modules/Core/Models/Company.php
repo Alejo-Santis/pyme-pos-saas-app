@@ -40,6 +40,8 @@ class Company extends Model
         'dian_software_security_code',
         'dian_test_set_id',
         'dian_provider',
+        'api_path_fe',
+        'api_token_fe',
         'logo_path',
         'is_active',
     ];

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -25,10 +26,12 @@ class Document extends Model
     protected $fillable = [
         'uuid',
         'internal_code',
+        'system_number',
         'company_id',
         'user_id',
         'third_party_id',
         'seller_id',
+        'reference_id',
         'type_document_id',
         'type_document_operation_id',
         'resolution_id',
@@ -42,6 +45,11 @@ class Document extends Model
         'balance',
         'payment_forms',
         'taxes',
+        'withholdings_tax',
+        'invoice_lines',
+        'legal_monetary_totals',
+        'order_reference',
+        'note',
         'issue_date',
         'paid',
         'electronic',
@@ -50,21 +58,27 @@ class Document extends Model
         'cufe',
         'qr_code',
         'cashier_shift',
+        'dian_validation_date_time',
+        'pos_terminal_id',
     ];
 
     protected $casts = [
-        'subtotal'       => 'decimal:4',
-        'total_discount' => 'decimal:4',
-        'total_tax'      => 'decimal:4',
-        'total'          => 'decimal:4',
-        'balance'        => 'decimal:4',
-        'payment_forms'  => 'array',
-        'taxes'          => 'array',
-        'issue_date'     => 'date',
-        'paid'           => 'boolean',
-        'electronic'     => 'boolean',
-        'accounted'      => 'boolean',
-        'annulled'       => 'boolean',
+        'subtotal'               => 'decimal:4',
+        'total_discount'         => 'decimal:4',
+        'total_tax'              => 'decimal:4',
+        'total'                  => 'decimal:4',
+        'balance'                => 'decimal:4',
+        'payment_forms'          => 'array',
+        'taxes'                  => 'array',
+        'withholdings_tax'       => 'array',
+        'invoice_lines'          => 'array',
+        'legal_monetary_totals'  => 'array',
+        'order_reference'        => 'array',
+        'issue_date'             => 'date',
+        'paid'                   => 'boolean',
+        'electronic'             => 'boolean',
+        'accounted'              => 'boolean',
+        'annulled'               => 'boolean',
     ];
 
     // ─── Boot: UUID secundario y código interno ───────────────────────────
@@ -108,6 +122,35 @@ class Document extends Model
     public function paymentMethods(): HasMany
     {
         return $this->hasMany(DocumentPaymentMethod::class, 'document_id');
+    }
+
+    /**
+     * Último intento de envío electrónico a la DIAN.
+     */
+    public function latestSending(): HasOne
+    {
+        return $this->hasOne(SendingElectronicDocument::class, 'document_id')->latestOfMany();
+    }
+
+    public function sendings(): HasMany
+    {
+        return $this->hasMany(SendingElectronicDocument::class, 'document_id');
+    }
+
+    /**
+     * Documento referenciado (para NC/ND indica la factura original).
+     */
+    public function reference(): BelongsTo
+    {
+        return $this->belongsTo(Document::class, 'reference_id');
+    }
+
+    /**
+     * Documentos que referencian a este (NC/ND emitidas sobre esta factura).
+     */
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(Document::class, 'reference_id');
     }
 
     // ─── Scopes ───────────────────────────────────────────────────────────

@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Modules\Inventory\Models\ItemWarehouse;
+use App\Modules\Inventory\Models\ItemTax;
 
 class Item extends Model
 {
@@ -86,6 +89,23 @@ class Item extends Model
     public function itemCategory(): BelongsTo
     {
         return $this->belongsTo(ItemCategory::class, 'item_category_id');
+    }
+
+    /**
+     * Stock por bodega (tabla item_warehouse).
+     */
+    public function itemWarehouses(): HasMany
+    {
+        return $this->hasMany(ItemWarehouse::class, 'item_id');
+    }
+
+    /**
+     * Impuestos configurados sobre este artículo.
+     * Tabla: item_taxes (item_id, tax_id, percent)
+     */
+    public function taxes(): HasMany
+    {
+        return $this->hasMany(ItemTax::class, 'item_id');
     }
 
     // FK a catálogos en schema public — se usa DB::table(), no Eloquent model

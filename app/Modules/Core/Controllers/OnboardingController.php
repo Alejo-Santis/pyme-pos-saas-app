@@ -4,6 +4,7 @@ namespace App\Modules\Core\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Core\Models\Company;
+use App\Modules\Core\Services\DefaultsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -11,33 +12,27 @@ use Inertia\Response;
 
 class OnboardingController extends Controller
 {
+    public function __construct(
+        private readonly DefaultsService $defaults
+    ) {}
+
     /**
      * Muestra el wizard de onboarding.
-     * Carga los catálogos globales desde el schema public.
      */
     public function show(): Response
     {
-        // Catálogos globales (schema public, accesibles via search_path)
-        $organizations = DB::table('type_organizations')->orderBy('id')->get(['id', 'name', 'code']);
-        $regimes       = DB::table('type_regimes')->orderBy('id')->get(['id', 'name', 'code']);
-        $liabilities   = DB::table('type_liabilities')->orderBy('name')->get(['id', 'name', 'code']);
-        $docTypes      = DB::table('type_document_identifications')->orderBy('id')->get(['id', 'name', 'code']);
-        $departments   = DB::table('departments')->orderBy('name')->get(['id', 'name', 'code']);
+        $organizations  = DB::table('type_organizations')->orderBy('id')->get(['id', 'name', 'code']);
+        $regimes        = DB::table('type_regimes')->orderBy('id')->get(['id', 'name', 'code']);
+        $liabilities    = DB::table('type_liabilities')->orderBy('name')->get(['id', 'name', 'code']);
+        $docTypes       = DB::table('type_document_identifications')->orderBy('id')->get(['id', 'name', 'code']);
+        $departments    = DB::table('departments')->orderBy('name')->get(['id', 'name', 'code']);
         $municipalities = DB::table('municipalities')->orderBy('name')->get(['id', 'name', 'code', 'department_id']);
-        $countries     = DB::table('countries')->orderBy('name')->get(['id', 'name', 'code']);
-
-        // Empresa existente (si volvió al wizard sin terminar)
-        $company = Company::first();
+        $countries      = DB::table('countries')->orderBy('name')->get(['id', 'name', 'code']);
+        $company        = Company::first();
 
         return Inertia::render('Onboarding', compact(
-            'organizations',
-            'regimes',
-            'liabilities',
-            'docTypes',
-            'departments',
-            'municipalities',
-            'countries',
-            'company',
+            'organizations', 'regimes', 'liabilities', 'docTypes',
+            'departments', 'municipalities', 'countries', 'company',
         ));
     }
 
@@ -71,7 +66,8 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Guarda la resolución DIAN (Paso 2) y completa el onboarding.
+     * Guarda la resolución DIAN real (Paso 2) y completa el onboarding.
+     * Después de guardar la resolución del usuario, siembra el resto de defaults.
      */
     public function saveResolution(Request $request)
     {
@@ -87,40 +83,52 @@ class OnboardingController extends Controller
 
         $company = Company::firstOrFail();
 
-        // type_document_id = 1 (Factura de Venta) — ajustable luego en Configuración
-        // type_document_operation_id = 1 (FEV) — ajustable luego
+        // Guardar la resolución real FEV que el usuario configuró
         $company->resolutions()->updateOrCreate(
-            ['resolution' => $request->resolution],
+            ['resolution' => $request->resolution, 'type_document_operation_id' => 1],
             [
-                'uuid'                        => \Illuminate\Support\Str::uuid(),
-                'type_document_id'            => 1,
-                'type_document_operation_id'  => 1,
-                'resolution'                  => $request->resolution,
-                'resolution_date'             => $request->resolution_date,
-                'prefix'                      => $request->prefix,
-                'from'                        => $request->from,
-                'to'                          => $request->to,
-                'current_number'              => $request->from,
-                'date_from'                   => $request->date_from,
-                'date_to'                     => $request->date_to,
-                'is_active'                   => true,
+                'uuid'                       => \Illuminate\Support\Str::uuid(),
+                'type_document_id'           => 1,
+                'type_document_operation_id' => 1,
+                'resolution'                 => $request->resolution,
+                'resolution_date'            => $request->resolution_date,
+                'prefix'                     => $request->prefix,
+                'from'                       => $request->from,
+                'to'                         => $request->to,
+                'current_number'             => $request->from - 1,  // primer emitido = from
+                'date_from'                  => $request->date_from,
+                'date_to'                    => $request->date_to,
+                'is_active'                  => true,
             ]
         );
 
-        // Marcar onboarding completado en el usuario actual
+        // Sembrar el resto de resoluciones internas y terceros por defecto
+        $this->defaults->seedResolutions($company);
+        $this->defaults->seedThirds($company);
+
         auth()->user()->update(['onboarding_completed' => true]);
 
-        return redirect()->route('dashboard')->with('success', '¡Configuración completada! Bienvenido a NextPOS SaaS.');
+        return redirect()->route('dashboard')
+            ->with('success', '¡Configuración completada! Bienvenido a NextPOS SaaS.');
     }
 
     /**
      * Completa el onboarding saltando la configuración DIAN (puede hacerse después).
+     * Siembra igual los defaults internos.
      */
     public function complete(Request $request)
     {
+        $company = Company::first();
+
+        if ($company) {
+            $this->defaults->seedResolutions($company);
+            $this->defaults->seedThirds($company);
+        }
+
         auth()->user()->update(['onboarding_completed' => true]);
 
-        return redirect()->route('dashboard')->with('success', '¡Bienvenido a NextPOS SaaS! Puedes configurar la facturación DIAN desde Configuración.');
+        return redirect()->route('dashboard')
+            ->with('success', '¡Bienvenido a NextPOS SaaS! Puedes configurar la facturación DIAN desde Configuración.');
     }
 
     /**

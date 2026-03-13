@@ -21,6 +21,7 @@ class Resolution extends Model
         'type_document_operation_id',
         'resolution',
         'resolution_date',
+        'technical_key',
         'prefix',
         'from',
         'to',

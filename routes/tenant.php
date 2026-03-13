@@ -3,13 +3,19 @@
 declare(strict_types=1);
 
 use App\Modules\Auth\Controllers\LoginController;
+use App\Modules\Core\Controllers\CompanyController;
 use App\Modules\Core\Controllers\EstablishmentController;
 use App\Modules\Core\Controllers\OnboardingController;
+use App\Modules\Core\Controllers\ResolutionController;
 use App\Modules\Core\Controllers\ThirdPartyController;
 use App\Modules\Core\Controllers\WarehouseController;
 use App\Modules\Inventory\Controllers\ItemCategoryController;
 use App\Modules\Inventory\Controllers\ItemController;
 use App\Modules\Invoice\Controllers\InvoiceController;
+use App\Modules\Cash\Controllers\BankController;
+use App\Modules\Cash\Controllers\CashBoxController;
+use App\Modules\POS\Controllers\PosController;
+use App\Modules\Purchases\Controllers\PurchaseController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -71,6 +77,17 @@ Route::middleware([
                 Route::post('/warehouses',             [WarehouseController::class, 'store'])->name('warehouses.store');
                 Route::put('/warehouses/{warehouse}',  [WarehouseController::class, 'update'])->name('warehouses.update');
                 Route::delete('/warehouses/{warehouse}',[WarehouseController::class, 'destroy'])->name('warehouses.destroy');
+
+                // Configuración de empresa
+                Route::get('/company',  [CompanyController::class, 'show'])->name('company');
+                Route::put('/company',  [CompanyController::class, 'update'])->name('company.update');
+
+                // Resoluciones DIAN
+                Route::get('/resolutions',                      [ResolutionController::class, 'index'])->name('resolutions');
+                Route::post('/resolutions',                     [ResolutionController::class, 'store'])->name('resolutions.store');
+                Route::put('/resolutions/{resolution}',         [ResolutionController::class, 'update'])->name('resolutions.update');
+                Route::delete('/resolutions/{resolution}',      [ResolutionController::class, 'destroy'])->name('resolutions.destroy');
+                Route::patch('/resolutions/{resolution}/toggle',[ResolutionController::class, 'toggle'])->name('resolutions.toggle');
             });
 
             // ─── Terceros (Fase 6) ────────────────────────────────────────
@@ -118,12 +135,43 @@ Route::middleware([
 
             // ─── Caja y bancos ────────────────────────────────────────────
             Route::prefix('cash')->name('cash.')->group(function () {
-                // Pendiente: Fase 9
+                // Cajas de efectivo
+                Route::get('/',                                          [CashBoxController::class, 'index'])->name('index');
+                Route::post('/boxes',                                    [CashBoxController::class, 'store'])->name('boxes.store');
+                Route::put('/boxes/{cashBox}',                           [CashBoxController::class, 'update'])->name('boxes.update');
+                Route::delete('/boxes/{cashBox}',                        [CashBoxController::class, 'destroy'])->name('boxes.destroy');
+                Route::get('/boxes/{cashBox}',                           [CashBoxController::class, 'show'])->name('boxes.show');
+                Route::post('/boxes/{cashBox}/movements',                [CashBoxController::class, 'storeMovement'])->name('boxes.movements.store');
+                Route::post('/boxes/transfer',                           [CashBoxController::class, 'transfer'])->name('boxes.transfer');
+
+                // Bancos y cuentas bancarias
+                Route::get('/banks',                                     [BankController::class, 'index'])->name('banks.index');
+                Route::post('/banks',                                    [BankController::class, 'store'])->name('banks.store');
+                Route::put('/banks/{bank}',                              [BankController::class, 'update'])->name('banks.update');
+                Route::delete('/banks/{bank}',                           [BankController::class, 'destroy'])->name('banks.destroy');
+                Route::post('/banks/{bank}/accounts',                    [BankController::class, 'storeAccount'])->name('banks.accounts.store');
+                Route::put('/banks/accounts/{account}',                  [BankController::class, 'updateAccount'])->name('banks.accounts.update');
+                Route::delete('/banks/accounts/{account}',               [BankController::class, 'destroyAccount'])->name('banks.accounts.destroy');
+                Route::post('/banks/accounts/{account}/movements',       [BankController::class, 'storeMovement'])->name('banks.accounts.movements.store');
             });
 
             // ─── POS ──────────────────────────────────────────────────────
             Route::prefix('pos')->name('pos.')->group(function () {
-                // Pendiente: Fase 10
+                // Selección de terminales
+                Route::get('/',                              [PosController::class, 'index'])->name('index');
+
+                // Gestión de terminales (admin)
+                Route::post('/terminals',                    [PosController::class, 'storeTerminal'])->name('terminals.store');
+                Route::put('/terminals/{terminal}',          [PosController::class, 'updateTerminal'])->name('terminals.update');
+                Route::delete('/terminals/{terminal}',       [PosController::class, 'destroyTerminal'])->name('terminals.destroy');
+
+                // Turnos de caja
+                Route::post('/{terminal}/open',              [PosController::class, 'openShift'])->name('open');
+                Route::post('/{terminal}/close',             [PosController::class, 'closeShift'])->name('close');
+
+                // Pantalla de venta
+                Route::get('/{terminal}',                    [PosController::class, 'terminal'])->name('terminal');
+                Route::post('/{terminal}/sale',              [PosController::class, 'store'])->name('sale');
             });
 
             // ─── Contabilidad ─────────────────────────────────────────────
@@ -133,7 +181,13 @@ Route::middleware([
 
             // ─── Compras ──────────────────────────────────────────────────
             Route::prefix('purchases')->name('purchases.')->group(function () {
-                // Pendiente: Fase 12
+                Route::get('/',                         [PurchaseController::class, 'index'])->name('index');
+                Route::get('/create',                   [PurchaseController::class, 'create'])->name('create');
+                Route::post('/',                        [PurchaseController::class, 'store'])->name('store');
+                Route::get('/{purchase}',               [PurchaseController::class, 'show'])->name('show');
+                Route::post('/{purchase}/approve',      [PurchaseController::class, 'approve'])->name('approve');
+                Route::post('/{purchase}/receive',      [PurchaseController::class, 'receive'])->name('receive');
+                Route::post('/{purchase}/annul',        [PurchaseController::class, 'annul'])->name('annul');
             });
 
             // ─── Reportes ─────────────────────────────────────────────────

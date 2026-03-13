@@ -18,6 +18,8 @@ class DocumentLine extends Model
     protected $fillable = [
         'document_id',
         'item_id',
+        'description',
+        'item_note',
         'amount',
         'cost_value',
         'sale_price',
@@ -29,6 +31,7 @@ class DocumentLine extends Model
         'warehouse_out',
         'warehouse_in',
         'movement_type',
+        'state',
         'annulled',
     ];
 
@@ -41,6 +44,7 @@ class DocumentLine extends Model
         'tax_amount'     => 'decimal:4',
         'taxes'          => 'array',
         'annulled'       => 'boolean',
+        'state'          => 'boolean',
     ];
 
     // ─── Relaciones ───────────────────────────────────────────────────────

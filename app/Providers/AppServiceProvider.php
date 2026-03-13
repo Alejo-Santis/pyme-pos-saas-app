@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Modules\Invoice\Models\Document;
+use App\Modules\Invoice\Observers\DocumentCreateObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Observer que dispara el pipeline DIAN al crear un documento
+        Document::observe(DocumentCreateObserver::class);
     }
 }

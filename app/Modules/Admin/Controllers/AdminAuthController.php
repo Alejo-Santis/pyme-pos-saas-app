@@ -13,10 +13,10 @@ use Inertia\Response;
 class AdminAuthController extends Controller
 {
     // Mostrar login del panel admin
-    public function showLogin(): Response
+    public function showLogin(): Response|\Illuminate\Http\RedirectResponse
     {
         if (Auth::guard('admin')->check()) {
-            return Inertia::location(route('admin.dashboard'));
+            return redirect()->route('admin.dashboard');
         }
 
         return Inertia::render('Admin/Login');

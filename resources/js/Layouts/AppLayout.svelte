@@ -67,8 +67,10 @@
     {
       label: 'Configuración',
       items: [
-        { href: '/config/establishments', icon: 'mdi-store-outline', label: 'Establecimientos' },
-        { href: '/config/warehouses',     icon: 'mdi-warehouse',     label: 'Bodegas' },
+        { href: '/config/company',        icon: 'mdi-domain',                    label: 'Mi Empresa' },
+        { href: '/config/resolutions',    icon: 'mdi-file-certificate-outline',  label: 'Resoluciones DIAN' },
+        { href: '/config/establishments', icon: 'mdi-store-outline',             label: 'Establecimientos' },
+        { href: '/config/warehouses',     icon: 'mdi-warehouse',                 label: 'Bodegas' },
       ],
     },
   ]
