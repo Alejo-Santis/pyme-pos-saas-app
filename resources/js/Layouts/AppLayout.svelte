@@ -1,6 +1,7 @@
 <script>
   import { page, router, inertia } from '@inertiajs/svelte'
   import { onMount } from 'svelte'
+  import Toast from '@/Components/UI/Toast.svelte'
 
   let { children } = $props()
 
@@ -48,20 +49,37 @@
       items: [
         { href: '/inventory',            icon: 'mdi-package-variant-closed', label: 'Artículos' },
         { href: '/inventory/categories', icon: 'mdi-tag-multiple-outline',    label: 'Categorías' },
+        { href: '/inventory/transfers',  icon: 'mdi-transfer',                label: 'Traslados' },
         { href: '/purchases',            icon: 'mdi-cart-outline',            label: 'Compras' },
       ],
     },
     {
       label: 'Finanzas',
       items: [
-        { href: '/cash',       icon: 'mdi-bank-outline',              label: 'Caja y Bancos' },
-        { href: '/accounting', icon: 'mdi-calculator-variant-outline', label: 'Contabilidad' },
+        { href: '/cash',                      icon: 'mdi-bank-outline',              label: 'Caja y Bancos' },
+        { href: '/accounting/journal',        icon: 'mdi-book-open-outline',         label: 'Libro Diario' },
+        { href: '/accounting/ledger',         icon: 'mdi-book-multiple-outline',     label: 'Libro Mayor' },
+        { href: '/accounting/trial-balance',  icon: 'mdi-scale-balance',             label: 'Balance de Prueba' },
+        { href: '/accounting/income-statement',icon: 'mdi-chart-line',               label: 'Estado de Resultados' },
+        { href: '/accounting/balance-sheet',  icon: 'mdi-calculator-variant-outline',label: 'Balance General' },
+        { href: '/accounting/concepts',       icon: 'mdi-cog-outline',               label: 'Conceptos Contables' },
       ],
     },
     {
-      label: 'Análisis',
+      label: 'Nómina',
       items: [
-        { href: '/reports', icon: 'mdi-chart-bar', label: 'Reportes' },
+        { href: '/payroll/runs',      icon: 'mdi-calculator-variant',       label: 'Liquidaciones' },
+        { href: '/payroll/employees', icon: 'mdi-account-hard-hat-outline', label: 'Empleados' },
+        { href: '/payroll/novelties', icon: 'mdi-bell-ring-outline',        label: 'Novedades' },
+        { href: '/payroll/benefits',  icon: 'mdi-cash-multiple',            label: 'Prestaciones Sociales' },
+      ],
+    },
+    {
+      label: 'Reportes',
+      items: [
+        { href: '/reports/sales',     icon: 'mdi-chart-bar',               label: 'Ventas' },
+        { href: '/reports/cash',      icon: 'mdi-cash-register',            label: 'Caja' },
+        { href: '/reports/inventory', icon: 'mdi-package-variant-closed',   label: 'Inventario' },
       ],
     },
     {
@@ -91,6 +109,30 @@
 
   function logout() {
     router.post('/logout')
+  }
+
+  // ── Grupos colapsables en sidebar vertical ───────────────────────────────────
+  // Mapa: label → true/false (expandido/colapsado)
+  let collapsedGroups = $state({})
+
+  onMount(() => {
+    // Restaurar estado desde localStorage
+    try {
+      const saved = JSON.parse(localStorage.getItem('sidebarGroups') ?? '{}')
+      collapsedGroups = saved
+    } catch {}
+  })
+
+  function toggleGroup(label) {
+    collapsedGroups = { ...collapsedGroups, [label]: !collapsedGroups[label] }
+    localStorage.setItem('sidebarGroups', JSON.stringify(collapsedGroups))
+  }
+
+  // Un grupo está abierto si: tiene un item activo, O no fue explícitamente cerrado
+  function isGroupOpen(group) {
+    if (!group.label) return true
+    if (groupHasActive(group)) return true          // siempre abierto si tiene item activo
+    return collapsedGroups[group.label] !== true    // cerrado solo si se marcó como cerrado
   }
 
   // Dropdown en modo horizontal
@@ -127,38 +169,80 @@
     </div>
 
     <!-- Navegación -->
-    <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+    <nav class="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
       {#each navGroups as group}
-        <div>
-          {#if group.label && sidebarOpen}
-            <p class="text-blue-300 text-[10px] font-semibold uppercase tracking-wider px-2 mb-1">
-              {group.label}
-            </p>
-          {:else if group.label}
-            <div class="border-t border-white/10 mx-2 mb-2"></div>
-          {/if}
+        {#if !group.label}
+          <!-- Items sin grupo (Inicio) — siempre visibles -->
+          {#each group.items as item}
+            <a
+              use:inertia
+              href={item.href}
+              class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors group
+                {isActive(item.href)
+                  ? 'bg-white/20 text-white font-medium'
+                  : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+              title={!sidebarOpen ? item.label : undefined}
+            >
+              <i class="mdi {item.icon} text-lg shrink-0 {isActive(item.href) ? 'text-white' : 'text-blue-200 group-hover:text-white'}"></i>
+              {#if sidebarOpen}
+                <span class="truncate">{item.label}</span>
+              {/if}
+            </a>
+          {/each}
 
-          <ul class="space-y-0.5">
-            {#each group.items as item}
-              <li>
-                <a
-                  use:inertia
-                  href={item.href}
-                  class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors group
-                    {isActive(item.href)
-                      ? 'bg-white/20 text-white font-medium'
-                      : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
-                  title={!sidebarOpen ? item.label : undefined}
-                >
-                  <i class="mdi {item.icon} text-lg shrink-0 {isActive(item.href) ? 'text-white' : 'text-blue-200 group-hover:text-white'}"></i>
-                  {#if sidebarOpen}
-                    <span class="truncate">{item.label}</span>
-                  {/if}
-                </a>
-              </li>
-            {/each}
-          </ul>
-        </div>
+        {:else if sidebarOpen}
+          <!-- Grupo colapsable (sidebar abierto) -->
+          <div class="pt-1">
+            <button
+              onclick={() => toggleGroup(group.label)}
+              class="w-full flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-colors
+                {groupHasActive(group) ? 'text-white' : 'text-blue-300 hover:text-blue-100'}"
+            >
+              <span class="text-[10px] font-bold uppercase tracking-wider">{group.label}</span>
+              <i class="mdi text-sm transition-transform duration-200
+                {isGroupOpen(group) ? 'mdi-chevron-down' : 'mdi-chevron-right'}
+                {groupHasActive(group) ? 'text-blue-200' : 'text-blue-400'}">
+              </i>
+            </button>
+
+            {#if isGroupOpen(group)}
+              <ul class="mt-0.5 space-y-0.5">
+                {#each group.items as item}
+                  <li>
+                    <a
+                      use:inertia
+                      href={item.href}
+                      class="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-lg text-sm transition-colors group
+                        {isActive(item.href)
+                          ? 'bg-white/20 text-white font-medium'
+                          : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                    >
+                      <i class="mdi {item.icon} text-base shrink-0 {isActive(item.href) ? 'text-white' : 'text-blue-300 group-hover:text-white'}"></i>
+                      <span class="truncate">{item.label}</span>
+                    </a>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+
+        {:else}
+          <!-- Sidebar colapsado → solo iconos con tooltip, agrupar con separador -->
+          <div class="border-t border-white/10 mx-1 my-1"></div>
+          {#each group.items as item}
+            <a
+              use:inertia
+              href={item.href}
+              class="flex items-center justify-center w-10 h-10 mx-auto rounded-lg text-sm transition-colors group
+                {isActive(item.href)
+                  ? 'bg-white/20 text-white'
+                  : 'text-blue-200 hover:bg-white/10 hover:text-white'}"
+              title={item.label}
+            >
+              <i class="mdi {item.icon} text-lg"></i>
+            </a>
+          {/each}
+        {/if}
       {/each}
     </nav>
 
@@ -243,6 +327,7 @@
      MODO HORIZONTAL (topnav)
 ═══════════════════════════════════════════════════════════════════════════════ -->
 {#if navMode === 'horizontal'}
+
 
 <div class="flex flex-col h-screen bg-body overflow-hidden">
 
@@ -363,3 +448,6 @@
 </div>
 
 {/if}
+
+<!-- Toast global: se renderiza una sola vez, aplica a ambos modos de navegación -->
+<Toast />

@@ -3,6 +3,10 @@
 namespace App\Modules\POS\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Cash\Models\BankAccount;
+use App\Modules\Cash\Models\BankAccountMovement;
+use App\Modules\Cash\Models\CashBox;
+use App\Modules\Cash\Models\CashMovement;
 use App\Modules\Core\Models\Company;
 use App\Modules\Core\Models\Resolution;
 use App\Modules\Core\Models\ThirdParty;
@@ -45,6 +49,7 @@ class PosController extends Controller
             'resolution:id,prefix,from,to,current_number',
             'warehouse:id,name',
             'establishment:id,name',
+            'cashBox:id,name,internal_code',
             'activeTerminalUser.user:id,name',
         ])
         ->where('state', true)
@@ -59,6 +64,7 @@ class PosController extends Controller
         return Inertia::render('POS/Index', [
             'terminals' => $terminals,
             'myShift'   => $myShift,
+            'cashBoxes' => CashBox::where('state', true)->get(['id', 'name', 'internal_code']),
         ]);
     }
 
@@ -97,8 +103,15 @@ class PosController extends Controller
             [
                 'initial_balance'     => $data['initial_balance'],
                 'current_balance'     => $data['initial_balance'],
+                'final_balance'       => 0,
+                'total_sales'         => 0,
+                'total_cash'          => 0,
+                'total_card'          => 0,
+                'total_transfer'      => 0,
                 'active_shift'        => true,
                 'cashier_session_key' => PosTerminalUser::generateSessionKey(),
+                'shift_opened_at'     => now(),
+                'shift_closed_at'     => null,
                 'state'               => true,
             ]
         );
@@ -133,11 +146,11 @@ class PosController extends Controller
             'taxes',
         ])
         ->where('is_active', true)
-        ->select('id', 'internal_code', 'name', 'barcode', 'default_sale_price', 'tax_category_id', 'unit_measure_id')
+        ->select('id', 'internal_code', 'name', 'barcode_one', 'default_sale_price', 'tax_category_id', 'unit_measure_id')
         ->get();
 
         $thirds = ThirdParty::where('is_active', true)
-            ->select('id', 'identification_number', 'dv', 'name', 'surname', 'business_name', 'email', 'address', 'type_organization_id')
+            ->select('id', 'identification_number', 'dv', 'name', 'surname', 'email', 'address', 'type_organization_id')
             ->get();
 
         // Últimas 10 ventas del día en esta terminal
@@ -203,12 +216,21 @@ class PosController extends Controller
         }
         unset($line);
 
+        $company = Company::first();
+
+        // Determinar tipo de operación:
+        //   op_id = 1  → Factura Electrónica (FE DIAN) — cuando la empresa tiene FE activa
+        //   op_id = 4  → Documento interno POS — cuando la empresa aún no tiene FE
+        $feActive = $company?->electronic_documents && $terminal->resolution_id;
+        $typeDocumentId          = $feActive ? 1 : 4;   // 1=FE, 4=POS ticket
+        $typeDocumentOperationId = $feActive ? 1 : 4;   // 1=Venta → Observer → DIAN
+
         $invoiceData = [
-            'company_id'                 => Company::first()?->id,
+            'company_id'                 => $company?->id,
             'user_id'                    => $user->id,
             'third_party_id'             => $data['third_party_id'] ?? null,
-            'type_document_id'           => 4,   // Factura POS (tipo DIAN)
-            'type_document_operation_id' => 4,   // POS
+            'type_document_id'           => $typeDocumentId,
+            'type_document_operation_id' => $typeDocumentOperationId,
             'resolution_id'              => $terminal->resolution_id,
             'prefix'                     => $terminal->resolution?->prefix,
             'payment_forms'              => $data['payment_forms'],
@@ -222,11 +244,15 @@ class PosController extends Controller
 
         $document = $this->invoiceService->create($invoiceData);
 
-        // Marcar como pagado si los pagos cubren el total
         $totalPaid = collect($data['payment_forms'])->sum('value');
+
+        // Marcar como pagado si los pagos cubren el total
         if ($totalPaid >= $document->total) {
             $document->update(['paid' => true]);
         }
+
+        // ── Registrar movimientos de caja / banco ─────────────────────────
+        $this->registerPaymentMovements($terminal, $shift, $document, $data['payment_forms']);
 
         return response()->json([
             'success'       => true,
@@ -252,14 +278,41 @@ class PosController extends Controller
             return back()->withErrors(['shift' => 'No hay turno activo para cerrar.']);
         }
 
+        // Calcular totales de ventas del turno
+        $salesData = Document::where('pos_terminal_id', $terminal->id)
+            ->where('cashier_shift', $shift->cashier_session_key)
+            ->selectRaw('
+                COALESCE(SUM(total), 0) as total_sales
+            ')
+            ->first();
+
+        // Calcular totales por forma de pago (desde cash_movements del turno)
+        $cashTotal = CashMovement::where('cash_box_id', $terminal->cash_box_id)
+            ->where('reference', $shift->cashier_session_key)
+            ->where('state', true)
+            ->sum('debit');
+
+        $bankTotal = BankAccountMovement::whereHas(
+            'bankAccount',
+            fn ($q) => $q->where('state', true)
+        )
+            ->where('reference', $shift->cashier_session_key)
+            ->where('state', true)
+            ->sum('debit');
+
         $shift->update([
-            'active_shift' => false,
-            'state'        => false,
+            'active_shift'    => false,
+            'state'           => false,
+            'total_sales'     => $salesData->total_sales ?? 0,
+            'total_cash'      => $cashTotal,
+            'total_transfer'  => $bankTotal,
+            'final_balance'   => $shift->initial_balance + $cashTotal,
+            'shift_closed_at' => now(),
         ]);
 
         return redirect()
             ->route('pos.index')
-            ->with('success', "Turno cerrado en {$terminal->name}.");
+            ->with('success', "Turno cerrado en {$terminal->name}. Total vendido: $" . number_format((float)($salesData->total_sales ?? 0), 0, ',', '.'));
     }
 
     // ── Gestión de terminales (admin) ─────────────────────────────────────
@@ -271,6 +324,7 @@ class PosController extends Controller
             'resolution_id'    => 'nullable|uuid|exists:resolutions,id',
             'warehouse_id'     => 'nullable|uuid|exists:warehouses,id',
             'establishment_id' => 'nullable|uuid|exists:establishments,id',
+            'cash_box_id'      => 'nullable|uuid|exists:cash_boxes,id',
             'location'         => 'nullable|string|max:150',
             'printer_name'     => 'nullable|string|max:100',
         ]);
@@ -288,6 +342,7 @@ class PosController extends Controller
             'resolution_id'    => 'nullable|uuid|exists:resolutions,id',
             'warehouse_id'     => 'nullable|uuid|exists:warehouses,id',
             'establishment_id' => 'nullable|uuid|exists:establishments,id',
+            'cash_box_id'      => 'nullable|uuid|exists:cash_boxes,id',
             'location'         => 'nullable|string|max:150',
             'printer_name'     => 'nullable|string|max:100',
             'state'            => 'boolean',
@@ -303,5 +358,90 @@ class PosController extends Controller
         $terminal->delete();
 
         return back()->with('success', 'Terminal eliminada.');
+    }
+
+    // ─── Helpers privados ─────────────────────────────────────────────────
+
+    /**
+     * Crea movimientos de caja / cuenta bancaria por cada forma de pago de la venta POS.
+     *
+     * Métodos de pago:
+     *   10 → Efectivo    → CashMovement (débito en caja de la terminal)
+     *   42 → Transferencia
+     *   48 → Tarjeta crédito  → BankAccountMovement (cuenta bancaria por defecto)
+     *   49 → Tarjeta débito
+     *   Otros → CashMovement (caja) como fallback
+     */
+    private function registerPaymentMovements(
+        PosTerminal     $terminal,
+        PosTerminalUser $shift,
+        Document        $document,
+        array           $paymentForms
+    ): void {
+        $today    = now()->toDateString();
+        $ref      = $shift->cashier_session_key;
+        $desc     = "Venta POS {$document->internal_code}";
+        $cashBox  = $terminal->cash_box_id ? CashBox::find($terminal->cash_box_id) : CashBox::getMain();
+        $bankAcc  = BankAccount::where('state', true)->first(); // cuenta bancaria por defecto
+
+        $cashTotal     = 0;
+        $cardTotal     = 0;
+        $transferTotal = 0;
+
+        foreach ($paymentForms as $form) {
+            $amount = (float) ($form['value'] ?? 0);
+            if ($amount <= 0) continue;
+
+            $methodId = (int) ($form['payment_method_id'] ?? 10);
+
+            if ($methodId === 10) {
+                // Efectivo → caja
+                $cashTotal += $amount;
+
+                if ($cashBox) {
+                    CashMovement::create([
+                        'cash_box_id'  => $cashBox->id,
+                        'user_id'      => $document->user_id,
+                        'third_party_id' => $document->third_party_id,
+                        'document_id'  => $document->id,
+                        'debit'        => $amount,
+                        'credit'       => 0,
+                        'issue_date'   => $today,
+                        'description'  => $desc,
+                        'reference'    => $ref,
+                        'state'        => true,
+                    ]);
+                }
+            } else {
+                // Tarjeta o transferencia → cuenta bancaria
+                if ($methodId === 42) {
+                    $transferTotal += $amount;
+                } else {
+                    $cardTotal += $amount;
+                }
+
+                if ($bankAcc) {
+                    BankAccountMovement::create([
+                        'bank_account_id' => $bankAcc->id,
+                        'user_id'         => $document->user_id,
+                        'third_party_id'  => $document->third_party_id,
+                        'document_id'     => $document->id,
+                        'debit'           => $amount,
+                        'credit'          => 0,
+                        'issue_date'      => $today,
+                        'description'     => $desc . ' (pago electrónico)',
+                        'reference'       => $ref,
+                        'state'           => true,
+                    ]);
+                }
+            }
+        }
+
+        // Actualizar acumulados del turno
+        $shift->increment('total_sales', $document->total);
+        $shift->increment('total_cash', $cashTotal);
+        $shift->increment('total_card', $cardTotal);
+        $shift->increment('total_transfer', $transferTotal);
+        $shift->increment('current_balance', $cashTotal);
     }
 }

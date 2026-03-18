@@ -3,12 +3,15 @@
 namespace App\Modules\Core\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Core\Imports\ThirdPartyImport;
 use App\Modules\Core\Models\PartyLinkage;
 use App\Modules\Core\Models\ThirdParty;
+use App\Shared\Exports\ArrayExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ThirdPartyController extends Controller
 {
@@ -165,5 +168,49 @@ class ThirdPartyController extends Controller
         $thirdParty->update(['is_active' => !$thirdParty->is_active]);
 
         return back()->with('success', 'Estado actualizado.');
+    }
+
+    public function downloadTemplate()
+    {
+        $headers = [
+            'tipo_documento', 'numero_documento', 'digito_verificacion',
+            'tipo_persona', 'nombre_razon_social', 'apellidos',
+            'email', 'telefono', 'direccion', 'ciudad',
+            'es_cliente', 'es_proveedor',
+        ];
+
+        $example = [
+            'CC', '900123456', '',
+            'J', 'Distribuciones XYZ S.A.S.', '',
+            'contacto@xyz.com', '3001234567', 'Calle 123 # 45-67', 'Bogotá',
+            'SI', 'NO',
+        ];
+
+        $notes = [
+            'tipo_documento: CC, NIT, CE, PASAPORTE, TI',
+            'tipo_persona: N=Natural, J=Jurídica',
+            'es_cliente / es_proveedor: SI o NO',
+            'digito_verificacion: solo para NIT',
+        ];
+
+        return Excel::download(
+            new ArrayExport([$example], $headers, 'Plantilla Importación Terceros', $notes),
+            'plantilla-terceros.xlsx'
+        );
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        $import = new ThirdPartyImport();
+        Excel::import($import, $request->file('file'));
+
+        return back()->with([
+            'import_imported' => $import->imported,
+            'import_errors'   => $import->errors,
+        ]);
     }
 }

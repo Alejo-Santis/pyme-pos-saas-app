@@ -30,7 +30,7 @@ class BankController extends Controller
 
         return Inertia::render('Cash/Banks', [
             'banks'    => $banks,
-            'suppliers' => ThirdParty::active()->select('id', 'business_name')->get(),
+            'suppliers' => ThirdParty::active()->select('id', 'name')->get(),
         ]);
     }
 

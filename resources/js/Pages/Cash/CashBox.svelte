@@ -126,7 +126,7 @@
             <td class="px-4 py-3">
               <p class="text-slate-800">{m.description ?? '—'}</p>
               {#if m.reference}<p class="text-xs text-slate-400">Ref: {m.reference}</p>{/if}
-              {#if m.third_party}<p class="text-xs text-slate-500">{m.third_party.business_name}</p>{/if}
+              {#if m.third_party}<p class="text-xs text-slate-500">{m.third_party.name}</p>{/if}
             </td>
             <td class="px-4 py-3 text-slate-600">{fmtDate(m.issue_date)}</td>
             <td class="px-4 py-3 text-right">

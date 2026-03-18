@@ -48,6 +48,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Gestión de planes
         Route::prefix('plans')->name('plans.')->group(function () {
             Route::get('/',              [AdminPlanController::class, 'index'])->name('index');
+            Route::post('/',             [AdminPlanController::class, 'store'])->name('store');
+            Route::put('/{id}',          [AdminPlanController::class, 'update'])->name('update');
+            Route::delete('/{id}',       [AdminPlanController::class, 'destroy'])->name('destroy');
             Route::patch('/{id}/toggle', [AdminPlanController::class, 'toggleActive'])->name('toggle');
         });
     });

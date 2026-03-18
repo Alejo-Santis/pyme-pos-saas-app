@@ -226,7 +226,7 @@
                     class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">— Sin tercero —</option>
               {#each suppliers as s}
-                <option value={s.id}>{s.business_name}</option>
+                <option value={s.id}>{s.name}</option>
               {/each}
             </select>
           </div>

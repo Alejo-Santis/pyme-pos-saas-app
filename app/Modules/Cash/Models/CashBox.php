@@ -39,7 +39,7 @@ class CashBox extends Model
      */
     public function getCurrentBalance(?string $start = null, ?string $end = null): float
     {
-        $q = $this->movements()->where('state', true);
+        $q = $this->movements()->where('cash_movements.state', true);
 
         if ($start) $q->where('issue_date', '>=', $start);
         if ($end)   $q->where('issue_date', '<=', $end);

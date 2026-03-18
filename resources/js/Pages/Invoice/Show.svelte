@@ -3,8 +3,9 @@
   import AppLayout from '@/Layouts/AppLayout.svelte'
 
   let {
-    document      = null,
-    documentTypes = [],
+    document          = null,
+    documentTypes     = [],
+    correctionConcepts = {},
   } = $props()
 
   // Mapa tipo → nombre legible
@@ -31,15 +32,24 @@
 
   // ── Estado del documento ─────────────────────────────────────────────────
   const statusBadge = $derived(() => {
-    if (document?.annulled)   return { label: 'Anulado',    cls: 'bg-red-100 text-red-700' }
+    if (document?.annulled)   return { label: 'Anulado',      cls: 'bg-red-100 text-red-700' }
     if (document?.electronic) return { label: 'Enviado DIAN', cls: 'bg-green-100 text-green-700' }
-    if (document?.paid)       return { label: 'Pagado',     cls: 'bg-blue-100 text-blue-700' }
-    return                           { label: 'Borrador',   cls: 'bg-slate-100 text-slate-600' }
+    if (document?.paid)       return { label: 'Pagado',       cls: 'bg-blue-100 text-blue-700' }
+    return                           { label: 'Borrador',     cls: 'bg-slate-100 text-slate-600' }
   })
 
   const canEdit = $derived(!document?.electronic && !document?.annulled)
 
-  // ── Acciones ─────────────────────────────────────────────────────────────
+  // Es factura de venta (01) o documento soporte (05) → puede tener NC
+  const canHaveCreditNote = $derived(
+    !document?.annulled &&
+    (String(document?.type_document_operation_id) === '01' ||
+     String(document?.type_document_operation_id) === '05')
+  )
+
+  const creditNotes = $derived(document?.credit_notes ?? [])
+
+  // ── Acciones básicas ─────────────────────────────────────────────────────
   let deleting = $state(false)
 
   function destroy() {
@@ -56,6 +66,82 @@
     if (!t) return 'Consumidor final'
     return [t.name, t.surname].filter(Boolean).join(' ')
   })
+
+  // ── Modal de Nota Crédito ────────────────────────────────────────────────
+  let showNcModal    = $state(false)
+  let ncSubmitting   = $state(false)
+  let ncError        = $state('')
+
+  // Concepto de corrección seleccionado
+  let ncConcept = $state('1')
+  let ncNote    = $state('')
+
+  // Selección de líneas: { [line.id]: qty }
+  let ncLineQtys = $state({})
+
+  // Inicializar al abrir el modal
+  function openNcModal() {
+    ncConcept  = '1'
+    ncNote     = ''
+    ncError    = ''
+    // Por defecto: todas las líneas con su cantidad original
+    const init = {}
+    for (const l of lines) {
+      init[l.id] = Number(l.amount)
+    }
+    ncLineQtys = init
+    showNcModal = true
+  }
+
+  function closeNcModal() {
+    showNcModal = false
+    ncError = ''
+  }
+
+  // Total de la NC según selección actual
+  const ncSelectedTotal = $derived(() => {
+    return lines.reduce((sum, l) => {
+      const qty = Number(ncLineQtys[l.id] ?? 0)
+      if (qty <= 0) return sum
+      const base = qty * Number(l.sale_price)
+      const disc = base * (Number(l.discount) / 100)
+      const net  = base - disc
+      const tax  = net * ((l.taxes?.[0]?.percent ?? 0) / 100)
+      return sum + net + tax
+    }, 0)
+  })
+
+  function submitCreditNote() {
+    if (!ncNote.trim()) {
+      ncError = 'La observación es obligatoria.'
+      return
+    }
+
+    // Construir selected_lines solo con qty > 0
+    const selectedLines = lines
+      .filter(l => Number(ncLineQtys[l.id] ?? 0) > 0)
+      .map(l => ({ line_id: l.id, qty: Number(ncLineQtys[l.id]) }))
+
+    if (selectedLines.length === 0) {
+      ncError = 'Seleccione al menos un ítem con cantidad mayor a 0.'
+      return
+    }
+
+    ncSubmitting = true
+    ncError = ''
+
+    router.post(`/invoices/${document.id}/credit-note`, {
+      correction_concept: parseInt(ncConcept),
+      note:               ncNote.trim(),
+      selected_lines:     selectedLines,
+    }, {
+      onError: (errors) => {
+        ncError = Object.values(errors).flat().join(' ')
+        ncSubmitting = false
+      },
+      onFinish: () => { ncSubmitting = false },
+    })
+  }
 </script>
 
 <AppLayout>
@@ -75,6 +161,11 @@
             <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {statusBadge().cls}">
               {statusBadge().label}
             </span>
+            {#if document?.reference}
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                NC de: {document.reference.internal_code ?? document.reference.number}
+              </span>
+            {/if}
           </div>
           <p class="text-sm text-slate-500 mt-0.5">
             {typeMap[String(document?.type_document_id)] ?? 'Documento'}
@@ -83,7 +174,7 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         {#if canEdit}
           <a use:inertia href="/invoices/{document.id}/edit"
             class="flex items-center gap-1.5 px-3 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition">
@@ -100,16 +191,44 @@
             Eliminar
           </button>
         {/if}
-        {#if !document?.electronic && !document?.annulled}
-          <button
-            class="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm rounded-lg font-medium hover:bg-primary-dark transition cursor-pointer opacity-60"
-            title="Integración DIAN próximamente">
-            <i class="mdi mdi-send-outline text-base"></i>
-            Enviar a DIAN
+
+        {#if canHaveCreditNote}
+          <button onclick={openNcModal}
+            class="flex items-center gap-1.5 px-3 py-2 text-sm border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 transition cursor-pointer font-medium">
+            <i class="mdi mdi-file-undo-outline text-base"></i>
+            Nota Crédito
           </button>
+        {/if}
+
+        {#if document?.electronic}
+          <span class="flex items-center gap-1.5 px-3 py-2 text-sm bg-green-50 border border-green-200 text-green-700 rounded-lg font-medium">
+            <i class="mdi mdi-check-circle-outline text-base"></i>
+            Enviado DIAN
+          </span>
         {/if}
       </div>
     </div>
+
+    <!-- ── Notas crédito relacionadas ────────────────────────────────────── -->
+    {#if creditNotes.length > 0}
+      <div class="bg-orange-50 border border-orange-200 rounded-xl px-5 py-3">
+        <p class="text-sm font-semibold text-orange-700 mb-2 flex items-center gap-2">
+          <i class="mdi mdi-file-undo-outline"></i>
+          Notas crédito emitidas sobre este documento
+        </p>
+        <div class="space-y-1">
+          {#each creditNotes as nc}
+            <div class="flex items-center justify-between text-sm">
+              <a use:inertia href="/invoices/{nc.id}"
+                class="text-orange-700 hover:underline font-medium">
+                {nc.internal_code ?? nc.number}
+              </a>
+              <span class="text-orange-600 tabular-nums">${fmt(nc.total)}</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
     <!-- ── Información general ──────────────────────────────────────────── -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,6 +381,12 @@
               <span>Total a pagar</span>
               <span class="tabular-nums">${fmt(total)}</span>
             </div>
+            {#if Number(document?.balance) > 0}
+              <div class="flex justify-between text-sm text-red-600 font-medium">
+                <span>Saldo pendiente</span>
+                <span class="tabular-nums">${fmt(document.balance)}</span>
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -278,7 +403,170 @@
       {#if document?.user}
         <span><span class="font-semibold text-slate-500">Usuario:</span> {document.user.name}</span>
       {/if}
+      {#if document?.note}
+        <span class="w-full"><span class="font-semibold text-slate-500">Nota:</span> {document.note}</span>
+      {/if}
     </div>
 
   </div>
 </AppLayout>
+
+<!-- ── Modal Nota Crédito ────────────────────────────────────────────────── -->
+{#if showNcModal}
+  <!-- Overlay -->
+  <div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
+    onclick={(e) => { if (e.target === e.currentTarget) closeNcModal() }}>
+
+    <!-- Panel modal -->
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col z-50">
+
+      <!-- Cabecera -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
+            <i class="mdi mdi-file-undo-outline text-orange-600 text-lg"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-slate-800 text-base">Emitir Nota Crédito</h2>
+            <p class="text-xs text-slate-500">
+              Referencia: {document?.prefix ?? ''}{document?.number}
+            </p>
+          </div>
+        </div>
+        <button onclick={closeNcModal}
+          class="text-slate-400 hover:text-slate-600 transition cursor-pointer">
+          <i class="mdi mdi-close text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Cuerpo scrollable -->
+      <div class="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+
+        <!-- Concepto de corrección -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">
+            Concepto de corrección <span class="text-red-500">*</span>
+          </label>
+          <div class="space-y-2">
+            {#each Object.entries(correctionConcepts) as [key, label]}
+              <label class="flex items-start gap-3 cursor-pointer group">
+                <input type="radio" bind:group={ncConcept} value={key}
+                  class="mt-0.5 text-orange-500 focus:ring-orange-400 cursor-pointer" />
+                <span class="text-sm text-slate-700 group-hover:text-slate-900 leading-tight">
+                  <span class="font-medium text-orange-700">{key}.</span> {label}
+                </span>
+              </label>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Líneas a devolver -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-semibold text-slate-700">
+              Ítems a devolver
+            </label>
+            <span class="text-xs text-slate-400">Ajusta la cantidad a devolver por ítem</span>
+          </div>
+
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Ítem</th>
+                  <th class="text-right px-4 py-2.5 text-xs font-medium text-slate-500 w-24">Facturado</th>
+                  <th class="text-right px-4 py-2.5 text-xs font-medium text-slate-500 w-28">Devolver</th>
+                  <th class="text-right px-4 py-2.5 text-xs font-medium text-slate-500 w-28">Valor</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                {#each lines as line}
+                  {@const qty = Number(ncLineQtys[line.id] ?? 0)}
+                  {@const base = qty * Number(line.sale_price)}
+                  {@const net  = base * (1 - Number(line.discount) / 100)}
+                  {@const tax  = net * ((line.taxes?.[0]?.percent ?? 0) / 100)}
+                  <tr class="hover:bg-orange-50/30 transition">
+                    <td class="px-4 py-3">
+                      <p class="font-medium text-slate-700 text-sm leading-tight">
+                        {line.description || line.item?.name || '—'}
+                      </p>
+                      <p class="text-xs text-slate-400">${fmt(line.sale_price)} c/u</p>
+                    </td>
+                    <td class="px-4 py-3 text-right text-slate-500 tabular-nums text-xs">
+                      {Number(line.amount).toLocaleString('es-CO')}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      <input
+                        type="number"
+                        min="0"
+                        max={line.amount}
+                        step="1"
+                        value={ncLineQtys[line.id] ?? line.amount}
+                        oninput={(e) => { ncLineQtys = { ...ncLineQtys, [line.id]: e.target.value } }}
+                        class="w-20 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-300 tabular-nums"
+                      />
+                    </td>
+                    <td class="px-4 py-3 text-right tabular-nums text-slate-700 text-sm font-medium">
+                      {qty > 0 ? `$${fmt(net + tax)}` : '—'}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+              <tfoot class="bg-orange-50 border-t border-orange-200">
+                <tr>
+                  <td colspan="3" class="px-4 py-2.5 text-sm font-semibold text-orange-700">
+                    Total a devolver
+                  </td>
+                  <td class="px-4 py-2.5 text-right font-bold text-orange-700 tabular-nums">
+                    ${fmt(ncSelectedTotal())}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Observación -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+            Observación <span class="text-red-500">*</span>
+          </label>
+          <textarea
+            bind:value={ncNote}
+            rows="3"
+            placeholder="Describe el motivo de la devolución o corrección..."
+            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-300"
+          ></textarea>
+        </div>
+
+        <!-- Error -->
+        {#if ncError}
+          <div class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+            <i class="mdi mdi-alert-circle-outline flex-shrink-0"></i>
+            {ncError}
+          </div>
+        {/if}
+
+      </div>
+
+      <!-- Pie del modal -->
+      <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+        <button onclick={closeNcModal} disabled={ncSubmitting}
+          class="px-4 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50">
+          Cancelar
+        </button>
+        <button onclick={submitCreditNote} disabled={ncSubmitting}
+          class="flex items-center gap-2 px-5 py-2 bg-orange-600 text-white text-sm font-semibold rounded-xl hover:bg-orange-700 transition cursor-pointer disabled:opacity-60">
+          {#if ncSubmitting}
+            <i class="mdi mdi-loading mdi-spin text-base"></i>
+            Emitiendo...
+          {:else}
+            <i class="mdi mdi-file-check-outline text-base"></i>
+            Emitir Nota Crédito
+          {/if}
+        </button>
+      </div>
+
+    </div>
+  </div>
+{/if}

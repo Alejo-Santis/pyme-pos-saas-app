@@ -6,6 +6,7 @@ use App\Modules\Core\Models\Resolution;
 use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Models\DocumentLine;
 use App\Shared\Services\InternalCodeService;
+use App\Shared\Traits\AccountingEngineTrait;
 use App\Shared\Traits\ToolTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,7 @@ use Illuminate\Validation\ValidationException;
  */
 class InvoiceService
 {
-    use ToolTrait;
+    use ToolTrait, AccountingEngineTrait;
 
     public function __construct(
         private readonly InternalCodeService $internalCodeService
@@ -131,6 +132,9 @@ class InvoiceService
                 null,
                 "Documento {$internalCode} creado."
             );
+
+            // 9. Asiento contable automático (factura y compra)
+            $this->generateAccountingEntry($document);
 
             return $document->load(['lines.item', 'thirdParty', 'resolution', 'company']);
         });

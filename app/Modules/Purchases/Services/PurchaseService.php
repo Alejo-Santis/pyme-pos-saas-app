@@ -2,11 +2,13 @@
 
 namespace App\Modules\Purchases\Services;
 
+use App\Modules\Core\Models\Company;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Inventory\Models\ItemWarehouse;
 use App\Modules\Purchases\Models\ItemsPurchaseOrder;
 use App\Modules\Purchases\Models\PurchaseOrder;
 use App\Modules\Purchases\Models\PurchaseOrderHistory;
+use App\Shared\Traits\AccountingEngineTrait;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +20,7 @@ use Illuminate\Validation\ValidationException;
  */
 class PurchaseService
 {
+    use AccountingEngineTrait;
     /**
      * Crea una orden de compra con sus líneas.
      */
@@ -153,7 +156,7 @@ class PurchaseService
             ]);
         }
 
-        return DB::transaction(function () use ($order, $data) {
+        DB::transaction(function () use ($order, $data) {
             $warehouseId = $data['warehouse_id'];
             $lines       = $data['lines'] ?? [];
 
@@ -198,9 +201,33 @@ class PurchaseService
                 'history'            => 'Mercancía recibida en bodega',
                 'notes'              => "Bodega ID: {$warehouseId}",
             ]);
-
-            return $order->fresh();
         });
+
+        // Generar asiento contable de compra (fuera de la transacción de stock)
+        $order->load('items');
+        $companyId = Company::first()?->id;
+        if ($companyId) {
+            $subtotal  = (float) $order->items->sum('line_extension_amount');
+            $totalTax  = (float) $order->items->sum(function ($line) {
+                $tax = is_array($line->tax) ? $line->tax : [];
+                return collect($tax)->sum('tax_amount') ?? 0;
+            });
+            $accountingDoc = (object) [
+                'id'                         => $order->id,
+                'type_document_operation_id' => 14,
+                'company_id'                 => $companyId,
+                'user_id'                    => Auth::id(),
+                'third_party_id'             => $order->third_party_id,
+                'internal_code'              => $order->internal_code,
+                'issue_date'                 => now()->toDateString(),
+                'total'                      => $subtotal + $totalTax,
+                'subtotal'                   => $subtotal,
+                'total_tax'                  => $totalTax,
+            ];
+            $this->generateAccountingEntry($accountingDoc);
+        }
+
+        return $order->fresh();
     }
 
     /**

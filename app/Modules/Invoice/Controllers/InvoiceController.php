@@ -8,6 +8,7 @@ use App\Modules\Core\Models\Resolution;
 use App\Modules\Core\Models\ThirdParty;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Invoice\Models\Document;
+use App\Modules\Invoice\Services\CreditNoteService;
 use App\Modules\Invoice\Services\InvoiceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,8 @@ use Inertia\Response;
 class InvoiceController extends Controller
 {
     public function __construct(
-        private readonly InvoiceService $invoiceService
+        private readonly InvoiceService    $invoiceService,
+        private readonly CreditNoteService $creditNoteService
     ) {}
 
     /**
@@ -155,12 +157,41 @@ class InvoiceController extends Controller
             'thirdParty',
             'resolution',
             'company',
+            'creditNotes.lines',
+            'reference',
         ]);
 
         return Inertia::render('Invoice/Show', [
-            'document'      => $document,
-            'documentTypes' => $this->documentTypes(),
+            'document'          => $document,
+            'documentTypes'     => $this->documentTypes(),
+            'correctionConcepts'=> CreditNoteService::CORRECTION_CONCEPTS,
         ]);
+    }
+
+    /**
+     * Emite una Nota Crédito sobre un documento existente.
+     */
+    public function storeCreditNote(Request $request, Document $document): RedirectResponse
+    {
+        $data = $request->validate([
+            'correction_concept' => 'required|integer|between:1,5',
+            'note'               => 'required|string|max:500',
+            'selected_lines'     => 'nullable|array',
+            'selected_lines.*.line_id' => 'required|uuid',
+            'selected_lines.*.qty'     => 'required|numeric|min:0.001',
+        ]);
+
+        $nc = $this->creditNoteService->create(
+            original:          $document,
+            correctionConcept: (int) $data['correction_concept'],
+            note:              $data['note'],
+            selectedLines:     $data['selected_lines'] ?? [],
+            userId:            $request->user()->id,
+        );
+
+        return redirect()
+            ->route('invoices.show', $nc)
+            ->with('success', "Nota Crédito {$nc->internal_code} emitida correctamente.");
     }
 
     /**

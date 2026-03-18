@@ -2,6 +2,7 @@
 
 namespace App\Modules\POS\Models;
 
+use App\Modules\Cash\Models\CashBox;
 use App\Modules\Core\Models\Resolution;
 use App\Modules\Core\Models\Warehouse;
 use App\Modules\Core\Models\Establishment;
@@ -27,6 +28,7 @@ class PosTerminal extends Model
         'resolution_id',
         'warehouse_id',
         'establishment_id',
+        'cash_box_id',
         'serial_number',
         'location',
         'printer_name',
@@ -44,6 +46,11 @@ class PosTerminal extends Model
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────
+
+    public function cashBox(): BelongsTo
+    {
+        return $this->belongsTo(CashBox::class, 'cash_box_id');
+    }
 
     public function resolution(): BelongsTo
     {

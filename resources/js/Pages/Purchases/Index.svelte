@@ -109,7 +109,7 @@
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="px-4 py-3 font-medium text-blue-700">{order.internal_code}</td>
             <td class="px-4 py-3 text-slate-700">
-              {order.third_party?.business_name ?? 'Sin proveedor'}
+              {order.third_party?.name ?? 'Sin proveedor'}
             </td>
             <td class="px-4 py-3 text-slate-600">{fmtDate(order.issue_date)}</td>
             <td class="px-4 py-3 text-right font-medium text-slate-800">{fmt(order.amount)}</td>

@@ -20,7 +20,7 @@
       : items.filter(i =>
           i.name.toLowerCase().includes(searchItem.toLowerCase()) ||
           (i.internal_code ?? '').toLowerCase().includes(searchItem.toLowerCase()) ||
-          (i.barcode ?? '').includes(searchItem)
+          (i.barcode_one ?? '').includes(searchItem)
         ).slice(0, 8)
   )
 
@@ -122,8 +122,8 @@
         selectedThird = null
         note          = ''
         paymentForms  = [{ payment_form_id: 1, payment_method_id: 10, value: 0 }]
-        // Recargar ventas recientes sin recargar toda la página
-        router.reload({ only: ['recentSales'] })
+        // Recargar ventas recientes y estado del turno sin recargar toda la página
+        router.reload({ only: ['recentSales', 'shift'] })
       } else {
         alert('Error al procesar la venta.')
       }
@@ -164,9 +164,17 @@
         <span class="font-semibold text-sm">{terminal.name}</span>
         <span class="text-blue-300 text-xs">· {terminal.warehouse?.name}</span>
       </div>
-      <div class="flex items-center gap-3 text-xs text-blue-200">
-        <span>Sesión: {shift.cashier_session_key}</span>
+      <div class="flex items-center gap-4 text-xs text-blue-200">
+        <span class="hidden sm:inline">Sesión: {shift.cashier_session_key}</span>
         <span>Res. {terminal.resolution?.prefix ?? ''} {terminal.resolution?.current_number}/{terminal.resolution?.to}</span>
+        <span class="flex items-center gap-1 bg-blue-800/50 px-2 py-0.5 rounded">
+          <i class="mdi mdi-cash-multiple"></i>
+          Ventas: <strong class="text-white ml-0.5">${fmt(shift.total_sales)}</strong>
+        </span>
+        <span class="flex items-center gap-1 bg-blue-800/50 px-2 py-0.5 rounded">
+          <i class="mdi mdi-cash-register"></i>
+          Caja: <strong class="text-white ml-0.5">${fmt(Number(shift.initial_balance) + Number(shift.total_cash))}</strong>
+        </span>
       </div>
     </header>
 
@@ -309,7 +317,7 @@
       {#if selectedThird}
         <div class="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2">
           <div>
-            <p class="text-sm font-medium text-blue-900">{selectedThird.name ?? selectedThird.business_name}</p>
+            <p class="text-sm font-medium text-blue-900">{selectedThird.name}</p>
             <p class="text-xs text-blue-600">{selectedThird.identification_number}</p>
           </div>
           <button onclick={() => { selectedThird = null; searchThird = '' }} class="text-blue-300 hover:text-red-400 cursor-pointer">
@@ -331,7 +339,7 @@
                   onclick={() => { selectedThird = t; searchThird = '' }}
                   class="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer"
                 >
-                  <p class="font-medium">{t.name ?? t.business_name}</p>
+                  <p class="font-medium">{t.name}</p>
                   <p class="text-xs text-slate-500">{t.identification_number}</p>
                 </button>
               {/each}

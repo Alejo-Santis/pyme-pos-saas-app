@@ -1,6 +1,7 @@
 <script>
   import { router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
+  import ImportModal from '@/Components/UI/ImportModal.svelte'
 
   let {
     items,
@@ -44,6 +45,8 @@
     service: 'bg-purple-50 text-purple-700 border-purple-200',
     combo:   'bg-amber-50 text-amber-700 border-amber-200',
   }
+
+  let showImport = $state(false)
 </script>
 
 <AppLayout>
@@ -61,6 +64,11 @@
           <i class="mdi mdi-tag-multiple-outline text-base"></i>
           Categorías
         </a>
+        <button onclick={() => showImport = true}
+          class="flex items-center gap-2 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm hover:bg-slate-50 transition cursor-pointer">
+          <i class="mdi mdi-file-import text-base"></i>
+          Importar
+        </button>
         <a use:inertia href="/inventory/create"
           class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition">
           <i class="mdi mdi-plus text-base"></i>
@@ -220,3 +228,11 @@
     </div>
   </div>
 </AppLayout>
+
+<ImportModal
+  bind:open={showImport}
+  uploadUrl="/inventory/import"
+  templateUrl="/inventory/import/template"
+  title="Importar Artículos"
+  columns={['nombre','nombre_corto','codigo_interno','tipo','categoria','unidad_medida','precio_venta','costo_promedio','stock_minimo','porcentaje_iva']}
+/>

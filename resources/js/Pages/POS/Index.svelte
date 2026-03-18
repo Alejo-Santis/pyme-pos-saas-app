@@ -2,7 +2,7 @@
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import { router, page } from '@inertiajs/svelte'
 
-  let { terminals, myShift } = $props()
+  let { terminals, myShift, cashBoxes = [] } = $props()
 
   let flash  = $derived($page.props.flash  ?? {})
   let errors = $derived($page.props.errors ?? {})
@@ -15,7 +15,7 @@
 
   // Modal nueva terminal
   let showTerminalModal = $state(false)
-  let terminalForm = $state({ name: '', location: '', resolution_id: '', warehouse_id: '', establishment_id: '' })
+  let terminalForm = $state({ name: '', location: '', resolution_id: '', warehouse_id: '', establishment_id: '', cash_box_id: '' })
   let savingTerminal = $state(false)
 
   function openShiftModal(t) {
@@ -47,7 +47,7 @@
     savingTerminal = true
     router.post('/pos/terminals', terminalForm, {
       preserveScroll: true,
-      onSuccess: () => { showTerminalModal = false; terminalForm = { name: '', location: '', resolution_id: '', warehouse_id: '', establishment_id: '' } },
+      onSuccess: () => { showTerminalModal = false; terminalForm = { name: '', location: '', resolution_id: '', warehouse_id: '', establishment_id: '', cash_box_id: '' } },
       onFinish:  () => { savingTerminal = false },
     })
   }
@@ -155,6 +155,17 @@
                   {t.warehouse.name}
                 </div>
               {/if}
+              {#if t.cash_box}
+                <div class="flex items-center gap-1.5">
+                  <i class="mdi mdi-cash-register text-slate-400"></i>
+                  Caja: {t.cash_box.name}
+                </div>
+              {:else}
+                <div class="flex items-center gap-1.5 text-amber-500">
+                  <i class="mdi mdi-alert-outline text-amber-400"></i>
+                  Sin caja asignada
+                </div>
+              {/if}
               {#if busy}
                 <div class="flex items-center gap-1.5 text-amber-600">
                   <i class="mdi mdi-account text-amber-400"></i>
@@ -258,6 +269,16 @@
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Ubicación</label>
           <input bind:value={terminalForm.location} type="text" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Punto de venta principal" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Caja registradora</label>
+          <select bind:value={terminalForm.cash_box_id} class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Sin caja asignada</option>
+            {#each cashBoxes as cb}
+              <option value={cb.id}>{cb.name} ({cb.internal_code})</option>
+            {/each}
+          </select>
+          <p class="text-xs text-slate-400 mt-1">Los cobros en efectivo irán a esta caja</p>
         </div>
       </div>
 

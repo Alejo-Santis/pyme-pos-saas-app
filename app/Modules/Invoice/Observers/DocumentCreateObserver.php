@@ -2,6 +2,7 @@
 
 namespace App\Modules\Invoice\Observers;
 
+use App\Modules\Core\Models\Company;
 use App\Modules\Invoice\Jobs\ProcessElectronicInvoiceJob;
 use App\Modules\Invoice\Jobs\ProcessElectronicSupportDocumentJob;
 use App\Modules\Invoice\Models\Document;
@@ -28,7 +29,18 @@ class DocumentCreateObserver
             return;
         }
 
+        // Verificar que la empresa tenga FE activa antes de disparar cualquier job
+        $company = Company::first();
+        if (! $company?->electronic_documents) {
+            Log::debug('FE no activa en la empresa — omitiendo envío a DIAN', [
+                'document_id' => $document->id,
+            ]);
+
+            return;
+        }
+
         // type_document_operation_id == 1 → Factura de Venta (FE)
+        // Aplica tanto a facturas del módulo Invoice como a ventas POS con FE activada
         if ($document->type_document_operation_id == 1) {
             ProcessElectronicInvoiceJob::dispatch($document, 1);
             Log::info('ProcessElectronicInvoiceJob despachado', ['document_id' => $document->id]);

@@ -3,12 +3,15 @@
 namespace App\Modules\Inventory\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Inventory\Imports\ItemImport;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Inventory\Models\ItemCategory;
+use App\Shared\Exports\ArrayExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ItemController extends Controller
 {
@@ -182,5 +185,50 @@ class ItemController extends Controller
         $estado = $item->is_active ? 'activado' : 'desactivado';
 
         return back()->with('success', "Ítem {$estado} correctamente.");
+    }
+
+    public function downloadTemplate()
+    {
+        $headers = [
+            'nombre', 'nombre_corto', 'codigo_interno',
+            'tipo', 'categoria', 'unidad_medida',
+            'precio_venta', 'costo_promedio', 'stock_minimo',
+            'porcentaje_iva',
+        ];
+
+        $example = [
+            'Arroz Diana x 500g', 'Arroz Diana', 'ART-0001',
+            'product', 'Abarrotes', 'UN',
+            '3500', '2800', '10',
+            '0',
+        ];
+
+        $notes = [
+            'tipo: product, service, combo',
+            'unidad_medida: UN, KG, LT, MT, CJ, BL, etc.',
+            'porcentaje_iva: 0, 5 o 19',
+            'categoria: se crea automáticamente si no existe',
+            'codigo_interno: se auto-genera si se deja vacío',
+        ];
+
+        return Excel::download(
+            new ArrayExport([$example], $headers, 'Plantilla Importación Artículos', $notes),
+            'plantilla-articulos.xlsx'
+        );
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $import = new ItemImport();
+        Excel::import($import, $request->file('file'));
+
+        return back()->with([
+            'import_imported' => $import->imported,
+            'import_errors'   => $import->errors,
+        ]);
     }
 }

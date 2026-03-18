@@ -23,8 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Alias de middleware custom
         $middleware->alias([
-            'admin.auth'  => \App\Http\Middleware\AdminAuthenticate::class,
-            'onboarding'  => \App\Http\Middleware\CheckOnboardingCompleted::class,
+            'admin.auth'        => \App\Http\Middleware\AdminAuthenticate::class,
+            'onboarding'        => \App\Http\Middleware\CheckOnboardingCompleted::class,
+            'role'              => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'        => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission'=> \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

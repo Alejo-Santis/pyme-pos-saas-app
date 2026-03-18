@@ -40,10 +40,10 @@ class PurchaseController extends Controller
     public function create(): Response
     {
         return Inertia::render('Purchases/Create', [
-            'suppliers'  => ThirdParty::active()->select('id', 'business_name', 'identification_number')->get(),
-            'warehouses' => Warehouse::where('state', true)->select('id', 'name')->get(),
-            'items'      => Item::where('state', true)
-                ->select('id', 'name', 'code', 'purchase_price', 'average_cost')
+            'suppliers'  => ThirdParty::active()->select('id', 'name', 'identification_number')->get(),
+            'warehouses' => Warehouse::where('is_active', true)->select('id', 'name')->get(),
+            'items'      => Item::where('is_active', true)
+                ->select('id', 'name', 'internal_code', 'last_purchase_price', 'average_cost')
                 ->get(),
         ]);
     }
@@ -80,7 +80,7 @@ class PurchaseController extends Controller
 
         return Inertia::render('Purchases/Show', [
             'order'      => $purchase,
-            'warehouses' => Warehouse::where('state', true)->select('id', 'name')->get(),
+            'warehouses' => Warehouse::where('is_active', true)->select('id', 'name')->get(),
         ]);
     }
 

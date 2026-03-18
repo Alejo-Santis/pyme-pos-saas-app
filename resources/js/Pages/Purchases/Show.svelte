@@ -69,7 +69,7 @@
             </span>
           </div>
           <p class="text-sm text-slate-500 mt-0.5">
-            {order.third_party?.business_name ?? 'Sin proveedor'} · {fmtDate(order.issue_date)}
+            {order.third_party?.name ?? 'Sin proveedor'} · {fmtDate(order.issue_date)}
           </p>
         </div>
       </div>

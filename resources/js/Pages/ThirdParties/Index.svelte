@@ -1,6 +1,7 @@
 <script>
   import { router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
+  import ImportModal from '@/Components/UI/ImportModal.svelte'
 
   let { thirds, filters = {}, types = [], docTypes = [] } = $props()
 
@@ -41,6 +42,8 @@
     if (linkage.other)    tags.push('Otro')
     return tags.join(', ')
   }
+
+  let showImport = $state(false)
 </script>
 
 <AppLayout>
@@ -52,11 +55,18 @@
         <h1 class="text-xl font-bold text-slate-800">Terceros</h1>
         <p class="text-sm text-slate-500 mt-0.5">Clientes, proveedores y contactos</p>
       </div>
-      <a use:inertia href="/third-parties/create"
-        class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition">
-        <i class="mdi mdi-plus text-base"></i>
-        Nuevo tercero
-      </a>
+      <div class="flex items-center gap-2">
+        <button onclick={() => showImport = true}
+          class="flex items-center gap-2 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm hover:bg-slate-50 transition cursor-pointer">
+          <i class="mdi mdi-file-import text-base"></i>
+          Importar
+        </button>
+        <a use:inertia href="/third-parties/create"
+          class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition">
+          <i class="mdi mdi-plus text-base"></i>
+          Nuevo tercero
+        </a>
+      </div>
     </div>
 
     <!-- Filtros -->
@@ -204,3 +214,11 @@
     </div>
   </div>
 </AppLayout>
+
+<ImportModal
+  bind:open={showImport}
+  uploadUrl="/third-parties/import"
+  templateUrl="/third-parties/import/template"
+  title="Importar Terceros"
+  columns={['tipo_documento','numero_documento','digito_verificacion','tipo_persona','nombre_razon_social','apellidos','email','telefono','direccion','ciudad','es_cliente','es_proveedor']}
+/>

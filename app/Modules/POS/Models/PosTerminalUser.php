@@ -24,16 +24,30 @@ class PosTerminalUser extends Model
         'user_id',
         'initial_balance',
         'current_balance',
+        'final_balance',
+        'total_sales',
+        'total_cash',
+        'total_card',
+        'total_transfer',
         'active_shift',
         'cashier_session_key',
+        'shift_opened_at',
+        'shift_closed_at',
         'state',
     ];
 
     protected $casts = [
-        'initial_balance' => 'decimal:2',
-        'current_balance' => 'decimal:2',
-        'active_shift'    => 'boolean',
-        'state'           => 'boolean',
+        'initial_balance'  => 'decimal:2',
+        'current_balance'  => 'decimal:2',
+        'final_balance'    => 'decimal:2',
+        'total_sales'      => 'decimal:2',
+        'total_cash'       => 'decimal:2',
+        'total_card'       => 'decimal:2',
+        'total_transfer'   => 'decimal:2',
+        'active_shift'     => 'boolean',
+        'state'            => 'boolean',
+        'shift_opened_at'  => 'datetime',
+        'shift_closed_at'  => 'datetime',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────

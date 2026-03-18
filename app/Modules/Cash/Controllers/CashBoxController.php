@@ -40,7 +40,7 @@ class CashBoxController extends Controller
         $end   = $request->end_date;
 
         $movements = CashMovement::where('cash_box_id', $cashBox->id)
-            ->where('state', true)
+            ->where('cash_movements.state', true)
             ->when($start, fn ($q) => $q->where('issue_date', '>=', $start))
             ->when($end,   fn ($q) => $q->where('issue_date', '<=', $end))
             ->with(['thirdParty', 'document'])

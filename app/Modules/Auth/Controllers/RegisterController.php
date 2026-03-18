@@ -91,6 +91,7 @@ class RegisterController extends Controller
             tenancy()->initialize($tenant);
 
             (new \Database\Seeders\TenantRolesSeeder())->run();
+            (new \Database\Seeders\PucSeeder())->run();
 
             $admin = \App\Models\User::create([
                 'name'     => $request->admin_name,

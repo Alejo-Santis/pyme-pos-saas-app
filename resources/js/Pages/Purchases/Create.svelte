@@ -21,7 +21,7 @@
     itemSearch.length >= 2
       ? items.filter(i =>
           i.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
-          i.code?.toLowerCase().includes(itemSearch.toLowerCase())
+          i.internal_code?.toLowerCase().includes(itemSearch.toLowerCase())
         ).slice(0, 8)
       : []
   )
@@ -35,11 +35,11 @@
       $form.lines = [...$form.lines, {
         item_id:               item.id,
         item_name:             item.name,
-        item_code:             item.code ?? '',
+        item_code:             item.internal_code ?? '',
         invoice_quantity:      1,
-        average_cost:          parseFloat(item.average_cost ?? item.purchase_price ?? 0),
+        average_cost:          parseFloat(item.average_cost ?? item.last_purchase_price ?? 0),
         tax:                   null,
-        line_extension_amount: parseFloat(item.average_cost ?? item.purchase_price ?? 0),
+        line_extension_amount: parseFloat(item.average_cost ?? item.last_purchase_price ?? 0),
       }]
     }
     itemSearch   = ''
@@ -95,7 +95,7 @@
                     class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">— Sin proveedor —</option>
               {#each suppliers as s}
-                <option value={s.id}>{s.business_name}</option>
+                <option value={s.id}>{s.name}</option>
               {/each}
             </select>
           </div>
@@ -168,8 +168,8 @@
                 <button onmousedown={() => selectItem(item)}
                         class="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm border-b border-slate-100 last:border-0">
                   <span class="font-medium text-slate-800">{item.name}</span>
-                  {#if item.code}<span class="text-slate-400 ml-2 text-xs">{item.code}</span>{/if}
-                  <span class="float-right text-slate-600">{fmt(item.average_cost ?? item.purchase_price ?? 0)}</span>
+                  {#if item.internal_code}<span class="text-slate-400 ml-2 text-xs">{item.internal_code}</span>{/if}
+                  <span class="float-right text-slate-600">{fmt(item.average_cost ?? item.last_purchase_price ?? 0)}</span>
                 </button>
               {/each}
             </div>
