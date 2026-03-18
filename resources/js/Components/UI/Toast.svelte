@@ -8,10 +8,23 @@
   import { page } from '@inertiajs/svelte'
   import { toast, dismiss, getToasts } from '@/stores/toast.svelte.js'
 
-  // Escuchar flash messages del backend en cada navegación Inertia
+  // Clave del último flash procesado — evita duplicados cuando $effect
+  // re-corre múltiples veces para la misma navegación Inertia.
+  let _lastKey = $state('')
+
   $effect(() => {
     const flash  = $page.props.flash  ?? {}
     const errors = $page.props.errors ?? {}
+
+    // Si no hay nada que mostrar, salir
+    const hasFlash = Object.values(flash).some(Boolean)
+    const hasError = Object.values(errors).length > 0
+    if (!hasFlash && !hasError) return
+
+    // Clave única: URL + contenido del flash — cambia en cada navegación real
+    const key = $page.url + '||' + JSON.stringify(flash) + '||' + JSON.stringify(errors)
+    if (key === _lastKey) return
+    _lastKey = key
 
     if (flash.success) toast.success(flash.success)
     if (flash.error)   toast.error(flash.error)
