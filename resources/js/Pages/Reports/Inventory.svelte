@@ -15,7 +15,7 @@
       warehouse_id: warehouseId || undefined,
       search:       search || undefined,
       filter,
-    }, { preserveScroll: true })
+    }, { preserveScroll: true, replace: true })
   }
 
   function toggleExpand(id) {

@@ -39,7 +39,7 @@
   let annulReason    = $state('')
 
   function submitAnnul() {
-    router.post(`/purchases/${order.id}/annul`, { reason: annulReason })
+    router.post(`/purchases/${order.id}/annul`, { reason: annulReason }, { preserveScroll: true })
   }
 
   // ── Documento Soporte ────────────────────────────────────────────────────────
@@ -55,6 +55,7 @@
   function submitSupportDocument() {
     dsSubmitting = true
     router.post(`/purchases/${order.id}/support-document`, { note: dsNote.trim() || null }, {
+      preserveScroll: true,
       onFinish: () => { dsSubmitting = false },
     })
   }

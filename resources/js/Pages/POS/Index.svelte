@@ -2,6 +2,7 @@
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
   import { router, page } from '@inertiajs/svelte'
+  import { toast } from '@/Stores/toast.svelte.js'
 
   let { terminals, myShift, cashBoxes = [] } = $props()
 
@@ -82,16 +83,35 @@
     }
   }
 
-  function submitCloseShift() {
+  async function submitCloseShift() {
     if (!closeTerminal) return
     closing = true
-    router.post(`/pos/${closeTerminal.id}/close`, {
-      counted_cash: Number(countedCash),
-      close_notes:  closeNotes.trim() || null,
-    }, {
-      onFinish:  () => { closing = false },
-      onSuccess: () => { showCloseModal = false },
-    })
+    try {
+      const res = await fetch(`/pos/${closeTerminal.id}/close`, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '',
+        },
+        body: JSON.stringify({
+          counted_cash: Number(countedCash),
+          close_notes:  closeNotes.trim() || null,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showCloseModal = false
+        toast.success(data.message)
+        // Partial reload: solo actualiza myShift y terminals, sin swap de componente
+        router.reload({ only: ['myShift', 'terminals'], preserveScroll: true })
+      } else {
+        toast.error(data.message ?? 'Error al cerrar el turno.')
+      }
+    } catch {
+      toast.error('Error de red al cerrar el turno.')
+    } finally {
+      closing = false
+    }
   }
 
   function openNewTerminal() {

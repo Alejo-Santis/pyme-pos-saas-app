@@ -315,8 +315,10 @@ class PosController extends Controller
     }
 
     // ── Paso 5b: Cerrar turno con cuadre de caja ──────────────────────────
+    // Retorna JSON para que el cliente maneje el toast y haga partial reload
+    // sin que Inertia haga un swap completo de componente (evita "recarga").
 
-    public function closeShift(Request $request, PosTerminal $terminal): RedirectResponse
+    public function closeShift(Request $request, PosTerminal $terminal): JsonResponse
     {
         $data = $request->validate([
             'counted_cash' => 'required|numeric|min:0',
@@ -330,7 +332,7 @@ class PosController extends Controller
             ->first();
 
         if (! $shift) {
-            return back()->withErrors(['shift' => 'No hay turno activo para cerrar.']);
+            return response()->json(['success' => false, 'message' => 'No hay turno activo para cerrar.'], 422);
         }
 
         // Calcular totales del sistema
@@ -352,9 +354,9 @@ class PosController extends Controller
             ->where('state', true)
             ->sum('debit');
 
-        $expectedCash  = (float) $shift->initial_balance + (float) $cashTotal;
-        $countedCash   = (float) $data['counted_cash'];
-        $difference    = $countedCash - $expectedCash;  // + sobrante, - faltante
+        $expectedCash = (float) $shift->initial_balance + (float) $cashTotal;
+        $countedCash  = (float) $data['counted_cash'];
+        $difference   = $countedCash - $expectedCash;  // + sobrante, - faltante
 
         $shift->update([
             'active_shift'    => false,
@@ -370,12 +372,15 @@ class PosController extends Controller
         ]);
 
         $diffLabel = $difference >= 0
-            ? 'Sobrante: $' . number_format($difference, 0, ',', '.')
-            : 'Faltante: $' . number_format(abs($difference), 0, ',', '.');
+            ? 'Sobrante $' . number_format($difference, 0, ',', '.')
+            : 'Faltante $' . number_format(abs($difference), 0, ',', '.');
 
-        return redirect()
-            ->route('pos.index')
-            ->with('success', "Turno cerrado en {$terminal->name}. Ventas: $" . number_format((float)($salesData->total_sales ?? 0), 0, ',', '.') . ". {$diffLabel}.");
+        return response()->json([
+            'success'     => true,
+            'total_sales' => (float) ($salesData->total_sales ?? 0),
+            'difference'  => $difference,
+            'message'     => "Turno cerrado en {$terminal->name} · Ventas: $" . number_format((float)($salesData->total_sales ?? 0), 0, ',', '.') . " · {$diffLabel}",
+        ]);
     }
 
     // ── Gestión de terminales (admin) ─────────────────────────────────────

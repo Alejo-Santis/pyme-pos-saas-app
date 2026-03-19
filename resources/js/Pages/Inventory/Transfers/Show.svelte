@@ -33,6 +33,7 @@
   function executeAction() {
     processing = true
     router.post(`/inventory/transfers/${transfer.id}/${confirmAction.endpoint}`, {}, {
+      preserveScroll: true,
       onFinish: () => { processing = false },
     })
   }
@@ -44,6 +45,7 @@
     processing = true
     showCancelModal = false
     router.post(`/inventory/transfers/${transfer.id}/cancel`, { notes: cancelNotes }, {
+      preserveScroll: true,
       onFinish: () => { processing = false },
     })
   }

@@ -14,7 +14,7 @@
 
   function clearFilters() {
     search = ''; status = ''; plan_id = ''
-    router.get('/admin/tenants')
+    router.get('/admin/tenants', {}, { replace: true })
   }
 
   const statusColor = {

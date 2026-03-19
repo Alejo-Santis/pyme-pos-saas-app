@@ -9,11 +9,11 @@
   let confirmDelete  = $state(false)
 
   function updateStatus() {
-    router.patch(`/admin/tenants/${tenant.id}/status`, { status: selectedStatus })
+    router.patch(`/admin/tenants/${tenant.id}/status`, { status: selectedStatus }, { preserveScroll: true })
   }
 
   function updatePlan() {
-    router.patch(`/admin/tenants/${tenant.id}/plan`, { plan_id: selectedPlan })
+    router.patch(`/admin/tenants/${tenant.id}/plan`, { plan_id: selectedPlan }, { preserveScroll: true })
   }
 
   const statusColor = {

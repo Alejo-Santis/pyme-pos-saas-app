@@ -1,6 +1,7 @@
 <script>
   import { page, router, inertia } from '@inertiajs/svelte'
   import { onMount } from 'svelte'
+  import { fade } from 'svelte/transition'
   import Toast from '@/Components/UI/Toast.svelte'
 
   let { children } = $props()
@@ -313,7 +314,7 @@
     </header>
 
     <!-- Área de contenido -->
-    <main class="flex-1 overflow-y-auto p-6">
+    <main class="flex-1 overflow-y-auto p-6" in:fade={{ duration: 150 }}>
       {@render children()}
     </main>
 

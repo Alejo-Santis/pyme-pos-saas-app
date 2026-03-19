@@ -97,12 +97,13 @@
   function executeDeletePlan() {
     deleting = confirmDeletePlan.plan.id
     router.delete(`/admin/plans/${confirmDeletePlan.plan.id}`, {
+      preserveScroll: true,
       onFinish: () => { deleting = null },
     })
   }
 
   function toggle(id) {
-    router.patch(`/admin/plans/${id}/toggle`)
+    router.patch(`/admin/plans/${id}/toggle`, {}, { preserveScroll: true })
   }
 </script>
 

@@ -10,7 +10,8 @@
 
   // Clave del último flash procesado — evita duplicados cuando $effect
   // re-corre múltiples veces para la misma navegación Inertia.
-  let _lastKey = $state('')
+  // NO usar $state — no debe crear dependencia reactiva dentro del effect.
+  let _lastKey = ''
 
   $effect(() => {
     const flash  = $page.props.flash  ?? {}

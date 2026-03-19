@@ -16,7 +16,7 @@
       date_to:     dateTo,
       terminal_id: terminalId || undefined,
       group_by:    groupBy,
-    }, { preserveScroll: true })
+    }, { preserveScroll: true, replace: true })
   }
 
   const fmt    = (n) => Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })

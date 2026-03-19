@@ -33,7 +33,7 @@
   function clearFilters() {
     search = ''
     statusFilter = ''
-    router.get('/purchases', {})
+    router.get('/purchases', {}, { replace: true })
   }
 
   function fmt(n) {

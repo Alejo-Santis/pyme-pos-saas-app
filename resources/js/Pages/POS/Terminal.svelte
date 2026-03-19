@@ -150,13 +150,15 @@
       if (data.success) {
         lastSale    = data
         lastSaleCtx = { ...saleCtx, sale: data }
+        const ticketNum = data.internal_code ?? data.number ?? ''
+        toast.success(`Venta ${ticketNum} procesada — Cambio: $${Number(data.change ?? 0).toLocaleString('es-CO')}`)
         // Reset carrito
         lines         = []
         selectedThird = null
         note          = ''
         paymentForms  = [{ payment_form_id: 1, payment_method_id: 10, value: 0 }]
         // Recargar ventas recientes y estado del turno sin recargar toda la página
-        router.reload({ only: ['recentSales', 'shift'] })
+        router.reload({ only: ['recentSales', 'shift'], preserveScroll: true })
         // Imprimir automáticamente si hay impresora configurada
         if (hasPrinter) printReceipt(lastSaleCtx)
       } else {

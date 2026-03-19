@@ -340,5 +340,5 @@
   message="¿Eliminar esta novedad?"
   confirmLabel="Eliminar"
   danger={true}
-  onConfirm={() => router.delete(`/payroll/novelties/${confirmDelete.id}`)}
+  onConfirm={() => router.delete(`/payroll/novelties/${confirmDelete.id}`, { preserveScroll: true })}
 />

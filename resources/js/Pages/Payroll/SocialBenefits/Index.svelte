@@ -34,6 +34,7 @@
       pay_date:    payDate,
       paid_amount: payAmount,
     }, {
+      preserveScroll: true,
       onSuccess: () => { payModal = null }
     })
   }

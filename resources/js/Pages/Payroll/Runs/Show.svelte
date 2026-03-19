@@ -13,17 +13,18 @@
   let confirmMarkPaid = $state(false);
 
   function doApprove() {
-    router.post(`/payroll/runs/${run.id}/approve`);
+    router.post(`/payroll/runs/${run.id}/approve`, {}, { preserveScroll: true })
   }
 
   function doMarkPaid() {
-    router.post(`/payroll/runs/${run.id}/mark-paid`);
+    router.post(`/payroll/runs/${run.id}/mark-paid`, {}, { preserveScroll: true })
   }
 
   function doCancel() {
     cancelForm.post(`/payroll/runs/${run.id}/cancel`, {
-      onSuccess: () => { showCancelModal = false; }
-    });
+      preserveScroll: true,
+      onSuccess: () => { showCancelModal = false }
+    })
   }
 
   const fmt = v => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v ?? 0);

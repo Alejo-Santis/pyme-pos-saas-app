@@ -15,7 +15,7 @@
       date_from:    dateFrom,
       date_to:      dateTo,
       cash_box_id:  cashBoxId || undefined,
-    }, { preserveScroll: true })
+    }, { preserveScroll: true, replace: true })
   }
 
   const fmt    = (n) => Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })
