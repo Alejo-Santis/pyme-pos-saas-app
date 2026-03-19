@@ -33,6 +33,9 @@ class PosTerminalUser extends Model
         'cashier_session_key',
         'shift_opened_at',
         'shift_closed_at',
+        'counted_cash',
+        'difference',
+        'close_notes',
         'state',
     ];
 
@@ -44,6 +47,8 @@ class PosTerminalUser extends Model
         'total_cash'       => 'decimal:2',
         'total_card'       => 'decimal:2',
         'total_transfer'   => 'decimal:2',
+        'counted_cash'     => 'decimal:2',
+        'difference'       => 'decimal:2',
         'active_shift'     => 'boolean',
         'state'            => 'boolean',
         'shift_opened_at'  => 'datetime',

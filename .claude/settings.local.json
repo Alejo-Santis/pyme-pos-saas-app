@@ -88,7 +88,10 @@
       "Bash(find \"c:/laragon/www/xedoc-laravel-svelte/app\" -name \"*.php\" -type f -exec grep -l \"getOrCreateSendingElectronicTrait\\\\|SendingElectronic\" {})",
       "Bash(php -l app/Modules/Invoice/Observers/DocumentCreateObserver.php)",
       "Bash(npx vite:*)",
-      "Bash(grep -v \"node_modules\\\\|toast\\\\|//.*alert\")"
+      "Bash(grep -v \"node_modules\\\\|toast\\\\|//.*alert\")",
+      "Bash(xargs wc:*)",
+      "Bash(/tmp/nextpossaas_status.txt:*)",
+      "Read(//tmp/**)"
     ]
   }
 }

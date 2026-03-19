@@ -17,6 +17,7 @@ use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Services\InvoiceService;
 use App\Modules\POS\Models\PosTerminal;
 use App\Modules\POS\Models\PosTerminalUser;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,7 +54,9 @@ class PosController extends Controller
             'activeTerminalUser.user:id,name',
         ])
         ->where('state', true)
-        ->get();
+        ->get(['id', 'name', 'location', 'serial_number', 'resolution_id', 'warehouse_id',
+               'establishment_id', 'cash_box_id', 'printer_name', 'printer_ip', 'printer_port',
+               'printer_type', 'is_usb', 'state']);
 
         // Turno activo del usuario actual (si existe)
         $myShift = PosTerminalUser::where('user_id', $user->id)
@@ -263,30 +266,29 @@ class PosController extends Controller
         ]);
     }
 
-    // ── Paso 5: Cerrar turno ──────────────────────────────────────────────
+    // ── Paso 5a: Resumen del turno (para modal de cuadre) ─────────────────
 
-    public function closeShift(Request $request, PosTerminal $terminal): RedirectResponse
+    /**
+     * Retorna los totales en vivo del turno activo para el modal de cuadre.
+     * GET /pos/{terminal}/shift-summary → JSON
+     */
+    public function shiftSummary(Request $request, PosTerminal $terminal): JsonResponse
     {
-        $user = Auth::user();
-
+        $user  = Auth::user();
         $shift = PosTerminalUser::where('pos_terminal_id', $terminal->id)
             ->where('user_id', $user->id)
             ->where('active_shift', true)
             ->first();
 
         if (! $shift) {
-            return back()->withErrors(['shift' => 'No hay turno activo para cerrar.']);
+            return response()->json(['error' => 'No hay turno activo.'], 404);
         }
 
-        // Calcular totales de ventas del turno
         $salesData = Document::where('pos_terminal_id', $terminal->id)
             ->where('cashier_shift', $shift->cashier_session_key)
-            ->selectRaw('
-                COALESCE(SUM(total), 0) as total_sales
-            ')
+            ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COUNT(*) as sales_count')
             ->first();
 
-        // Calcular totales por forma de pago (desde cash_movements del turno)
         $cashTotal = CashMovement::where('cash_box_id', $terminal->cash_box_id)
             ->where('reference', $shift->cashier_session_key)
             ->where('state', true)
@@ -300,19 +302,80 @@ class PosController extends Controller
             ->where('state', true)
             ->sum('debit');
 
+        return response()->json([
+            'initial_balance' => (float) $shift->initial_balance,
+            'total_sales'     => (float) ($salesData->total_sales ?? 0),
+            'sales_count'     => (int)   ($salesData->sales_count ?? 0),
+            'total_cash'      => (float) $cashTotal,
+            'total_transfer'  => (float) $bankTotal,
+            'expected_cash'   => (float) $shift->initial_balance + $cashTotal,
+            'opened_at'       => $shift->shift_opened_at?->format('d/m/Y H:i'),
+            'session_key'     => $shift->cashier_session_key,
+        ]);
+    }
+
+    // ── Paso 5b: Cerrar turno con cuadre de caja ──────────────────────────
+
+    public function closeShift(Request $request, PosTerminal $terminal): RedirectResponse
+    {
+        $data = $request->validate([
+            'counted_cash' => 'required|numeric|min:0',
+            'close_notes'  => 'nullable|string|max:500',
+        ]);
+
+        $user  = Auth::user();
+        $shift = PosTerminalUser::where('pos_terminal_id', $terminal->id)
+            ->where('user_id', $user->id)
+            ->where('active_shift', true)
+            ->first();
+
+        if (! $shift) {
+            return back()->withErrors(['shift' => 'No hay turno activo para cerrar.']);
+        }
+
+        // Calcular totales del sistema
+        $salesData = Document::where('pos_terminal_id', $terminal->id)
+            ->where('cashier_shift', $shift->cashier_session_key)
+            ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COUNT(*) as sales_count')
+            ->first();
+
+        $cashTotal = CashMovement::where('cash_box_id', $terminal->cash_box_id)
+            ->where('reference', $shift->cashier_session_key)
+            ->where('state', true)
+            ->sum('debit');
+
+        $bankTotal = BankAccountMovement::whereHas(
+            'bankAccount',
+            fn ($q) => $q->where('state', true)
+        )
+            ->where('reference', $shift->cashier_session_key)
+            ->where('state', true)
+            ->sum('debit');
+
+        $expectedCash  = (float) $shift->initial_balance + (float) $cashTotal;
+        $countedCash   = (float) $data['counted_cash'];
+        $difference    = $countedCash - $expectedCash;  // + sobrante, - faltante
+
         $shift->update([
             'active_shift'    => false,
             'state'           => false,
             'total_sales'     => $salesData->total_sales ?? 0,
             'total_cash'      => $cashTotal,
             'total_transfer'  => $bankTotal,
-            'final_balance'   => $shift->initial_balance + $cashTotal,
+            'final_balance'   => $expectedCash,
+            'counted_cash'    => $countedCash,
+            'difference'      => $difference,
+            'close_notes'     => $data['close_notes'] ?? null,
             'shift_closed_at' => now(),
         ]);
 
+        $diffLabel = $difference >= 0
+            ? 'Sobrante: $' . number_format($difference, 0, ',', '.')
+            : 'Faltante: $' . number_format(abs($difference), 0, ',', '.');
+
         return redirect()
             ->route('pos.index')
-            ->with('success', "Turno cerrado en {$terminal->name}. Total vendido: $" . number_format((float)($salesData->total_sales ?? 0), 0, ',', '.'));
+            ->with('success', "Turno cerrado en {$terminal->name}. Ventas: $" . number_format((float)($salesData->total_sales ?? 0), 0, ',', '.') . ". {$diffLabel}.");
     }
 
     // ── Gestión de terminales (admin) ─────────────────────────────────────
@@ -326,7 +389,12 @@ class PosController extends Controller
             'establishment_id' => 'nullable|uuid|exists:establishments,id',
             'cash_box_id'      => 'nullable|uuid|exists:cash_boxes,id',
             'location'         => 'nullable|string|max:150',
-            'printer_name'     => 'nullable|string|max:100',
+            // Configuración de impresora
+            'printer_name'     => 'nullable|string|max:150',
+            'printer_ip'       => 'nullable|ip',
+            'printer_port'     => 'nullable|integer|min:1|max:65535',
+            'printer_type'     => 'nullable|string|in:escpos,star,80mm',
+            'is_usb'           => 'boolean',
         ]);
 
         $data['serial_number'] = 'POS-' . strtoupper(substr(md5(uniqid()), 0, 8));
@@ -344,7 +412,12 @@ class PosController extends Controller
             'establishment_id' => 'nullable|uuid|exists:establishments,id',
             'cash_box_id'      => 'nullable|uuid|exists:cash_boxes,id',
             'location'         => 'nullable|string|max:150',
-            'printer_name'     => 'nullable|string|max:100',
+            // Configuración de impresora
+            'printer_name'     => 'nullable|string|max:150',
+            'printer_ip'       => 'nullable|ip',
+            'printer_port'     => 'nullable|integer|min:1|max:65535',
+            'printer_type'     => 'nullable|string|in:escpos,star,80mm',
+            'is_usb'           => 'boolean',
             'state'            => 'boolean',
         ]);
 

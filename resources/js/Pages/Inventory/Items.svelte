@@ -2,6 +2,7 @@
   import { router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import ImportModal from '@/Components/UI/ImportModal.svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
 
   let {
     items,
@@ -34,9 +35,10 @@
     router.patch(`/inventory/${id}/toggle`, {}, { preserveScroll: true })
   }
 
+  let confirmDelete = $state({ open: false, id: null, name: '' })
+
   function deleteItem(id, name) {
-    if (!confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) return
-    router.delete(`/inventory/${id}`, { preserveScroll: true })
+    confirmDelete = { open: true, id, name }
   }
 
   const typeLabel = { product: 'Producto', service: 'Servicio', combo: 'Combo' }
@@ -235,4 +237,13 @@
   templateUrl="/inventory/import/template"
   title="Importar Artículos"
   columns={['nombre','nombre_corto','codigo_interno','tipo','categoria','unidad_medida','precio_venta','costo_promedio','stock_minimo','porcentaje_iva']}
+/>
+
+<ConfirmModal
+  bind:open={confirmDelete.open}
+  title="Eliminar artículo"
+  message={confirmDelete.name ? `¿Eliminar "${confirmDelete.name}"? Esta acción no se puede deshacer.` : ''}
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={() => router.delete(`/inventory/${confirmDelete.id}`, { preserveScroll: true })}
 />

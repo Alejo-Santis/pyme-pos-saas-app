@@ -1,11 +1,14 @@
 <script>
   import { router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
 
   let {
-    document          = null,
-    documentTypes     = [],
+    document           = null,
+    documentTypes      = [],
     correctionConcepts = {},
+    debitNoteConcepts  = {},
+    taxes              = [],
   } = $props()
 
   // Mapa tipo → nombre legible
@@ -40,20 +43,23 @@
 
   const canEdit = $derived(!document?.electronic && !document?.annulled)
 
-  // Es factura de venta (01) o documento soporte (05) → puede tener NC
-  const canHaveCreditNote = $derived(
-    !document?.annulled &&
-    (String(document?.type_document_operation_id) === '01' ||
-     String(document?.type_document_operation_id) === '05')
+  // Factura de Venta (tipo 1/01) → puede tener NC y ND
+  const isInvoice = $derived(
+    String(document?.type_document_id) === '1' ||
+    String(document?.type_document_operation_id) === '1' ||
+    String(document?.type_document_operation_id) === '01'
   )
+
+  const canHaveCreditNote = $derived(!document?.annulled && isInvoice)
+  const canHaveDebitNote  = $derived(!document?.annulled && isInvoice)
 
   const creditNotes = $derived(document?.credit_notes ?? [])
 
   // ── Acciones básicas ─────────────────────────────────────────────────────
   let deleting = $state(false)
+  let confirmDelete = $state(false)
 
   function destroy() {
-    if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return
     deleting = true
     router.delete(`/invoices/${document.id}`, {
       onFinish: () => { deleting = false },
@@ -66,6 +72,55 @@
     if (!t) return 'Consumidor final'
     return [t.name, t.surname].filter(Boolean).join(' ')
   })
+
+  // ── Modal de Nota Débito ─────────────────────────────────────────────────
+  let showNdModal  = $state(false)
+  let ndSubmitting = $state(false)
+  let ndError      = $state('')
+  let ndConcept    = $state('1')
+  let ndNote       = $state('')
+
+  const emptyNdLine = () => ({ description: '', amount: 1, sale_price: 0, discount: 0, tax_percent: 0 })
+  let ndLines = $state([emptyNdLine()])
+
+  const ndLineTotal = (l) => {
+    const base = Number(l.amount) * Number(l.sale_price) * (1 - Number(l.discount) / 100)
+    return base * (1 + Number(l.tax_percent) / 100)
+  }
+  const ndTotal = $derived(ndLines.reduce((s, l) => s + ndLineTotal(l), 0))
+
+  function openNdModal() {
+    ndConcept = '1'
+    ndNote    = ''
+    ndError   = ''
+    ndLines   = [emptyNdLine()]
+    showNdModal = true
+  }
+
+  function closeNdModal() { showNdModal = false; ndError = '' }
+
+  function submitDebitNote() {
+    if (!ndNote.trim()) { ndError = 'La observación es obligatoria.'; return }
+    if (ndLines.some(l => !l.description.trim())) { ndError = 'Todas las líneas deben tener descripción.'; return }
+
+    ndSubmitting = true
+    ndError = ''
+
+    router.post(`/invoices/${document.id}/debit-note`, {
+      correction_concept: parseInt(ndConcept),
+      note:               ndNote.trim(),
+      lines: ndLines.map(l => ({
+        description: l.description,
+        amount:      Number(l.amount),
+        sale_price:  Number(l.sale_price),
+        discount:    Number(l.discount) || 0,
+        taxes:       Number(l.tax_percent) > 0 ? [{ percent: Number(l.tax_percent) }] : [],
+      })),
+    }, {
+      onError:  (errors) => { ndError = Object.values(errors).flat().join(' '); ndSubmitting = false },
+      onFinish: () => { ndSubmitting = false },
+    })
+  }
 
   // ── Modal de Nota Crédito ────────────────────────────────────────────────
   let showNcModal    = $state(false)
@@ -181,7 +236,7 @@
             <i class="mdi mdi-pencil-outline text-base"></i>
             Editar
           </a>
-          <button onclick={destroy} disabled={deleting}
+          <button onclick={() => confirmDelete = true} disabled={deleting}
             class="flex items-center gap-1.5 px-3 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition disabled:opacity-60 cursor-pointer">
             {#if deleting}
               <i class="mdi mdi-loading mdi-spin text-base"></i>
@@ -197,6 +252,14 @@
             class="flex items-center gap-1.5 px-3 py-2 text-sm border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 transition cursor-pointer font-medium">
             <i class="mdi mdi-file-undo-outline text-base"></i>
             Nota Crédito
+          </button>
+        {/if}
+
+        {#if canHaveDebitNote}
+          <button onclick={openNdModal}
+            class="flex items-center gap-1.5 px-3 py-2 text-sm border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition cursor-pointer font-medium">
+            <i class="mdi mdi-file-plus-outline text-base"></i>
+            Nota Débito
           </button>
         {/if}
 
@@ -410,6 +473,203 @@
 
   </div>
 </AppLayout>
+
+<ConfirmModal
+  bind:open={confirmDelete}
+  title="Eliminar documento"
+  message="¿Eliminar este documento? Esta acción no se puede deshacer."
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={destroy}
+/>
+
+<!-- ── Modal Nota Débito ─────────────────────────────────────────────────── -->
+{#if showNdModal}
+  <div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
+    onclick={(e) => { if (e.target === e.currentTarget) closeNdModal() }}>
+
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col z-50">
+
+      <!-- Cabecera -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+            <i class="mdi mdi-file-plus-outline text-indigo-600 text-lg"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-slate-800 text-base">Emitir Nota Débito</h2>
+            <p class="text-xs text-slate-500">
+              Cargos adicionales sobre: {document?.prefix ?? ''}{document?.number}
+            </p>
+          </div>
+        </div>
+        <button onclick={closeNdModal}
+          class="text-slate-400 hover:text-slate-600 transition cursor-pointer">
+          <i class="mdi mdi-close text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Cuerpo scrollable -->
+      <div class="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+
+        <!-- Concepto -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">
+            Concepto DIAN <span class="text-red-500">*</span>
+          </label>
+          <div class="space-y-2">
+            {#each Object.entries(debitNoteConcepts) as [key, label]}
+              <label class="flex items-start gap-3 cursor-pointer group">
+                <input type="radio" bind:group={ndConcept} value={key}
+                  class="mt-0.5 text-indigo-500 focus:ring-indigo-400 cursor-pointer" />
+                <span class="text-sm text-slate-700 group-hover:text-slate-900 leading-tight">
+                  <span class="font-medium text-indigo-700">{key}.</span> {label}
+                </span>
+              </label>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Líneas de cargo -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-semibold text-slate-700">
+              Líneas de cargo adicional <span class="text-red-500">*</span>
+            </label>
+            <button
+              onclick={() => { ndLines = [...ndLines, emptyNdLine()] }}
+              class="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">
+              <i class="mdi mdi-plus-circle-outline"></i>
+              Agregar línea
+            </button>
+          </div>
+
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="text-left px-3 py-2.5 text-xs font-medium text-slate-500">Descripción</th>
+                  <th class="text-right px-3 py-2.5 text-xs font-medium text-slate-500 w-20">Cant.</th>
+                  <th class="text-right px-3 py-2.5 text-xs font-medium text-slate-500 w-28">P. Unit.</th>
+                  <th class="text-right px-3 py-2.5 text-xs font-medium text-slate-500 w-20">Dto %</th>
+                  <th class="text-right px-3 py-2.5 text-xs font-medium text-slate-500 w-20">IVA %</th>
+                  <th class="text-right px-3 py-2.5 text-xs font-medium text-slate-500 w-28">Total</th>
+                  <th class="w-8"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                {#each ndLines as line, idx}
+                  <tr class="hover:bg-indigo-50/20 transition">
+                    <td class="px-3 py-2">
+                      <input
+                        type="text"
+                        bind:value={line.description}
+                        placeholder="Descripción del cargo..."
+                        class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300"
+                      />
+                    </td>
+                    <td class="px-3 py-2">
+                      <input
+                        type="number" min="0.001" step="1"
+                        bind:value={line.amount}
+                        class="w-full text-right border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300 tabular-nums"
+                      />
+                    </td>
+                    <td class="px-3 py-2">
+                      <input
+                        type="number" min="0" step="1000"
+                        bind:value={line.sale_price}
+                        class="w-full text-right border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300 tabular-nums"
+                      />
+                    </td>
+                    <td class="px-3 py-2">
+                      <input
+                        type="number" min="0" max="100" step="1"
+                        bind:value={line.discount}
+                        class="w-full text-right border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300 tabular-nums"
+                      />
+                    </td>
+                    <td class="px-3 py-2">
+                      <input
+                        type="number" min="0" max="100" step="1"
+                        bind:value={line.tax_percent}
+                        class="w-full text-right border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300 tabular-nums"
+                      />
+                    </td>
+                    <td class="px-3 py-2 text-right font-semibold text-slate-700 tabular-nums text-sm">
+                      ${fmt(ndLineTotal(line))}
+                    </td>
+                    <td class="px-2 py-2">
+                      {#if ndLines.length > 1}
+                        <button
+                          onclick={() => { ndLines = ndLines.filter((_, i) => i !== idx) }}
+                          class="text-slate-300 hover:text-red-500 transition cursor-pointer">
+                          <i class="mdi mdi-close text-base"></i>
+                        </button>
+                      {/if}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+              <tfoot class="bg-indigo-50 border-t border-indigo-200">
+                <tr>
+                  <td colspan="5" class="px-3 py-2.5 text-sm font-semibold text-indigo-700">
+                    Total cargos adicionales
+                  </td>
+                  <td class="px-3 py-2.5 text-right font-bold text-indigo-700 tabular-nums">
+                    ${fmt(ndTotal)}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Observación -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+            Observación <span class="text-red-500">*</span>
+          </label>
+          <textarea
+            bind:value={ndNote}
+            rows="3"
+            placeholder="Describe el motivo del cargo adicional..."
+            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300"
+          ></textarea>
+        </div>
+
+        <!-- Error -->
+        {#if ndError}
+          <div class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+            <i class="mdi mdi-alert-circle-outline flex-shrink-0"></i>
+            {ndError}
+          </div>
+        {/if}
+
+      </div>
+
+      <!-- Pie del modal -->
+      <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+        <button onclick={closeNdModal} disabled={ndSubmitting}
+          class="px-4 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50">
+          Cancelar
+        </button>
+        <button onclick={submitDebitNote} disabled={ndSubmitting}
+          class="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition cursor-pointer disabled:opacity-60">
+          {#if ndSubmitting}
+            <i class="mdi mdi-loading mdi-spin text-base"></i>
+            Emitiendo...
+          {:else}
+            <i class="mdi mdi-file-check-outline text-base"></i>
+            Emitir Nota Débito
+          {/if}
+        </button>
+      </div>
+
+    </div>
+  </div>
+{/if}
 
 <!-- ── Modal Nota Crédito ────────────────────────────────────────────────── -->
 {#if showNcModal}

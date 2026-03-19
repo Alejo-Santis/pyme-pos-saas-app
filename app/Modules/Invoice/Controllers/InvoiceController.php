@@ -9,6 +9,7 @@ use App\Modules\Core\Models\ThirdParty;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Services\CreditNoteService;
+use App\Modules\Invoice\Services\DebitNoteService;
 use App\Modules\Invoice\Services\InvoiceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,8 @@ class InvoiceController extends Controller
 {
     public function __construct(
         private readonly InvoiceService    $invoiceService,
-        private readonly CreditNoteService $creditNoteService
+        private readonly CreditNoteService $creditNoteService,
+        private readonly DebitNoteService  $debitNoteService
     ) {}
 
     /**
@@ -162,9 +164,11 @@ class InvoiceController extends Controller
         ]);
 
         return Inertia::render('Invoice/Show', [
-            'document'          => $document,
-            'documentTypes'     => $this->documentTypes(),
-            'correctionConcepts'=> CreditNoteService::CORRECTION_CONCEPTS,
+            'document'              => $document,
+            'documentTypes'         => $this->documentTypes(),
+            'correctionConcepts'    => CreditNoteService::CORRECTION_CONCEPTS,
+            'debitNoteConcepts'     => DebitNoteService::CORRECTION_CONCEPTS,
+            'taxes'                 => DB::table('taxes')->get(['id', 'name', 'percent']),
         ]);
     }
 
@@ -192,6 +196,37 @@ class InvoiceController extends Controller
         return redirect()
             ->route('invoices.show', $nc)
             ->with('success', "Nota Crédito {$nc->internal_code} emitida correctamente.");
+    }
+
+    /**
+     * Emite una Nota Débito sobre un documento existente.
+     * La ND agrega cargos adicionales (intereses, gastos, ajustes) a la factura original.
+     */
+    public function storeDebitNote(Request $request, Document $document): RedirectResponse
+    {
+        $data = $request->validate([
+            'correction_concept'          => 'required|integer|between:1,4',
+            'note'                        => 'required|string|max:500',
+            'lines'                       => 'required|array|min:1',
+            'lines.*.description'         => 'required|string|max:300',
+            'lines.*.amount'              => 'required|numeric|min:0.001',
+            'lines.*.sale_price'          => 'required|numeric|min:0',
+            'lines.*.discount'            => 'nullable|numeric|min:0|max:100',
+            'lines.*.taxes'               => 'nullable|array',
+            'lines.*.taxes.*.percent'     => 'nullable|numeric|min:0',
+        ]);
+
+        $nd = $this->debitNoteService->create(
+            original:          $document,
+            correctionConcept: (int) $data['correction_concept'],
+            note:              $data['note'],
+            lines:             $data['lines'],
+            userId:            $request->user()->id,
+        );
+
+        return redirect()
+            ->route('invoices.show', $nd)
+            ->with('success', "Nota Débito {$nd->internal_code} emitida correctamente.");
     }
 
     /**
@@ -282,16 +317,16 @@ class InvoiceController extends Controller
     // ─── Helpers privados ─────────────────────────────────────────────────
 
     /**
-     * Tipos de documento electrónico soportados.
-     * Los IDs corresponden a los códigos DIAN (type_document_operation_id conceptual).
+     * Todos los tipos de documento (para filtros y display en Index/Show).
      */
     private function documentTypes(): array
     {
         return [
-            ['id' => '01', 'name' => 'Factura de Venta'],
+            ['id' => '1',  'name' => 'Factura de Venta'],
             ['id' => '91', 'name' => 'Nota Crédito'],
             ['id' => '92', 'name' => 'Nota Débito'],
             ['id' => '05', 'name' => 'Documento Soporte'],
+            ['id' => '4',  'name' => 'Ticket POS'],
         ];
     }
 }

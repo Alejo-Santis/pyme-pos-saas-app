@@ -19,18 +19,19 @@
   const itemMap = Object.fromEntries(items.map(i => [i.id, i]))
 
   // ── Encabezado ──────────────────────────────────────────────────────────
+  // Este formulario es EXCLUSIVAMENTE para Facturas de Venta (tipo 01).
+  // Las Notas Crédito (91) y Notas Débito (92) se emiten desde el detalle
+  // de una factura existente. El Documento Soporte (05) se genera desde
+  // el detalle de una Orden de Compra recibida.
   let hdr = $state({
-    type_document_id:           String(document?.type_document_id           ?? '1'),
-    type_document_operation_id: String(document?.type_document_operation_id ?? '1'),
+    type_document_id:           '1',
+    type_document_operation_id: '1',
     third_party_id:             document?.third_party_id  ?? '',
     resolution_id:              document?.resolution_id   ?? '',
     issue_date:                 document?.issue_date      ?? new Date().toISOString().slice(0, 10),
-    payment_form:               '1', // 1=Contado, 2=Crédito
+    payment_form:               String(document?.payment_forms?.[0] ?? '1'),
     note:                       document?.note            ?? '',
   })
-
-  // Sincronizar operation_id al cambiar tipo
-  $effect(() => { hdr.type_document_operation_id = hdr.type_document_id })
 
   // ── Líneas ───────────────────────────────────────────────────────────────
   const emptyLine = () => ({
@@ -169,22 +170,26 @@
         <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
           <i class="mdi mdi-file-document-outline text-primary"></i>
           Encabezado del documento
+          <span class="ml-2 text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+            Factura de Venta · tipo 01
+          </span>
         </h2>
       </div>
-      <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-        <!-- Tipo de documento -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">
-            Tipo de documento <span class="text-red-500">*</span>
-          </label>
-          <select bind:value={hdr.type_document_id}
-            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
-            {#each documentTypes as dt}
-              <option value={String(dt.id)}>{dt.name}</option>
-            {/each}
-          </select>
+      <!-- Aviso informativo sobre NC / ND / DS -->
+      <div class="px-5 pt-4">
+        <div class="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-700">
+          <i class="mdi mdi-information-outline text-blue-500 text-sm mt-0.5 flex-shrink-0"></i>
+          <span>
+            Este formulario es para <strong>Facturas de Venta</strong>.
+            Para emitir una <strong>Nota Crédito</strong> o <strong>Nota Débito</strong>,
+            abre el detalle de una factura existente y usa el botón correspondiente.
+            Para el <strong>Documento Soporte</strong>, ve al detalle de una Orden de Compra recibida.
+          </span>
         </div>
+      </div>
+
+      <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
         <!-- Fecha de emisión -->
         <div>

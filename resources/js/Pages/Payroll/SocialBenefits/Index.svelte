@@ -1,6 +1,7 @@
 <script>
   import { router } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
 
   let { benefits, employees, filters, types } = $props()
 
@@ -37,9 +38,10 @@
     })
   }
 
+  let confirmDelete = $state({ open: false, id: null })
+
   function destroy(id) {
-    if (!confirm('¿Eliminar esta liquidación?')) return
-    router.delete(`/payroll/benefits/${id}`, { preserveScroll: true })
+    confirmDelete = { open: true, id }
   }
 
   function fmt(v) {
@@ -187,6 +189,15 @@
     </div>
   </div>
 </AppLayout>
+
+<ConfirmModal
+  bind:open={confirmDelete.open}
+  title="Eliminar liquidación"
+  message="¿Eliminar esta liquidación?"
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={() => router.delete(`/payroll/benefits/${confirmDelete.id}`, { preserveScroll: true })}
+/>
 
 <!-- Modal pago -->
 {#if payModal}

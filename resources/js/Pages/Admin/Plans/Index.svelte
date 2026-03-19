@@ -1,6 +1,8 @@
 <script>
   import AdminLayout from '@/Layouts/AdminLayout.svelte'
   import { router } from '@inertiajs/svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
+  import { toast } from '@/Stores/toast.svelte.js'
 
   let { plans = [], allFeatures = [] } = $props()
 
@@ -82,15 +84,19 @@
 
   // ── Eliminar ──────────────────────────────────────────────────────────────
   let deleting = $state(null)
+  let confirmDeletePlan = $state({ open: false, plan: null })
 
   function destroy(plan) {
     if (plan.tenants_count > 0) {
-      alert(`No se puede eliminar: ${plan.tenants_count} empresa(s) usan este plan.`)
+      toast.error(`No se puede eliminar: ${plan.tenants_count} empresa(s) usan este plan.`)
       return
     }
-    if (!confirm(`¿Eliminar el plan "${plan.name}"? Esta acción no se puede deshacer.`)) return
-    deleting = plan.id
-    router.delete(`/admin/plans/${plan.id}`, {
+    confirmDeletePlan = { open: true, plan }
+  }
+
+  function executeDeletePlan() {
+    deleting = confirmDeletePlan.plan.id
+    router.delete(`/admin/plans/${confirmDeletePlan.plan.id}`, {
       onFinish: () => { deleting = null },
     })
   }
@@ -219,6 +225,15 @@
 
   </div>
 </AdminLayout>
+
+<ConfirmModal
+  bind:open={confirmDeletePlan.open}
+  title="Eliminar plan"
+  message={confirmDeletePlan.plan ? `¿Eliminar el plan "${confirmDeletePlan.plan.name}"? Esta acción no se puede deshacer.` : ''}
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={executeDeletePlan}
+/>
 
 <!-- ── Modal Crear / Editar Plan ─────────────────────────────────────────────── -->
 {#if showModal}

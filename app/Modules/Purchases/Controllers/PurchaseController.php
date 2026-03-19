@@ -7,14 +7,19 @@ use App\Modules\Core\Models\ThirdParty;
 use App\Modules\Core\Models\Warehouse;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Purchases\Models\PurchaseOrder;
+use App\Modules\Invoice\Services\SupportDocumentService;
 use App\Modules\Purchases\Services\PurchaseService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PurchaseController extends Controller
 {
-    public function __construct(private readonly PurchaseService $service) {}
+    public function __construct(
+        private readonly PurchaseService        $service,
+        private readonly SupportDocumentService $supportDocumentService
+    ) {}
 
     /**
      * Listado de órdenes de compra.
@@ -76,7 +81,7 @@ class PurchaseController extends Controller
      */
     public function show(PurchaseOrder $purchase): Response
     {
-        $purchase->load(['thirdParty', 'items.item', 'histories.user']);
+        $purchase->load(['thirdParty', 'items.item', 'histories.user', 'document']);
 
         return Inertia::render('Purchases/Show', [
             'order'      => $purchase,
@@ -110,6 +115,27 @@ class PurchaseController extends Controller
         $this->service->receive($purchase, $data);
 
         return back()->with('success', 'Mercancía recibida y stock actualizado correctamente.');
+    }
+
+    /**
+     * Genera un Documento Soporte (DS tipo 05) a partir de una OC recibida.
+     * Se usa cuando el proveedor NO está obligado a facturar (régimen simplificado).
+     */
+    public function storeSupportDocument(Request $request, PurchaseOrder $purchase): RedirectResponse
+    {
+        $data = $request->validate([
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $ds = $this->supportDocumentService->createFromPurchaseOrder(
+            order:  $purchase,
+            note:   $data['note'] ?? null,
+            userId: $request->user()->id,
+        );
+
+        return redirect()
+            ->route('invoices.show', $ds)
+            ->with('success', "Documento Soporte {$ds->internal_code} generado correctamente.");
     }
 
     /**

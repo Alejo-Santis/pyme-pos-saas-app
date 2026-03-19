@@ -1,6 +1,7 @@
 <script>
   import { router } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
 
   let { concepts, operations } = $props()
 
@@ -13,9 +14,10 @@
   let allDefinedSlugs = $derived(operations.flatMap(o => o.slugs.map(s => s.slug)))
   let customConcepts  = $derived(concepts.filter(c => !allDefinedSlugs.includes(c.type_concept)))
 
+  let confirmDelete = $state({ open: false, id: null })
+
   function destroy(id) {
-    if (!confirm('¿Eliminar este concepto?')) return
-    router.delete(`/accounting/concepts/${id}`, { preserveScroll: true })
+    confirmDelete = { open: true, id }
   }
 </script>
 
@@ -136,3 +138,12 @@
 
   </div>
 </AppLayout>
+
+<ConfirmModal
+  bind:open={confirmDelete.open}
+  title="Eliminar concepto"
+  message="¿Eliminar este concepto?"
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={() => router.delete(`/accounting/concepts/${confirmDelete.id}`, { preserveScroll: true })}
+/>

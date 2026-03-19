@@ -2,6 +2,7 @@
   import { router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import ImportModal from '@/Components/UI/ImportModal.svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
 
   let { thirds, filters = {}, types = [], docTypes = [] } = $props()
 
@@ -24,9 +25,10 @@
     searchTimeout = setTimeout(applyFilters, 400)
   }
 
+  let confirmDelete = $state({ open: false, id: null })
+
   function deleteThird(id) {
-    if (!confirm('¿Eliminar este tercero? Esta acción no se puede deshacer.')) return
-    router.delete(`/third-parties/${id}`, { preserveScroll: true })
+    confirmDelete = { open: true, id }
   }
 
   function toggleStatus(id) {
@@ -221,4 +223,13 @@
   templateUrl="/third-parties/import/template"
   title="Importar Terceros"
   columns={['tipo_documento','numero_documento','digito_verificacion','tipo_persona','nombre_razon_social','apellidos','email','telefono','direccion','ciudad','es_cliente','es_proveedor']}
+/>
+
+<ConfirmModal
+  bind:open={confirmDelete.open}
+  title="Eliminar tercero"
+  message="¿Eliminar este tercero? Esta acción no se puede deshacer."
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={() => router.delete('/third-parties/' + confirmDelete.id, { preserveScroll: true })}
 />

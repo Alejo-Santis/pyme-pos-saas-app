@@ -1,6 +1,7 @@
 <script>
   import { router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
 
   let { documents, filters = {}, documentTypes = [] } = $props()
 
@@ -23,9 +24,10 @@
     searchTimeout = setTimeout(applyFilters, 400)
   }
 
+  let confirmDelete = $state({ open: false, id: null })
+
   function deleteDoc(id) {
-    if (!confirm('¿Eliminar este documento? Solo se pueden eliminar borradores.')) return
-    router.delete(`/invoices/${id}`, { preserveScroll: true })
+    confirmDelete = { open: true, id }
   }
 
   const typeMap = Object.fromEntries(documentTypes.map(t => [t.id, t.name]))
@@ -200,3 +202,12 @@
     </div>
   </div>
 </AppLayout>
+
+<ConfirmModal
+  bind:open={confirmDelete.open}
+  title="Eliminar documento"
+  message="¿Eliminar este documento? Solo se pueden eliminar borradores."
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={() => router.delete(`/invoices/${confirmDelete.id}`, { preserveScroll: true })}
+/>

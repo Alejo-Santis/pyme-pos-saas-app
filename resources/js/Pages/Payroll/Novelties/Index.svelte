@@ -1,6 +1,7 @@
 <script>
   import { useForm, router } from '@inertiajs/svelte';
   import AppLayout from '@/Layouts/AppLayout.svelte';
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte';
 
   let { novelties, employees, overtimeTypes, disabilityTypes, filters } = $props();
 
@@ -38,9 +39,10 @@
     });
   }
 
+  let confirmDelete = $state({ open: false, id: null });
+
   function deleteNovelty(id) {
-    if (!confirm('¿Eliminar esta novedad?')) return;
-    router.delete(`/payroll/novelties/${id}`);
+    confirmDelete = { open: true, id };
   }
 
   const fmt = v => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v ?? 0);
@@ -331,3 +333,12 @@
     </div>
   {/if}
 </AppLayout>
+
+<ConfirmModal
+  bind:open={confirmDelete.open}
+  title="Eliminar novedad"
+  message="¿Eliminar esta novedad?"
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={() => router.delete(`/payroll/novelties/${confirmDelete.id}`)}
+/>

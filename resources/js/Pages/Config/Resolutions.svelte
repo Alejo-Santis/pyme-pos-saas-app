@@ -1,6 +1,7 @@
 <script>
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import { router, page } from '@inertiajs/svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
 
   let { resolutions, company, documentTypes } = $props()
 
@@ -78,10 +79,10 @@
     router.patch(`/config/resolutions/${r.id}/toggle`, {}, { preserveScroll: true })
   }
 
+  let confirmDelete = $state({ open: false, resolution: null })
+
   function remove(r) {
-    if (confirm(`¿Eliminar la resolución "${r.resolution}"?`)) {
-      router.delete(`/config/resolutions/${r.id}`, { preserveScroll: true })
-    }
+    confirmDelete = { open: true, resolution: r }
   }
 
   const typeLabel = (opId) => documentTypes.find(d => d.operation_id == opId)?.name ?? `Tipo ${opId}`
@@ -203,6 +204,15 @@
 
   </div>
 </AppLayout>
+
+<ConfirmModal
+  bind:open={confirmDelete.open}
+  title="Eliminar resolución"
+  message={confirmDelete.resolution ? `¿Eliminar la resolución "${confirmDelete.resolution.resolution}"?` : ''}
+  confirmLabel="Eliminar"
+  danger={true}
+  onConfirm={() => router.delete(`/config/resolutions/${confirmDelete.resolution.id}`, { preserveScroll: true })}
+/>
 
 <!-- ── Modal crear / editar ──────────────────────────────────────────── -->
 {#if showModal}

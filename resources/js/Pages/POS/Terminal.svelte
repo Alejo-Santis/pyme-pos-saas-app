@@ -1,17 +1,40 @@
 <script>
   import { router, page } from '@inertiajs/svelte'
+  import { connect, isConnected, printRaw } from '@/Services/QzTrayService.js'
+  import { buildReceipt, buildShiftReport } from '@/Services/ReceiptBuilder.js'
+  import { toast } from '@/Stores/toast.svelte.js'
 
   let { terminal, shift, items, thirds, recentSales, taxes, company } = $props()
 
   // ── Estado de la venta ────────────────────────────────────────────────
-  let lines        = $state([])
+  let lines         = $state([])
   let selectedThird = $state(null)
-  let note         = $state('')
-  let paymentForms = $state([{ payment_form_id: 1, payment_method_id: 10, value: 0 }])
-  let processing   = $state(false)
-  let lastSale     = $state(null)    // resultado de la última venta (para recibo)
-  let searchItem   = $state('')
-  let searchThird  = $state('')
+  let note          = $state('')
+  let paymentForms  = $state([{ payment_form_id: 1, payment_method_id: 10, value: 0 }])
+  let processing    = $state(false)
+  let saleError     = $state('')       // error de validación inline en el carrito
+  let lastSale      = $state(null)    // resultado de la última venta
+  let lastSaleCtx   = $state(null)    // contexto completo para reimprimir
+  let searchItem    = $state('')
+  let searchThird   = $state('')
+
+  // ── Estado de impresora ───────────────────────────────────────────────
+  let printerReady    = $state(false)
+  let printerChecking = $state(false)
+  let printing        = $state(false)
+
+  const hasPrinter = $derived(!!terminal.printer_name)
+
+  // Intentar conectar a QZ Tray al cargar la página (si hay impresora configurada)
+  $effect(() => {
+    if (hasPrinter) initPrinter()
+  })
+
+  async function initPrinter() {
+    printerChecking = true
+    printerReady = await connect()
+    printerChecking = false
+  }
 
   // ── Catálogos de búsqueda ─────────────────────────────────────────────
   let filteredItems = $derived(
@@ -99,10 +122,19 @@
 
   // ── Procesar venta ────────────────────────────────────────────────────
   async function processSale() {
-    if (lines.length === 0) return alert('Agrega al menos un artículo.')
-    if (totalPaid < totals.total) return alert('El pago no cubre el total.')
+    if (lines.length === 0) { saleError = 'Agrega al menos un artículo.'; return }
+    if (totalPaid < totals.total) { saleError = 'El pago no cubre el total.'; return }
+    saleError = ''
 
     processing = true
+    // Capturar contexto antes de limpiar
+    const saleCtx = {
+      lines:        [...lines],
+      paymentForms: [...paymentForms],
+      third:        selectedThird,
+      totals:       { ...totals },
+    }
+
     try {
       const res = await fetch(`/pos/${terminal.id}/sale`, {
         method:  'POST',
@@ -116,21 +148,57 @@
       })
       const data = await res.json()
       if (data.success) {
-        lastSale = data
-        // Reset
+        lastSale    = data
+        lastSaleCtx = { ...saleCtx, sale: data }
+        // Reset carrito
         lines         = []
         selectedThird = null
         note          = ''
         paymentForms  = [{ payment_form_id: 1, payment_method_id: 10, value: 0 }]
         // Recargar ventas recientes y estado del turno sin recargar toda la página
         router.reload({ only: ['recentSales', 'shift'] })
+        // Imprimir automáticamente si hay impresora configurada
+        if (hasPrinter) printReceipt(lastSaleCtx)
       } else {
-        alert('Error al procesar la venta.')
+        toast.error('Error al procesar la venta.')
       }
     } catch {
-      alert('Error de red al procesar la venta.')
+      toast.error('Error de red al procesar la venta.')
     } finally {
       processing = false
+    }
+  }
+
+  // ── Impresión de recibo ────────────────────────────────────────────────
+  async function printReceipt(ctx) {
+    if (!hasPrinter) return
+    printing = true
+    try {
+      if (!isConnected()) {
+        const ok = await connect()
+        if (!ok) {
+          toast.warning('QZ Tray no está disponible. Instálalo en este equipo para imprimir.')
+          return
+        }
+        printerReady = true
+      }
+      const data = buildReceipt({
+        company:      company,
+        terminal:     terminal,
+        shift:        shift,
+        sale:         ctx.sale,
+        lines:        ctx.lines,
+        paymentForms: ctx.paymentForms,
+        third:        ctx.third,
+        totals:       ctx.totals,
+        is80mm:       terminal.printer_type === '80mm',
+      })
+      await printRaw(terminal.printer_name, data)
+    } catch (err) {
+      console.error('[Impresión] Error:', err)
+      toast.error('Error al imprimir: ' + err.message)
+    } finally {
+      printing = false
     }
   }
 
@@ -175,6 +243,15 @@
           <i class="mdi mdi-cash-register"></i>
           Caja: <strong class="text-white ml-0.5">${fmt(Number(shift.initial_balance) + Number(shift.total_cash))}</strong>
         </span>
+        <!-- Indicador de impresora -->
+        {#if hasPrinter}
+          <span class="flex items-center gap-1 px-2 py-0.5 rounded
+            {printerChecking ? 'bg-blue-800/50 text-blue-300' : printerReady ? 'bg-green-700/60 text-green-200' : 'bg-red-700/50 text-red-200'}"
+            title="{printerReady ? 'Impresora conectada: ' + terminal.printer_name : 'QZ Tray no disponible'}">
+            <i class="mdi {printerChecking ? 'mdi-loading mdi-spin' : printerReady ? 'mdi-printer-check' : 'mdi-printer-off'} text-sm"></i>
+            <span class="hidden md:inline">{printerChecking ? 'Conectando…' : printerReady ? 'Impresora OK' : 'Sin impresora'}</span>
+          </span>
+        {/if}
       </div>
     </header>
 
@@ -421,10 +498,34 @@
     <div class="p-4 space-y-2 mt-auto">
 
       {#if lastSale}
-        <div class="text-center text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-green-700 mb-2">
-          <i class="mdi mdi-check-circle text-green-500 text-lg block mb-0.5"></i>
-          Venta {lastSale.internal_code} · ${fmt(lastSale.total)}
-          {#if lastSale.change > 0}<br/><span class="font-semibold">Cambio: ${fmt(lastSale.change)}</span>{/if}
+        <div class="text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-green-700 mb-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <i class="mdi mdi-check-circle text-green-500 text-lg"></i>
+              <span class="font-medium">{lastSale.internal_code}</span>
+              <span>· ${fmt(lastSale.total)}</span>
+            </div>
+            {#if hasPrinter}
+              <button
+                onclick={() => printReceipt(lastSaleCtx)}
+                disabled={printing}
+                title="Reimprimir recibo"
+                class="flex items-center gap-1 text-xs px-2 py-1 bg-white border border-green-300 rounded-lg text-green-700 hover:bg-green-100 transition cursor-pointer disabled:opacity-50">
+                <i class="mdi {printing ? 'mdi-loading mdi-spin' : 'mdi-printer'} text-sm"></i>
+                {printing ? 'Imprimiendo…' : 'Reimprimir'}
+              </button>
+            {/if}
+          </div>
+          {#if lastSale.change > 0}
+            <p class="font-semibold mt-1 ml-6">Cambio: ${fmt(lastSale.change)}</p>
+          {/if}
+        </div>
+      {/if}
+
+      {#if saleError}
+        <div class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">
+          <i class="mdi mdi-alert-circle-outline flex-shrink-0"></i>
+          {saleError}
         </div>
       {/if}
 

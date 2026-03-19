@@ -2,8 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Modules\Accounting\Controllers\AccountingConceptController;
+use App\Modules\Accounting\Controllers\AccountingController;
+use App\Modules\Accounting\Controllers\FinancialReportController;
 use App\Modules\Auth\Controllers\LoginController;
+use App\Modules\Cash\Controllers\BankController;
+use App\Modules\Cash\Controllers\CashBoxController;
 use App\Modules\Core\Controllers\CompanyController;
+use App\Modules\Core\Controllers\DashboardController;
 use App\Modules\Core\Controllers\EstablishmentController;
 use App\Modules\Core\Controllers\OnboardingController;
 use App\Modules\Core\Controllers\ResolutionController;
@@ -12,19 +18,13 @@ use App\Modules\Core\Controllers\WarehouseController;
 use App\Modules\Inventory\Controllers\ItemCategoryController;
 use App\Modules\Inventory\Controllers\ItemController;
 use App\Modules\Inventory\Controllers\TransferController;
-use App\Modules\Accounting\Controllers\AccountingController;
-use App\Modules\Accounting\Controllers\FinancialReportController;
 use App\Modules\Invoice\Controllers\InvoiceController;
-use App\Modules\Cash\Controllers\BankController;
-use App\Modules\Cash\Controllers\CashBoxController;
-use App\Modules\Core\Controllers\DashboardController;
-use App\Modules\POS\Controllers\PosController;
-use App\Modules\Purchases\Controllers\PurchaseController;
-use App\Modules\Reports\Controllers\ReportController;
 use App\Modules\Payroll\Controllers\EmployeeController;
 use App\Modules\Payroll\Controllers\PayrollController;
 use App\Modules\Payroll\Controllers\SocialBenefitController;
-use App\Modules\Accounting\Controllers\AccountingConceptController;
+use App\Modules\POS\Controllers\PosController;
+use App\Modules\Purchases\Controllers\PurchaseController;
+use App\Modules\Reports\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -48,7 +48,7 @@ Route::middleware([
 
     // ─── Auth (públicas dentro del tenant) ────────────────────────────────
     Route::middleware('guest')->group(function () {
-        Route::get('/login',  [LoginController::class, 'show'])->name('login');
+        Route::get('/login', [LoginController::class, 'show'])->name('login');
         Route::post('/login', [LoginController::class, 'store'])->name('login.store');
     });
 
@@ -61,10 +61,10 @@ Route::middleware([
 
         // ─── Onboarding wizard (configuración inicial) ────────────────────
         Route::prefix('onboarding')->name('onboarding.')->group(function () {
-            Route::get('/',                 [OnboardingController::class, 'show'])->name('show');
-            Route::post('/company',         [OnboardingController::class, 'saveCompany'])->name('company');
-            Route::post('/resolution',      [OnboardingController::class, 'saveResolution'])->name('resolution');
-            Route::post('/complete',        [OnboardingController::class, 'complete'])->name('complete');
+            Route::get('/', [OnboardingController::class, 'show'])->name('show');
+            Route::post('/company', [OnboardingController::class, 'saveCompany'])->name('company');
+            Route::post('/resolution', [OnboardingController::class, 'saveResolution'])->name('resolution');
+            Route::post('/complete', [OnboardingController::class, 'complete'])->name('complete');
             Route::get('/municipalities/{departmentId}', [OnboardingController::class, 'municipalities'])->name('municipalities');
         });
 
@@ -76,210 +76,213 @@ Route::middleware([
             // ─── Configuración de empresa (Fase 5) ───────────────────────
             Route::prefix('config')->name('config.')->middleware('permission:config.view')->group(function () {
                 // Establecimientos
-                Route::get('/establishments',                   [EstablishmentController::class, 'index'])->name('establishments');
-                Route::post('/establishments',                  [EstablishmentController::class, 'store'])->name('establishments.store');
-                Route::put('/establishments/{establishment}',   [EstablishmentController::class, 'update'])->name('establishments.update');
-                Route::delete('/establishments/{establishment}',[EstablishmentController::class, 'destroy'])->name('establishments.destroy');
+                Route::get('/establishments', [EstablishmentController::class, 'index'])->name('establishments');
+                Route::post('/establishments', [EstablishmentController::class, 'store'])->name('establishments.store');
+                Route::put('/establishments/{establishment}', [EstablishmentController::class, 'update'])->name('establishments.update');
+                Route::delete('/establishments/{establishment}', [EstablishmentController::class, 'destroy'])->name('establishments.destroy');
 
                 // Bodegas
-                Route::get('/warehouses',              [WarehouseController::class, 'index'])->name('warehouses');
-                Route::post('/warehouses',             [WarehouseController::class, 'store'])->name('warehouses.store');
-                Route::put('/warehouses/{warehouse}',  [WarehouseController::class, 'update'])->name('warehouses.update');
-                Route::delete('/warehouses/{warehouse}',[WarehouseController::class, 'destroy'])->name('warehouses.destroy');
+                Route::get('/warehouses', [WarehouseController::class, 'index'])->name('warehouses');
+                Route::post('/warehouses', [WarehouseController::class, 'store'])->name('warehouses.store');
+                Route::put('/warehouses/{warehouse}', [WarehouseController::class, 'update'])->name('warehouses.update');
+                Route::delete('/warehouses/{warehouse}', [WarehouseController::class, 'destroy'])->name('warehouses.destroy');
 
                 // Configuración de empresa
-                Route::get('/company',  [CompanyController::class, 'show'])->name('company');
-                Route::put('/company',  [CompanyController::class, 'update'])->name('company.update');
+                Route::get('/company', [CompanyController::class, 'show'])->name('company');
+                Route::put('/company', [CompanyController::class, 'update'])->name('company.update');
 
                 // Resoluciones DIAN
-                Route::get('/resolutions',                      [ResolutionController::class, 'index'])->name('resolutions');
-                Route::post('/resolutions',                     [ResolutionController::class, 'store'])->name('resolutions.store');
-                Route::put('/resolutions/{resolution}',         [ResolutionController::class, 'update'])->name('resolutions.update');
-                Route::delete('/resolutions/{resolution}',      [ResolutionController::class, 'destroy'])->name('resolutions.destroy');
-                Route::patch('/resolutions/{resolution}/toggle',[ResolutionController::class, 'toggle'])->name('resolutions.toggle');
+                Route::get('/resolutions', [ResolutionController::class, 'index'])->name('resolutions');
+                Route::post('/resolutions', [ResolutionController::class, 'store'])->name('resolutions.store');
+                Route::put('/resolutions/{resolution}', [ResolutionController::class, 'update'])->name('resolutions.update');
+                Route::delete('/resolutions/{resolution}', [ResolutionController::class, 'destroy'])->name('resolutions.destroy');
+                Route::patch('/resolutions/{resolution}/toggle', [ResolutionController::class, 'toggle'])->name('resolutions.toggle');
             });
 
             // ─── Terceros (Fase 6) ────────────────────────────────────────
             Route::prefix('third-parties')->name('third-parties.')->group(function () {
-                Route::get('/',                            [ThirdPartyController::class, 'index'])->name('index');
-                Route::get('/create',                      [ThirdPartyController::class, 'create'])->name('create');
-                Route::post('/',                           [ThirdPartyController::class, 'store'])->name('store');
-                Route::get('/import/template',             [ThirdPartyController::class, 'downloadTemplate'])->name('import.template');
-                Route::post('/import',                     [ThirdPartyController::class, 'import'])->name('import');
-                Route::get('/{thirdParty}/edit',           [ThirdPartyController::class, 'edit'])->name('edit');
-                Route::put('/{thirdParty}',                [ThirdPartyController::class, 'update'])->name('update');
-                Route::delete('/{thirdParty}',             [ThirdPartyController::class, 'destroy'])->name('destroy');
-                Route::patch('/{thirdParty}/toggle',       [ThirdPartyController::class, 'toggleStatus'])->name('toggle');
+                Route::get('/', [ThirdPartyController::class, 'index'])->name('index');
+                Route::get('/create', [ThirdPartyController::class, 'create'])->name('create');
+                Route::post('/', [ThirdPartyController::class, 'store'])->name('store');
+                Route::get('/import/template', [ThirdPartyController::class, 'downloadTemplate'])->name('import.template');
+                Route::post('/import', [ThirdPartyController::class, 'import'])->name('import');
+                Route::get('/{thirdParty}/edit', [ThirdPartyController::class, 'edit'])->name('edit');
+                Route::put('/{thirdParty}', [ThirdPartyController::class, 'update'])->name('update');
+                Route::delete('/{thirdParty}', [ThirdPartyController::class, 'destroy'])->name('destroy');
+                Route::patch('/{thirdParty}/toggle', [ThirdPartyController::class, 'toggleStatus'])->name('toggle');
             });
 
             // ─── Inventario (Fase 7) ──────────────────────────────────────
             Route::prefix('inventory')->name('inventory.')->middleware('permission:inventory.view')->group(function () {
 
                 // Ítems / productos
-                Route::get('/',                    [ItemController::class, 'index'])->name('index');
-                Route::get('/create',              [ItemController::class, 'create'])->name('create');
-                Route::post('/',                   [ItemController::class, 'store'])->name('store');
-                Route::get('/import/template',     [ItemController::class, 'downloadTemplate'])->name('import.template');
-                Route::post('/import',             [ItemController::class, 'import'])->name('import');
-                Route::get('/{item}/edit',         [ItemController::class, 'edit'])->name('edit')->whereUuid('item');
-                Route::put('/{item}',              [ItemController::class, 'update'])->name('update')->whereUuid('item');
-                Route::delete('/{item}',           [ItemController::class, 'destroy'])->name('destroy')->whereUuid('item');
-                Route::patch('/{item}/toggle',     [ItemController::class, 'toggleStatus'])->name('toggle')->whereUuid('item');
+                Route::get('/', [ItemController::class, 'index'])->name('index');
+                Route::get('/create', [ItemController::class, 'create'])->name('create');
+                Route::post('/', [ItemController::class, 'store'])->name('store');
+                Route::get('/import/template', [ItemController::class, 'downloadTemplate'])->name('import.template');
+                Route::post('/import', [ItemController::class, 'import'])->name('import');
+                Route::get('/{item}/edit', [ItemController::class, 'edit'])->name('edit')->whereUuid('item');
+                Route::put('/{item}', [ItemController::class, 'update'])->name('update')->whereUuid('item');
+                Route::delete('/{item}', [ItemController::class, 'destroy'])->name('destroy')->whereUuid('item');
+                Route::patch('/{item}/toggle', [ItemController::class, 'toggleStatus'])->name('toggle')->whereUuid('item');
 
                 // Categorías de ítems
                 Route::prefix('categories')->name('categories.')->group(function () {
-                    Route::get('/',                         [ItemCategoryController::class, 'index'])->name('index');
-                    Route::post('/',                        [ItemCategoryController::class, 'store'])->name('store');
-                    Route::put('/{itemCategory}',           [ItemCategoryController::class, 'update'])->name('update');
-                    Route::delete('/{itemCategory}',        [ItemCategoryController::class, 'destroy'])->name('destroy');
+                    Route::get('/', [ItemCategoryController::class, 'index'])->name('index');
+                    Route::post('/', [ItemCategoryController::class, 'store'])->name('store');
+                    Route::put('/{itemCategory}', [ItemCategoryController::class, 'update'])->name('update');
+                    Route::delete('/{itemCategory}', [ItemCategoryController::class, 'destroy'])->name('destroy');
                 });
 
                 // Traslados entre bodegas
                 Route::prefix('transfers')->name('transfers.')->group(function () {
-                    Route::get('/',                          [TransferController::class, 'index'])->name('index');
-                    Route::get('/create',                    [TransferController::class, 'create'])->name('create');
-                    Route::post('/',                         [TransferController::class, 'store'])->name('store');
-                    Route::get('/{transfer}',                [TransferController::class, 'show'])->name('show');
-                    Route::post('/{transfer}/dispatch',      [TransferController::class, 'dispatch'])->name('dispatch');
-                    Route::post('/{transfer}/receive',       [TransferController::class, 'receive'])->name('receive');
-                    Route::post('/{transfer}/cancel',        [TransferController::class, 'cancel'])->name('cancel');
+                    Route::get('/', [TransferController::class, 'index'])->name('index');
+                    Route::get('/create', [TransferController::class, 'create'])->name('create');
+                    Route::post('/', [TransferController::class, 'store'])->name('store');
+                    Route::get('/{transfer}', [TransferController::class, 'show'])->name('show');
+                    Route::post('/{transfer}/dispatch', [TransferController::class, 'dispatch'])->name('dispatch');
+                    Route::post('/{transfer}/receive', [TransferController::class, 'receive'])->name('receive');
+                    Route::post('/{transfer}/cancel', [TransferController::class, 'cancel'])->name('cancel');
                 });
             });
 
             // ─── Facturación electrónica (Fase 8) ────────────────────────
             Route::prefix('invoices')->name('invoices.')->middleware('permission:invoices.view')->group(function () {
-                Route::get('/',                              [InvoiceController::class, 'index'])->name('index');
-                Route::get('/create',                        [InvoiceController::class, 'create'])->name('create');
-                Route::post('/',                             [InvoiceController::class, 'store'])->name('store');
-                Route::get('/{document}',                    [InvoiceController::class, 'show'])->name('show');
-                Route::get('/{document}/edit',               [InvoiceController::class, 'edit'])->name('edit');
-                Route::put('/{document}',                    [InvoiceController::class, 'update'])->name('update');
-                Route::delete('/{document}',                 [InvoiceController::class, 'destroy'])->name('destroy');
-                Route::post('/{document}/credit-note',       [InvoiceController::class, 'storeCreditNote'])->name('credit-note');
+                Route::get('/', [InvoiceController::class, 'index'])->name('index');
+                Route::get('/create', [InvoiceController::class, 'create'])->name('create');
+                Route::post('/', [InvoiceController::class, 'store'])->name('store');
+                Route::get('/{document}', [InvoiceController::class, 'show'])->name('show');
+                Route::get('/{document}/edit', [InvoiceController::class, 'edit'])->name('edit');
+                Route::put('/{document}', [InvoiceController::class, 'update'])->name('update');
+                Route::delete('/{document}', [InvoiceController::class, 'destroy'])->name('destroy');
+                Route::post('/{document}/credit-note', [InvoiceController::class, 'storeCreditNote'])->name('credit-note');
+                Route::post('/{document}/debit-note',  [InvoiceController::class, 'storeDebitNote'])->name('debit-note');
             });
 
             // ─── Caja y bancos ────────────────────────────────────────────
             Route::prefix('cash')->name('cash.')->group(function () {
                 // Cajas de efectivo
-                Route::get('/',                                          [CashBoxController::class, 'index'])->name('index');
-                Route::post('/boxes',                                    [CashBoxController::class, 'store'])->name('boxes.store');
-                Route::put('/boxes/{cashBox}',                           [CashBoxController::class, 'update'])->name('boxes.update');
-                Route::delete('/boxes/{cashBox}',                        [CashBoxController::class, 'destroy'])->name('boxes.destroy');
-                Route::get('/boxes/{cashBox}',                           [CashBoxController::class, 'show'])->name('boxes.show');
-                Route::post('/boxes/{cashBox}/movements',                [CashBoxController::class, 'storeMovement'])->name('boxes.movements.store');
-                Route::post('/boxes/transfer',                           [CashBoxController::class, 'transfer'])->name('boxes.transfer');
+                Route::get('/', [CashBoxController::class, 'index'])->name('index');
+                Route::post('/boxes', [CashBoxController::class, 'store'])->name('boxes.store');
+                Route::put('/boxes/{cashBox}', [CashBoxController::class, 'update'])->name('boxes.update');
+                Route::delete('/boxes/{cashBox}', [CashBoxController::class, 'destroy'])->name('boxes.destroy');
+                Route::get('/boxes/{cashBox}', [CashBoxController::class, 'show'])->name('boxes.show');
+                Route::post('/boxes/{cashBox}/movements', [CashBoxController::class, 'storeMovement'])->name('boxes.movements.store');
+                Route::post('/boxes/transfer', [CashBoxController::class, 'transfer'])->name('boxes.transfer');
 
                 // Bancos y cuentas bancarias
-                Route::get('/banks',                                     [BankController::class, 'index'])->name('banks.index');
-                Route::post('/banks',                                    [BankController::class, 'store'])->name('banks.store');
-                Route::put('/banks/{bank}',                              [BankController::class, 'update'])->name('banks.update');
-                Route::delete('/banks/{bank}',                           [BankController::class, 'destroy'])->name('banks.destroy');
-                Route::post('/banks/{bank}/accounts',                    [BankController::class, 'storeAccount'])->name('banks.accounts.store');
-                Route::put('/banks/accounts/{account}',                  [BankController::class, 'updateAccount'])->name('banks.accounts.update');
-                Route::delete('/banks/accounts/{account}',               [BankController::class, 'destroyAccount'])->name('banks.accounts.destroy');
-                Route::post('/banks/accounts/{account}/movements',       [BankController::class, 'storeMovement'])->name('banks.accounts.movements.store');
+                Route::get('/banks', [BankController::class, 'index'])->name('banks.index');
+                Route::post('/banks', [BankController::class, 'store'])->name('banks.store');
+                Route::put('/banks/{bank}', [BankController::class, 'update'])->name('banks.update');
+                Route::delete('/banks/{bank}', [BankController::class, 'destroy'])->name('banks.destroy');
+                Route::post('/banks/{bank}/accounts', [BankController::class, 'storeAccount'])->name('banks.accounts.store');
+                Route::put('/banks/accounts/{account}', [BankController::class, 'updateAccount'])->name('banks.accounts.update');
+                Route::delete('/banks/accounts/{account}', [BankController::class, 'destroyAccount'])->name('banks.accounts.destroy');
+                Route::post('/banks/accounts/{account}/movements', [BankController::class, 'storeMovement'])->name('banks.accounts.movements.store');
             });
 
             // ─── POS ──────────────────────────────────────────────────────
             Route::prefix('pos')->name('pos.')->middleware('permission:pos.view')->group(function () {
                 // Selección de terminales
-                Route::get('/',                              [PosController::class, 'index'])->name('index');
+                Route::get('/', [PosController::class, 'index'])->name('index');
 
                 // Gestión de terminales (admin)
-                Route::post('/terminals',                    [PosController::class, 'storeTerminal'])->name('terminals.store');
-                Route::put('/terminals/{terminal}',          [PosController::class, 'updateTerminal'])->name('terminals.update');
-                Route::delete('/terminals/{terminal}',       [PosController::class, 'destroyTerminal'])->name('terminals.destroy');
+                Route::post('/terminals', [PosController::class, 'storeTerminal'])->name('terminals.store');
+                Route::put('/terminals/{terminal}', [PosController::class, 'updateTerminal'])->name('terminals.update');
+                Route::delete('/terminals/{terminal}', [PosController::class, 'destroyTerminal'])->name('terminals.destroy');
 
                 // Turnos de caja
-                Route::post('/{terminal}/open',              [PosController::class, 'openShift'])->name('open');
-                Route::post('/{terminal}/close',             [PosController::class, 'closeShift'])->name('close');
+                Route::post('/{terminal}/open', [PosController::class, 'openShift'])->name('open');
+                Route::get('/{terminal}/shift-summary', [PosController::class, 'shiftSummary'])->name('shift-summary');
+                Route::post('/{terminal}/close', [PosController::class, 'closeShift'])->name('close');
 
                 // Pantalla de venta
-                Route::get('/{terminal}',                    [PosController::class, 'terminal'])->name('terminal');
-                Route::post('/{terminal}/sale',              [PosController::class, 'store'])->name('sale');
+                Route::get('/{terminal}', [PosController::class, 'terminal'])->name('terminal');
+                Route::post('/{terminal}/sale', [PosController::class, 'store'])->name('sale');
             });
 
             // ─── Contabilidad ─────────────────────────────────────────────
             Route::prefix('accounting')->name('accounting.')->middleware('role:admin|contador')->group(function () {
-                Route::get('/journal',                    [AccountingController::class,        'journal'])->name('journal');
-                Route::get('/journal/export',             [AccountingController::class,        'exportJournal'])->name('journal.export');
-                Route::get('/ledger',                     [AccountingController::class,        'ledger'])->name('ledger');
-                Route::get('/trial-balance',              [AccountingController::class,        'trialBalance'])->name('trial-balance');
-                Route::get('/trial-balance/export',       [AccountingController::class,        'exportTrialBalance'])->name('trial-balance.export');
-                Route::get('/income-statement',           [FinancialReportController::class,   'incomeStatement'])->name('income-statement');
-                Route::get('/income-statement/export',    [FinancialReportController::class,   'exportIncomeStatement'])->name('income-statement.export');
-                Route::get('/balance-sheet',              [FinancialReportController::class,   'balanceSheet'])->name('balance-sheet');
-                Route::get('/balance-sheet/export',       [FinancialReportController::class,   'exportBalanceSheet'])->name('balance-sheet.export');
+                Route::get('/journal', [AccountingController::class,        'journal'])->name('journal');
+                Route::get('/journal/export', [AccountingController::class,        'exportJournal'])->name('journal.export');
+                Route::get('/ledger', [AccountingController::class,        'ledger'])->name('ledger');
+                Route::get('/trial-balance', [AccountingController::class,        'trialBalance'])->name('trial-balance');
+                Route::get('/trial-balance/export', [AccountingController::class,        'exportTrialBalance'])->name('trial-balance.export');
+                Route::get('/income-statement', [FinancialReportController::class,   'incomeStatement'])->name('income-statement');
+                Route::get('/income-statement/export', [FinancialReportController::class,   'exportIncomeStatement'])->name('income-statement.export');
+                Route::get('/balance-sheet', [FinancialReportController::class,   'balanceSheet'])->name('balance-sheet');
+                Route::get('/balance-sheet/export', [FinancialReportController::class,   'exportBalanceSheet'])->name('balance-sheet.export');
                 // Configuración de conceptos contables
                 Route::prefix('concepts')->name('concepts.')->group(function () {
-                    Route::get('/',                       [AccountingConceptController::class, 'index'])->name('index');
-                    Route::get('/create',                 [AccountingConceptController::class, 'create'])->name('create');
-                    Route::post('/',                      [AccountingConceptController::class, 'store'])->name('store');
-                    Route::get('/{concept}/edit',         [AccountingConceptController::class, 'edit'])->name('edit');
-                    Route::put('/{concept}',              [AccountingConceptController::class, 'update'])->name('update');
-                    Route::delete('/{concept}',           [AccountingConceptController::class, 'destroy'])->name('destroy');
+                    Route::get('/', [AccountingConceptController::class, 'index'])->name('index');
+                    Route::get('/create', [AccountingConceptController::class, 'create'])->name('create');
+                    Route::post('/', [AccountingConceptController::class, 'store'])->name('store');
+                    Route::get('/{concept}/edit', [AccountingConceptController::class, 'edit'])->name('edit');
+                    Route::put('/{concept}', [AccountingConceptController::class, 'update'])->name('update');
+                    Route::delete('/{concept}', [AccountingConceptController::class, 'destroy'])->name('destroy');
                 });
             });
 
             // ─── Compras ──────────────────────────────────────────────────
             Route::prefix('purchases')->name('purchases.')->middleware('permission:purchases.view')->group(function () {
-                Route::get('/',                         [PurchaseController::class, 'index'])->name('index');
-                Route::get('/create',                   [PurchaseController::class, 'create'])->name('create');
-                Route::post('/',                        [PurchaseController::class, 'store'])->name('store');
-                Route::get('/{purchase}',               [PurchaseController::class, 'show'])->name('show');
-                Route::post('/{purchase}/approve',      [PurchaseController::class, 'approve'])->name('approve');
-                Route::post('/{purchase}/receive',      [PurchaseController::class, 'receive'])->name('receive');
-                Route::post('/{purchase}/annul',        [PurchaseController::class, 'annul'])->name('annul');
+                Route::get('/', [PurchaseController::class, 'index'])->name('index');
+                Route::get('/create', [PurchaseController::class, 'create'])->name('create');
+                Route::post('/', [PurchaseController::class, 'store'])->name('store');
+                Route::get('/{purchase}', [PurchaseController::class, 'show'])->name('show');
+                Route::post('/{purchase}/approve', [PurchaseController::class, 'approve'])->name('approve');
+                Route::post('/{purchase}/receive', [PurchaseController::class, 'receive'])->name('receive');
+                Route::post('/{purchase}/annul', [PurchaseController::class, 'annul'])->name('annul');
+                Route::post('/{purchase}/support-document', [PurchaseController::class, 'storeSupportDocument'])->name('support-document');
             });
 
             // ─── Nómina ───────────────────────────────────────────────────
             Route::prefix('payroll')->name('payroll.')->middleware('role:admin')->group(function () {
                 // Empleados
                 Route::prefix('employees')->name('employees.')->group(function () {
-                    Route::get('/',                    [EmployeeController::class, 'index'])->name('index');
-                    Route::get('/create',              [EmployeeController::class, 'create'])->name('create');
-                    Route::post('/',                   [EmployeeController::class, 'store'])->name('store');
-                    Route::get('/import/template',     [EmployeeController::class, 'downloadTemplate'])->name('import.template');
-                    Route::post('/import',             [EmployeeController::class, 'import'])->name('import');
-                    Route::get('/{employee}',          [EmployeeController::class, 'show'])->name('show');
-                    Route::get('/{employee}/edit',     [EmployeeController::class, 'edit'])->name('edit');
-                    Route::put('/{employee}',          [EmployeeController::class, 'update'])->name('update');
-                    Route::delete('/{employee}',       [EmployeeController::class, 'destroy'])->name('destroy');
+                    Route::get('/', [EmployeeController::class, 'index'])->name('index');
+                    Route::get('/create', [EmployeeController::class, 'create'])->name('create');
+                    Route::post('/', [EmployeeController::class, 'store'])->name('store');
+                    Route::get('/import/template', [EmployeeController::class, 'downloadTemplate'])->name('import.template');
+                    Route::post('/import', [EmployeeController::class, 'import'])->name('import');
+                    Route::get('/{employee}', [EmployeeController::class, 'show'])->name('show');
+                    Route::get('/{employee}/edit', [EmployeeController::class, 'edit'])->name('edit');
+                    Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
+                    Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
                 });
                 // Liquidaciones
                 Route::prefix('runs')->name('runs.')->group(function () {
-                    Route::get('/',                    [PayrollController::class, 'index'])->name('index');
-                    Route::get('/create',              [PayrollController::class, 'create'])->name('create');
-                    Route::post('/',                   [PayrollController::class, 'store'])->name('store');
-                    Route::get('/{run}',               [PayrollController::class, 'show'])->name('show');
-                    Route::get('/{run}/export',        [PayrollController::class, 'export'])->name('export');
-                    Route::post('/{run}/approve',      [PayrollController::class, 'approve'])->name('approve');
-                    Route::post('/{run}/mark-paid',    [PayrollController::class, 'markPaid'])->name('mark-paid');
-                    Route::post('/{run}/cancel',       [PayrollController::class, 'cancel'])->name('cancel');
+                    Route::get('/', [PayrollController::class, 'index'])->name('index');
+                    Route::get('/create', [PayrollController::class, 'create'])->name('create');
+                    Route::post('/', [PayrollController::class, 'store'])->name('store');
+                    Route::get('/{run}', [PayrollController::class, 'show'])->name('show');
+                    Route::get('/{run}/export', [PayrollController::class, 'export'])->name('export');
+                    Route::post('/{run}/approve', [PayrollController::class, 'approve'])->name('approve');
+                    Route::post('/{run}/mark-paid', [PayrollController::class, 'markPaid'])->name('mark-paid');
+                    Route::post('/{run}/cancel', [PayrollController::class, 'cancel'])->name('cancel');
                 });
                 // Novedades
                 Route::prefix('novelties')->name('novelties.')->group(function () {
-                    Route::get('/',              [PayrollController::class, 'noveltyIndex'])->name('index');
-                    Route::post('/',             [PayrollController::class, 'noveltyStore'])->name('store');
-                    Route::delete('/{novelty}',  [PayrollController::class, 'noveltyDestroy'])->name('destroy');
+                    Route::get('/', [PayrollController::class, 'noveltyIndex'])->name('index');
+                    Route::post('/', [PayrollController::class, 'noveltyStore'])->name('store');
+                    Route::delete('/{novelty}', [PayrollController::class, 'noveltyDestroy'])->name('destroy');
                 });
                 // Prestaciones sociales
                 Route::prefix('benefits')->name('benefits.')->group(function () {
-                    Route::get('/',                          [SocialBenefitController::class, 'index'])->name('index');
-                    Route::get('/calculate',                 [SocialBenefitController::class, 'calculate'])->name('calculate');
-                    Route::post('/',                         [SocialBenefitController::class, 'store'])->name('store');
-                    Route::post('/{benefit}/pay',            [SocialBenefitController::class, 'pay'])->name('pay');
-                    Route::delete('/{benefit}',              [SocialBenefitController::class, 'destroy'])->name('destroy');
+                    Route::get('/', [SocialBenefitController::class, 'index'])->name('index');
+                    Route::get('/calculate', [SocialBenefitController::class, 'calculate'])->name('calculate');
+                    Route::post('/', [SocialBenefitController::class, 'store'])->name('store');
+                    Route::post('/{benefit}/pay', [SocialBenefitController::class, 'pay'])->name('pay');
+                    Route::delete('/{benefit}', [SocialBenefitController::class, 'destroy'])->name('destroy');
                 });
             });
 
             // ─── Reportes ─────────────────────────────────────────────────
             Route::prefix('reports')->name('reports.')->middleware('permission:reports.view')->group(function () {
-                Route::get('/sales',            [ReportController::class, 'sales'])->name('sales');
-                Route::get('/sales/export',     [ReportController::class, 'exportSales'])->name('sales.export');
-                Route::get('/cash',             [ReportController::class, 'cash'])->name('cash');
-                Route::get('/cash/export',      [ReportController::class, 'exportCash'])->name('cash.export');
-                Route::get('/inventory',        [ReportController::class, 'inventory'])->name('inventory');
+                Route::get('/sales', [ReportController::class, 'sales'])->name('sales');
+                Route::get('/sales/export', [ReportController::class, 'exportSales'])->name('sales.export');
+                Route::get('/cash', [ReportController::class, 'cash'])->name('cash');
+                Route::get('/cash/export', [ReportController::class, 'exportCash'])->name('cash.export');
+                Route::get('/inventory', [ReportController::class, 'inventory'])->name('inventory');
                 Route::get('/inventory/export', [ReportController::class, 'exportInventory'])->name('inventory.export');
             });
 

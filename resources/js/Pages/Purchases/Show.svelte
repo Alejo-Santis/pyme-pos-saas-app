@@ -42,6 +42,23 @@
     router.post(`/purchases/${order.id}/annul`, { reason: annulReason })
   }
 
+  // ── Documento Soporte ────────────────────────────────────────────────────────
+  // Disponible cuando la OC está recibida y no tiene DS previo
+  const canGenerateDS = $derived(
+    order.status === 'received' && !order.document_id && !order.annulled
+  )
+
+  let showDsModal  = $state(false)
+  let dsNote       = $state('')
+  let dsSubmitting = $state(false)
+
+  function submitSupportDocument() {
+    dsSubmitting = true
+    router.post(`/purchases/${order.id}/support-document`, { note: dsNote.trim() || null }, {
+      onFinish: () => { dsSubmitting = false },
+    })
+  }
+
   function fmt(n) {
     return Number(n ?? 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
   }
@@ -91,6 +108,12 @@
             <i class="mdi mdi-package-variant-closed-check"></i> Recibir Mercancía
           </button>
         {/if}
+        {#if canGenerateDS}
+          <button onclick={() => showDsModal = true}
+                  class="inline-flex items-center gap-1.5 border border-teal-300 text-teal-700 hover:bg-teal-50 text-sm font-medium px-4 py-2 rounded-lg">
+            <i class="mdi mdi-file-document-outline"></i> Documento Soporte
+          </button>
+        {/if}
         {#if !['received', 'cancelled'].includes(order.status)}
           <button onclick={() => showAnnulModal = true}
                   class="inline-flex items-center gap-1.5 border border-red-300 text-red-600 hover:bg-red-50 text-sm font-medium px-4 py-2 rounded-lg">
@@ -99,6 +122,20 @@
         {/if}
       </div>
     </div>
+
+    <!-- DS ya emitido -->
+    {#if order.document}
+      <div class="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-5 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-teal-700 text-sm font-semibold">
+          <i class="mdi mdi-file-document-check-outline text-base"></i>
+          Documento Soporte emitido: {order.document.internal_code ?? order.document.prefix + order.document.number}
+        </div>
+        <a href="/invoices/{order.document.id}"
+           class="text-xs text-teal-700 underline hover:text-teal-900 font-medium">
+          Ver documento →
+        </a>
+      </div>
+    {/if}
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -209,6 +246,84 @@
                   disabled={$receiveForm.processing}
                   class="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg">
             {$receiveForm.processing ? 'Procesando…' : 'Confirmar Recepción'}
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Modal: Documento Soporte -->
+  {#if showDsModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onclick={(e) => { if (e.target === e.currentTarget) showDsModal = false }}>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
+            <i class="mdi mdi-file-document-outline text-teal-600 text-lg"></i>
+          </div>
+          <div class="flex-1">
+            <h2 class="font-semibold text-slate-800 text-base">Generar Documento Soporte</h2>
+            <p class="text-xs text-slate-500">OC: {order.internal_code} · {order.third_party?.name ?? 'Sin proveedor'}</p>
+          </div>
+          <button onclick={() => showDsModal = false} class="text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="mdi mdi-close text-xl"></i>
+          </button>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+          <div class="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 text-sm text-teal-700">
+            <p class="font-semibold mb-1 flex items-center gap-1.5">
+              <i class="mdi mdi-information-outline"></i>
+              ¿Cuándo emitir un Documento Soporte?
+            </p>
+            <p class="text-xs leading-relaxed">
+              Se emite cuando el proveedor es una persona natural NO obligada a facturar (régimen simplificado).
+              En ese caso, el comprador debe expedir este documento para soportar el gasto ante la DIAN.
+            </p>
+          </div>
+
+          <!-- Resumen de la OC -->
+          <div class="text-sm space-y-1.5">
+            <div class="flex justify-between text-slate-600">
+              <span>Proveedor</span>
+              <span class="font-medium text-slate-800">{order.third_party?.name ?? '—'}</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Ítems</span>
+              <span class="font-medium text-slate-800">{order.items.length}</span>
+            </div>
+            <div class="flex justify-between text-slate-600 border-t border-slate-100 pt-1.5">
+              <span class="font-semibold">Total</span>
+              <span class="font-bold text-teal-700">{fmt(order.amount)}</span>
+            </div>
+          </div>
+
+          <!-- Observación opcional -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Observación (opcional)
+            </label>
+            <textarea
+              bind:value={dsNote}
+              rows="2"
+              placeholder="Ej: Compra a proveedor régimen simplificado..."
+              class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-300"
+            ></textarea>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+          <button onclick={() => showDsModal = false} disabled={dsSubmitting}
+            class="px-4 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50">
+            Cancelar
+          </button>
+          <button onclick={submitSupportDocument} disabled={dsSubmitting}
+            class="flex items-center gap-2 px-5 py-2 bg-teal-600 text-white text-sm font-semibold rounded-xl hover:bg-teal-700 transition cursor-pointer disabled:opacity-60">
+            {#if dsSubmitting}
+              <i class="mdi mdi-loading mdi-spin text-base"></i>
+              Generando...
+            {:else}
+              <i class="mdi mdi-file-check-outline text-base"></i>
+              Generar DS
+            {/if}
           </button>
         </div>
       </div>

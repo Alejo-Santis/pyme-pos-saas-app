@@ -1,6 +1,7 @@
 <script>
   import { router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
 
   let {
     transfer    = null,
@@ -23,11 +24,15 @@
 
   // Acciones
   let processing = $state(false)
+  let confirmAction = $state({ open: false, endpoint: '', message: '' })
 
   function action(endpoint, confirmMsg) {
-    if (!confirm(confirmMsg)) return
+    confirmAction = { open: true, endpoint, message: confirmMsg }
+  }
+
+  function executeAction() {
     processing = true
-    router.post(`/inventory/transfers/${transfer.id}/${endpoint}`, {}, {
+    router.post(`/inventory/transfers/${transfer.id}/${confirmAction.endpoint}`, {}, {
       onFinish: () => { processing = false },
     })
   }
@@ -226,6 +231,15 @@
 
   </div>
 </AppLayout>
+
+<ConfirmModal
+  bind:open={confirmAction.open}
+  title="Confirmar acción"
+  message={confirmAction.message}
+  confirmLabel="Confirmar"
+  danger={false}
+  onConfirm={executeAction}
+/>
 
 <!-- Modal de cancelación -->
 {#if showCancelModal}

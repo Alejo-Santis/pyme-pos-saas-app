@@ -1,6 +1,7 @@
 <script>
   import { router, useForm } from '@inertiajs/svelte';
   import AppLayout from '@/Layouts/AppLayout.svelte';
+  import ConfirmModal from '@/Components/UI/ConfirmModal.svelte';
   import ExportButtons from '@/Components/UI/ExportButtons.svelte';
 
   let { run, labels } = $props();
@@ -8,14 +9,14 @@
   let expandedEmployee = $state(null);
   let showCancelModal = $state(false);
   const cancelForm = useForm({ reason: '' });
+  let confirmApprove = $state(false);
+  let confirmMarkPaid = $state(false);
 
   function doApprove() {
-    if (!confirm('¿Aprobar esta liquidación?')) return;
     router.post(`/payroll/runs/${run.id}/approve`);
   }
 
   function doMarkPaid() {
-    if (!confirm('¿Marcar como pagada esta liquidación?')) return;
     router.post(`/payroll/runs/${run.id}/mark-paid`);
   }
 
@@ -63,7 +64,7 @@
       <div class="flex gap-2 items-center">
         <ExportButtons baseUrl={`/payroll/runs/${run.id}/export`} params={{}} />
         {#if run.status === 'draft'}
-          <button onclick={doApprove}
+          <button onclick={() => confirmApprove = true}
             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
             <i class="mdi mdi-check"></i> Aprobar
           </button>
@@ -72,7 +73,7 @@
             Anular
           </button>
         {:else if run.status === 'approved'}
-          <button onclick={doMarkPaid}
+          <button onclick={() => confirmMarkPaid = true}
             class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition flex items-center gap-2">
             <i class="mdi mdi-cash-check"></i> Marcar pagada
           </button>
@@ -284,3 +285,21 @@
     </div>
   {/if}
 </AppLayout>
+
+<ConfirmModal
+  bind:open={confirmApprove}
+  title="Aprobar liquidación"
+  message="¿Aprobar esta liquidación?"
+  confirmLabel="Aprobar"
+  danger={false}
+  onConfirm={doApprove}
+/>
+
+<ConfirmModal
+  bind:open={confirmMarkPaid}
+  title="Marcar como pagada"
+  message="¿Marcar como pagada esta liquidación?"
+  confirmLabel="Marcar pagada"
+  danger={false}
+  onConfirm={doMarkPaid}
+/>
