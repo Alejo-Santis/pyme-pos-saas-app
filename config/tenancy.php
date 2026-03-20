@@ -18,8 +18,8 @@ return [
     'central_domains' => [
         '127.0.0.1',
         'localhost',
-        'nextpossaas-app.test',         // Laragon local
-        env('CENTRAL_DOMAIN', 'nextpossaas-app.test'),
+        'pymepossaas-app.test',         // Laragon local
+        env('CENTRAL_DOMAIN', 'pymepossaas-app.test'),
     ],
 
     /**

@@ -3,7 +3,7 @@
  * Importar { toast } desde cualquier página para mostrar notificaciones.
  *
  * Uso:
- *   import { toast } from '@/stores/toast.svelte.js'
+ *   import { toast } from '@/Stores/toast.svelte.js'
  *   toast.success('Guardado correctamente')
  *   toast.error('Ocurrió un error')
  *   toast.warning('Revisa los campos')

@@ -91,7 +91,24 @@
       "Bash(grep -v \"node_modules\\\\|toast\\\\|//.*alert\")",
       "Bash(xargs wc:*)",
       "Bash(/tmp/nextpossaas_status.txt:*)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(grep -E \"\\\\.\\(js|json|config\\)$\")",
+      "Bash(wc -l /var/www/pyme-pos-saas-app/database/migrations/tenant/*)",
+      "Read(//etc/apache2/sites-enabled/**)",
+      "Bash(php -v)",
+      "Read(//etc/apache2/sites-available/**)",
+      "Bash(sudo tee:*)",
+      "Bash(/dev/null:*)",
+      "Read(//var/log/apache2/**)",
+      "Bash(curl -si http://pymepossaas-app.test/)",
+      "Bash(systemctl status:*)",
+      "Read(//etc/php/8.3/fpm/pool.d/**)",
+      "Bash(systemctl is-active:*)",
+      "Bash(sudo -u www-data touch /var/www/pyme-pos-saas-app/bootstrap/cache/test.tmp)",
+      "Bash(grep -rn \"from ''@/[Ss]tores/toast\" /var/www/pyme-pos-saas-app/resources/js --include=\"*.svelte\" --include=\"*.js\")"
+    ],
+    "additionalDirectories": [
+      "/etc/apache2/sites-available"
     ]
   }
 }

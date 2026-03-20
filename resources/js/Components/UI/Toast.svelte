@@ -6,7 +6,7 @@
    * - Para uso programático importar { toast } desde '@/stores/toast.svelte.js'.
    */
   import { page } from '@inertiajs/svelte'
-  import { toast, dismiss, getToasts } from '@/stores/toast.svelte.js'
+  import { toast, dismiss, getToasts } from '@/Stores/toast.svelte.js'
 
   // Clave del último flash procesado — evita duplicados cuando $effect
   // re-corre múltiples veces para la misma navegación Inertia.
