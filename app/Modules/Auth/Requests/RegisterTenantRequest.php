@@ -41,6 +41,8 @@ class RegisterTenantRequest extends FormRequest
             'admin_password.required' => 'La contraseña es obligatoria.',
             'admin_password.confirmed'=> 'Las contraseñas no coinciden.',
             'admin_password.min'      => 'La contraseña debe tener al menos 8 caracteres.',
+            'admin_password.letters'  => 'La contraseña debe contener al menos una letra.',
+            'admin_password.numbers'  => 'La contraseña debe contener al menos un número.',
             'plan_slug.required'      => 'Selecciona un plan.',
             'plan_slug.exists'        => 'El plan seleccionado no existe.',
         ];

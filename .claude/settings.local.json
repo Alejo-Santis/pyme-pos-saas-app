@@ -105,7 +105,9 @@
       "Read(//etc/php/8.3/fpm/pool.d/**)",
       "Bash(systemctl is-active:*)",
       "Bash(sudo -u www-data touch /var/www/pyme-pos-saas-app/bootstrap/cache/test.tmp)",
-      "Bash(grep -rn \"from ''@/[Ss]tores/toast\" /var/www/pyme-pos-saas-app/resources/js --include=\"*.svelte\" --include=\"*.js\")"
+      "Bash(grep -rn \"from ''@/[Ss]tores/toast\" /var/www/pyme-pos-saas-app/resources/js --include=\"*.svelte\" --include=\"*.js\")",
+      "Bash(sudo chmod:*)",
+      "Bash(chmod 664 /var/www/pyme-pos-saas-app/storage/logs/laravel.log)"
     ],
     "additionalDirectories": [
       "/etc/apache2/sites-available"

@@ -136,7 +136,9 @@ class RegisterController extends Controller
         // ya que el flash de sesión no cruza entre dominios distintos (central → tenant).
         $loginUrl = 'http://' . $domain . '/login?registered=1';
 
-        return redirect($loginUrl);
+        // Inertia::location() fuerza una redirección real del browser (no via Axios),
+        // lo que evita el error CORS al cruzar del dominio central al subdominio del tenant.
+        return Inertia::location($loginUrl);
     }
 }
 

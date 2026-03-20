@@ -24,22 +24,23 @@ return new class extends Migration
             $table->foreign('company_id')->references('id')->on('companies')->cascadeOnDelete();
 
             // Tipo de documento que ampara la resolución — FK a catálogos globales
-            $table->unsignedBigInteger('type_document_id');            // FK → public.type_documents (FEV, Doc. Equivalente...)
-            $table->unsignedBigInteger('type_document_operation_id'); // FK → public.type_document_operations (Factura VE, NC, ND...)
+            $table->unsignedBigInteger('type_document_id')->nullable();            // FK → public.type_documents (null para POS, ajustes, etc.)
+            $table->unsignedBigInteger('type_document_operation_id');              // FK → public.type_document_operations (Factura VE, NC, ND...)
 
-            // Datos de la resolución DIAN
-            $table->string('resolution');                               // número de resolución (ej: "18760000001")
-            $table->date('resolution_date');                            // fecha de la resolución
-            $table->string('prefix', 10)->nullable();                   // prefijo (ej: "FE", "POS", "NC") — nullable para POS
+            // Datos de la resolución DIAN (nullable: NC, ND, POS y otros no tienen resolución DIAN)
+            $table->string('resolution')->nullable();                               // número de resolución (ej: "18760000001")
+            $table->date('resolution_date')->nullable();                            // fecha de la resolución
+            $table->string('technical_key')->nullable();                            // clave técnica DIAN para FEV en habilitación
+            $table->string('prefix', 10)->nullable();                               // prefijo (ej: "FE", "POS", "NC")
 
             // Rango autorizado de numeración
-            $table->unsignedInteger('from');                            // inicio del rango
-            $table->unsignedInteger('to');                              // fin del rango
-            $table->unsignedInteger('current_number');                  // consecutivo actual (sincronizado con sends)
+            $table->unsignedInteger('from')->default(1);                // inicio del rango
+            $table->unsignedInteger('to')->default(999999);             // fin del rango
+            $table->unsignedInteger('current_number')->default(0);      // consecutivo actual (sincronizado con sends)
 
-            // Vigencia de la resolución
-            $table->date('date_from');                                  // inicio vigencia
-            $table->date('date_to');                                    // fin vigencia
+            // Vigencia de la resolución (nullable: solo aplica a FEV con resolución DIAN)
+            $table->date('date_from')->nullable();                      // inicio vigencia
+            $table->date('date_to')->nullable();                        // fin vigencia
 
             $table->boolean('is_active')->default(true);
             $table->timestamps();

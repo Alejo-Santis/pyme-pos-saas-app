@@ -206,7 +206,7 @@
                 placeholder="mi-empresa"
               />
               <p class="text-slate-400 text-xs mt-1">
-                Tu URL: <span class="text-blue-600 font-medium">{$form.company_slug || 'mi-empresa'}.nextpossaas-app.test</span>
+                Tu URL: <span class="text-blue-600 font-medium">{$form.company_slug || 'mi-empresa'}.pymepossaas-app.test</span>
               </p>
               {#if errors?.company_slug}
                 <p class="text-red-500 text-xs mt-1">{errors.company_slug}</p>
@@ -317,7 +317,7 @@
                 onkeydown={(e) => e.key === 'Enter' && goToLogin()}
                 class="text-slate-700 placeholder-slate-400 outline-none w-24 min-w-0 bg-transparent"
               />
-              <span class="text-slate-400 truncate">.nextpossaas-app.test</span>
+              <span class="text-slate-400 truncate">.pymepossaas-app.test</span>
             </div>
             <button
               type="button"
