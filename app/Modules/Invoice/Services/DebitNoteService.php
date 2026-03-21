@@ -84,7 +84,6 @@ class DebitNoteService
             // Crear el documento ND
             $nd = Document::create([
                 'internal_code'               => $internalCode,
-                'company_id'                  => $original->company_id,
                 'user_id'                     => $userId ?? $original->user_id,
                 'third_party_id'              => $original->third_party_id,
                 'reference_id'                => $original->id,

@@ -3,11 +3,17 @@
 namespace App\Modules\Invoice\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Mail\InvoiceMail;
 use App\Modules\Core\Models\Company;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Mail;
 use App\Modules\Core\Models\Resolution;
 use App\Modules\Core\Models\ThirdParty;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Invoice\Models\Document;
+use App\Modules\Invoice\Jobs\ProcessElectronicCreditNoteJob;
+use App\Modules\Invoice\Jobs\ProcessElectronicInvoiceJob;
+use App\Modules\Invoice\Jobs\ProcessElectronicSupportDocumentJob;
 use App\Modules\Invoice\Services\CreditNoteService;
 use App\Modules\Invoice\Services\DebitNoteService;
 use App\Modules\Invoice\Services\InvoiceService;
@@ -114,7 +120,6 @@ class InvoiceController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'company_id'                  => 'required|uuid|exists:companies,id',
             'third_party_id'              => 'nullable|uuid|exists:third_parties,id',
             'seller_id'                   => 'nullable|uuid|exists:users,id',
             'type_document_id'            => 'required|integer',
@@ -158,7 +163,6 @@ class InvoiceController extends Controller
             'lines.item',
             'thirdParty',
             'resolution',
-            'company',
             'creditNotes.lines',
             'reference',
         ]);
@@ -314,7 +318,115 @@ class InvoiceController extends Controller
             ->with('success', 'Documento eliminado correctamente.');
     }
 
+    /**
+     * Reintenta el envío electrónico a la DIAN de un documento fallido.
+     */
+    public function retryDian(Document $document): RedirectResponse
+    {
+        if ($document->electronic) {
+            return back()->withErrors(['dian' => 'El documento ya fue enviado exitosamente a la DIAN.']);
+        }
+
+        if ($document->annulled) {
+            return back()->withErrors(['dian' => 'No se puede reintentar un documento anulado.']);
+        }
+
+        $allowedStatuses = ['failed', 'rejected', 'pending'];
+        if (! in_array($document->dian_status, $allowedStatuses)) {
+            return back()->withErrors(['dian' => 'El documento no está en un estado que permita reintento.']);
+        }
+
+        // Resetear estado a pending para indicar que se pondrá en cola
+        $document->update([
+            'dian_status'   => 'pending',
+            'dian_error'    => null,
+        ]);
+
+        // Despachar el job correspondiente según el tipo de documento
+        $typeOperation = (int) $document->type_document_operation_id;
+
+        match (true) {
+            in_array($typeOperation, [91])         => ProcessElectronicCreditNoteJob::dispatch($document, 1),
+            in_array($typeOperation, [5, 14])       => ProcessElectronicSupportDocumentJob::dispatch($document, 1),
+            default                                => ProcessElectronicInvoiceJob::dispatch($document, 1),
+        };
+
+        return back()->with('success', 'Documento encolado para reenvío a la DIAN. Esto puede tardar unos segundos.');
+    }
+
     // ─── Helpers privados ─────────────────────────────────────────────────
+
+    /**
+     * Envía el documento por email al tercero.
+     */
+    public function sendEmail(Request $request, Document $document): RedirectResponse
+    {
+        $document->load(['lines.item', 'thirdParty', 'resolution']);
+
+        // Email destino: el del request (manual) o el del tercero
+        $email = $request->input('email') ?? $document->thirdParty?->email;
+
+        if (! $email) {
+            return back()->withErrors(['email' => 'El tercero no tiene email registrado. Ingresa uno manualmente.']);
+        }
+
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return back()->withErrors(['email' => 'El correo electrónico no es válido.']);
+        }
+
+        $company = Company::first();
+
+        Mail::to($email)->queue(new InvoiceMail($document, $company));
+
+        return back()->with('success', "Documento enviado a {$email} correctamente.");
+    }
+
+    /**
+     * Descarga el PDF de un documento.
+     */
+    public function downloadPdf(Document $document)
+    {
+        $document->load(['lines.item', 'thirdParty', 'resolution']);
+
+        $company = Company::first();
+
+        // Nombre del municipio si está disponible
+        $municipality = null;
+        if ($company?->municipality_id) {
+            $municipality = DB::table('municipalities')
+                ->where('id', $company->municipality_id)
+                ->value('name');
+        }
+
+        // Texto de la resolución
+        $resolutionText = null;
+        if ($document->resolution) {
+            $r = $document->resolution;
+            $resolutionText = "No. {$r->resolution_number} · {$r->prefix} del {$r->date_from} al {$r->date_to}";
+        }
+
+        $docTypeName = collect($this->documentTypes())
+            ->firstWhere('id', (string) $document->type_document_id)['name'] ?? 'Documento';
+
+        $pdf = Pdf::loadView('pdf.invoice', [
+            'document'       => $document,
+            'company'        => (object) array_merge(
+                $company ? $company->toArray() : [],
+                ['municipality_name' => $municipality]
+            ),
+            'third'          => $document->thirdParty,
+            'lines'          => $document->lines->map(function ($line) {
+                $taxes = is_array($line->taxes) ? $line->taxes : json_decode($line->taxes ?? '[]', true);
+                return (object) array_merge($line->toArray(), ['taxes' => $taxes]);
+            }),
+            'resolutionText' => $resolutionText,
+            'docTypeName'    => $docTypeName,
+        ])->setPaper('letter', 'portrait');
+
+        $filename = ($document->prefix ?? '') . ($document->number ?? 'doc') . '.pdf';
+
+        return $pdf->download($filename);
+    }
 
     /**
      * Todos los tipos de documento (para filtros y display en Index/Show).

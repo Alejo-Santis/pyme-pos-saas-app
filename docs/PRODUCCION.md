@@ -58,7 +58,7 @@ Proveedores DNS donde configurar esto: Cloudflare (recomendado), GoDaddy, Namech
 Un solo `server block` maneja tanto el dominio central como todos los subdominios:
 
 ```nginx
-# /etc/nginx/sites-available/nextpossaas
+# /etc/nginx/sites-available/pymepossaas
 server {
     listen 80;
     listen [::]:80;
@@ -73,7 +73,7 @@ server {
     listen [::]:443 ssl http2;
     server_name tudominio.com *.tudominio.com;
 
-    root /var/www/nextpossaas/public;
+    root /var/www/pymepossaas/public;
     index index.php;
 
     # SSL Wildcard (ver Sección 5)
@@ -111,7 +111,7 @@ server {
 
 Habilitar el sitio:
 ```bash
-ln -s /etc/nginx/sites-available/nextpossaas /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/pymepossaas /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 ```
 
@@ -132,8 +132,8 @@ CENTRAL_DOMAIN=tudominio.com
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=nextpossaas_prod
-DB_USERNAME=nextpossaas_user
+DB_DATABASE=pymepossaas_prod
+DB_USERNAME=pymepossaas_user
 DB_PASSWORD=contraseña_segura
 
 # Redis
@@ -214,9 +214,9 @@ El certificado cubre `tudominio.com` Y todos los subdominios `*.tudominio.com`.
 # Crear usuario y base de datos
 sudo -u postgres psql
 
-CREATE USER nextpossaas_user WITH PASSWORD 'contraseña_segura';
-CREATE DATABASE nextpossaas_prod OWNER nextpossaas_user;
-GRANT ALL PRIVILEGES ON DATABASE nextpossaas_prod TO nextpossaas_user;
+CREATE USER pymepossaas_user WITH PASSWORD 'contraseña_segura';
+CREATE DATABASE pymepossaas_prod OWNER pymepossaas_user;
+GRANT ALL PRIVILEGES ON DATABASE pymepossaas_prod TO pymepossaas_user;
 \q
 ```
 
@@ -249,22 +249,22 @@ apt install supervisor
 
 Crear archivo de configuración:
 ```ini
-# /etc/supervisor/conf.d/nextpossaas-horizon.conf
-[program:nextpossaas-horizon]
+# /etc/supervisor/conf.d/pymepossaas-horizon.conf
+[program:pymepossaas-horizon]
 process_name=%(program_name)s
-command=php /var/www/nextpossaas/artisan horizon
+command=php /var/www/pymepossaas/artisan horizon
 autostart=true
 autorestart=true
 user=www-data
 redirect_stderr=true
-stdout_logfile=/var/log/nextpossaas-horizon.log
+stdout_logfile=/var/log/pymepossaas-horizon.log
 stopwaitsecs=3600
 ```
 
 ```bash
 supervisorctl reread
 supervisorctl update
-supervisorctl start nextpossaas-horizon
+supervisorctl start pymepossaas-horizon
 supervisorctl status  # verificar que esté RUNNING
 ```
 
@@ -277,8 +277,8 @@ supervisorctl status  # verificar que esté RUNNING
 ```bash
 # 1. Clonar el repositorio
 cd /var/www
-git clone git@github.com:tu-org/nextpossaas.git nextpossaas
-cd nextpossaas
+git clone git@github.com:tu-org/pymepossaas.git pymepossaas
+cd pymepossaas
 
 # 2. Instalar dependencias PHP (sin dev)
 composer install --no-dev --optimize-autoloader
@@ -313,7 +313,7 @@ php artisan optimize
 ### Actualizaciones (deploys posteriores)
 
 ```bash
-cd /var/www/nextpossaas
+cd /var/www/pymepossaas
 
 # 1. Modo mantenimiento
 php artisan down
@@ -334,7 +334,7 @@ php artisan optimize
 
 # 6. Reiniciar Horizon
 php artisan horizon:terminate
-supervisorctl restart nextpossaas-horizon
+supervisorctl restart pymepossaas-horizon
 
 # 7. Salir de mantenimiento
 php artisan up
@@ -407,15 +407,15 @@ Para validación inicial con pocos clientes. Más costoso a escala.
 
 ```bash
 # Script de backup diario
-# /usr/local/bin/backup-nextpossaas.sh
+# /usr/local/bin/backup-pymepossaas.sh
 
 #!/bin/bash
 DATE=$(date +%Y%m%d_%H%M)
-BACKUP_DIR=/backups/nextpossaas
+BACKUP_DIR=/backups/pymepossaas
 mkdir -p $BACKUP_DIR
 
 # Dump completo (todos los schemas: public + todos los tenants)
-pg_dump -U nextpossaas_user -h 127.0.0.1 nextpossaas_prod \
+pg_dump -U pymepossaas_user -h 127.0.0.1 pymepossaas_prod \
   | gzip > $BACKUP_DIR/backup_$DATE.sql.gz
 
 # Mantener solo los últimos 30 días
@@ -427,7 +427,7 @@ echo "Backup completado: backup_$DATE.sql.gz"
 ```bash
 # Programar en cron (cada día a las 2am)
 crontab -e
-0 2 * * * /usr/local/bin/backup-nextpossaas.sh >> /var/log/backup.log 2>&1
+0 2 * * * /usr/local/bin/backup-pymepossaas.sh >> /var/log/backup.log 2>&1
 ```
 
 Subir backups a S3/R2 para redundancia geográfica es altamente recomendado.
@@ -444,7 +444,7 @@ Subir backups a S3/R2 para redundancia geográfica es altamente recomendado.
 [ ] PostgreSQL 16 instalado, usuario y DB creados
 [ ] Redis instalado y corriendo
 [ ] Certbot configurado con certificado wildcard
-[ ] Repositorio clonado en /var/www/nextpossaas
+[ ] Repositorio clonado en /var/www/pymepossaas
 [ ] .env configurado con valores de producción
 [ ] php artisan migrate (landlord)
 [ ] php artisan db:seed --class=LandlordSeeder (planes)

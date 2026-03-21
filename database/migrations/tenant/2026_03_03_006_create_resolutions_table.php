@@ -20,9 +20,6 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();                              // UUID para API DIAN
 
-            $table->uuid('company_id');
-            $table->foreign('company_id')->references('id')->on('companies')->cascadeOnDelete();
-
             // Tipo de documento que ampara la resolución — FK a catálogos globales
             $table->unsignedBigInteger('type_document_id')->nullable();            // FK → public.type_documents (null para POS, ajustes, etc.)
             $table->unsignedBigInteger('type_document_operation_id');              // FK → public.type_document_operations (Factura VE, NC, ND...)
@@ -46,7 +43,7 @@ return new class extends Migration
             $table->timestamps();
 
             // Índices para búsquedas frecuentes en facturación
-            $table->index(['company_id', 'type_document_id', 'is_active']);
+            $table->index(['type_document_id', 'is_active']);
         });
     }
 

@@ -34,12 +34,15 @@
   const total          = $derived(subtotal + totalTax)
 
   // ── Estado del documento ─────────────────────────────────────────────────
-  const statusBadge = $derived(() => {
-    if (document?.annulled)   return { label: 'Anulado',      cls: 'bg-red-100 text-red-700' }
-    if (document?.electronic) return { label: 'Enviado DIAN', cls: 'bg-green-100 text-green-700' }
-    if (document?.paid)       return { label: 'Pagado',       cls: 'bg-blue-100 text-blue-700' }
-    return                           { label: 'Borrador',     cls: 'bg-slate-100 text-slate-600' }
-  })
+  const statusBadge = $derived(
+    document?.annulled                           ? { label: 'Anulado',      cls: 'bg-red-100 text-red-700'     } :
+    document?.electronic                         ? { label: 'Enviado DIAN', cls: 'bg-green-100 text-green-700' } :
+    document?.dian_status === 'failed'           ? { label: 'Fallo DIAN',   cls: 'bg-red-100 text-red-700'     } :
+    document?.dian_status === 'rejected'         ? { label: 'Rechazado',    cls: 'bg-rose-100 text-rose-700'   } :
+    document?.dian_status === 'processing'       ? { label: 'Enviando...',  cls: 'bg-amber-100 text-amber-700' } :
+    document?.paid                               ? { label: 'Pagado',       cls: 'bg-blue-100 text-blue-700'   } :
+                                                   { label: 'Borrador',     cls: 'bg-slate-100 text-slate-600' }
+  )
 
   const canEdit = $derived(!document?.electronic && !document?.annulled)
 
@@ -55,9 +58,45 @@
 
   const creditNotes = $derived(document?.credit_notes ?? [])
 
+  const canRetryDian = $derived(
+    !document?.electronic && !document?.annulled &&
+    ['failed', 'rejected'].includes(document?.dian_status)
+  )
+
   // ── Acciones básicas ─────────────────────────────────────────────────────
-  let deleting = $state(false)
+  let deleting  = $state(false)
+  let retrying  = $state(false)
   let confirmDelete = $state(false)
+
+  // ── Modal de envío por email ──────────────────────────────────────────────
+  let showEmailModal = $state(false)
+  let emailTo        = $state(document?.third_party?.email ?? '')
+  let sendingEmail   = $state(false)
+  let emailError     = $state('')
+
+  function openEmailModal() {
+    emailTo    = document?.third_party?.email ?? ''
+    emailError = ''
+    showEmailModal = true
+  }
+
+  function submitEmail() {
+    if (!emailTo.trim()) { emailError = 'Ingresa un correo destino.'; return }
+    sendingEmail = true
+    emailError   = ''
+    router.post(`/invoices/${document.id}/send-email`, { email: emailTo.trim() }, {
+      onSuccess: () => { showEmailModal = false },
+      onError:   (e) => { emailError = Object.values(e).flat().join(' ') },
+      onFinish:  () => { sendingEmail = false },
+    })
+  }
+
+  function retryDian() {
+    retrying = true
+    router.post(`/invoices/${document.id}/retry-dian`, {}, {
+      onFinish: () => { retrying = false },
+    })
+  }
 
   function destroy() {
     deleting = true
@@ -67,11 +106,11 @@
   }
 
   // Nombre del tercero
-  const thirdName = $derived(() => {
-    const t = document?.third_party
-    if (!t) return 'Consumidor final'
-    return [t.name, t.surname].filter(Boolean).join(' ')
-  })
+  const thirdName = $derived(
+    document?.third_party
+      ? [document.third_party.name, document.third_party.surname].filter(Boolean).join(' ')
+      : 'Consumidor final'
+  )
 
   // ── Modal de Nota Débito ─────────────────────────────────────────────────
   let showNdModal  = $state(false)
@@ -154,8 +193,8 @@
   }
 
   // Total de la NC según selección actual
-  const ncSelectedTotal = $derived(() => {
-    return lines.reduce((sum, l) => {
+  const ncSelectedTotal = $derived(
+    lines.reduce((sum, l) => {
       const qty = Number(ncLineQtys[l.id] ?? 0)
       if (qty <= 0) return sum
       const base = qty * Number(l.sale_price)
@@ -164,7 +203,7 @@
       const tax  = net * ((l.taxes?.[0]?.percent ?? 0) / 100)
       return sum + net + tax
     }, 0)
-  })
+  )
 
   function submitCreditNote() {
     if (!ncNote.trim()) {
@@ -213,8 +252,8 @@
             <h1 class="text-xl font-bold text-slate-800">
               {document?.prefix ?? ''}{document?.number ?? 'Documento'}
             </h1>
-            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {statusBadge().cls}">
-              {statusBadge().label}
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {statusBadge.cls}">
+              {statusBadge.label}
             </span>
             {#if document?.reference}
               <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
@@ -269,6 +308,40 @@
             Enviado DIAN
           </span>
         {/if}
+
+        {#if canRetryDian}
+          <button onclick={retryDian} disabled={retrying}
+            class="flex items-center gap-1.5 px-3 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition disabled:opacity-60 cursor-pointer font-medium shadow-sm">
+            {#if retrying}
+              <i class="mdi mdi-loading mdi-spin text-base"></i>
+              Enviando...
+            {:else}
+              <i class="mdi mdi-send-clock-outline text-base"></i>
+              Reintentar DIAN
+            {/if}
+          </button>
+        {/if}
+
+        {#if document?.dian_status === 'processing'}
+          <span class="flex items-center gap-1.5 px-3 py-2 text-sm bg-amber-50 border border-amber-200 text-amber-700 rounded-lg font-medium">
+            <i class="mdi mdi-loading mdi-spin text-base"></i>
+            Enviando a DIAN...
+          </span>
+        {/if}
+
+        <!-- Descargar PDF -->
+        <a href="/invoices/{document?.id}/pdf" target="_blank"
+          class="flex items-center gap-1.5 px-3 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">
+          <i class="mdi mdi-file-pdf-box text-red-500 text-base"></i>
+          PDF
+        </a>
+
+        <!-- Enviar por email -->
+        <button onclick={openEmailModal}
+          class="flex items-center gap-1.5 px-3 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium cursor-pointer">
+          <i class="mdi mdi-email-fast-outline text-blue-500 text-base"></i>
+          Enviar
+        </button>
       </div>
     </div>
 
@@ -289,6 +362,45 @@
               <span class="text-orange-600 tabular-nums">${fmt(nc.total)}</span>
             </div>
           {/each}
+        </div>
+      </div>
+    {/if}
+
+    <!-- ── Panel de estado DIAN ──────────────────────────────────────────── -->
+    {#if document?.dian_status === 'failed' || document?.dian_status === 'rejected'}
+      <div class="bg-red-50 border border-red-200 rounded-xl px-5 py-4">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+              <i class="mdi {document.dian_status === 'rejected' ? 'mdi-file-remove-outline' : 'mdi-alert-circle-outline'} text-red-600 text-lg"></i>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-red-700 mb-0.5">
+                {document.dian_status === 'rejected' ? 'Documento rechazado por la DIAN' : 'Fallo al enviar a la DIAN'}
+              </p>
+              {#if document.dian_error}
+                <p class="text-xs text-red-600 max-w-2xl leading-relaxed">{document.dian_error}</p>
+              {/if}
+              <div class="flex items-center gap-4 mt-2 text-xs text-red-500">
+                {#if document.dian_attempts > 0}
+                  <span><i class="mdi mdi-counter text-sm"></i> Intentos: {document.dian_attempts}</span>
+                {/if}
+                {#if document.dian_sent_at}
+                  <span><i class="mdi mdi-clock-outline text-sm"></i> Último intento: {new Date(document.dian_sent_at).toLocaleString('es-CO')}</span>
+                {/if}
+              </div>
+            </div>
+          </div>
+          {#if document.dian_status === 'failed'}
+            <button onclick={retryDian} disabled={retrying}
+              class="flex items-center gap-1.5 px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-60 cursor-pointer font-medium shrink-0">
+              {#if retrying}
+                <i class="mdi mdi-loading mdi-spin text-base"></i> Enviando...
+              {:else}
+                <i class="mdi mdi-send-clock-outline text-base"></i> Reintentar ahora
+              {/if}
+            </button>
+          {/if}
         </div>
       </div>
     {/if}
@@ -482,6 +594,80 @@
   danger={true}
   onConfirm={destroy}
 />
+
+<!-- ── Modal envío por email ─────────────────────────────────────────────── -->
+{#if showEmailModal}
+  <div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
+    onclick={(e) => { if (e.target === e.currentTarget) { showEmailModal = false } }}>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md z-50">
+
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+            <i class="mdi mdi-email-fast-outline text-blue-600 text-lg"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-slate-800 text-sm">Enviar documento por email</h3>
+            <p class="text-xs text-slate-500">El PDF se adjuntará automáticamente</p>
+          </div>
+        </div>
+        <button onclick={() => showEmailModal = false}
+          class="text-slate-400 hover:text-slate-600 transition cursor-pointer">
+          <i class="mdi mdi-close text-xl"></i>
+        </button>
+      </div>
+
+      <div class="px-6 py-5 space-y-4">
+        {#if emailError}
+          <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 flex items-center gap-2">
+            <i class="mdi mdi-alert-circle shrink-0"></i>
+            <span>{emailError}</span>
+          </div>
+        {/if}
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">
+            Correo destino <span class="text-red-500">*</span>
+          </label>
+          <input type="email" bind:value={emailTo}
+            class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm
+                   focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+            placeholder="cliente@empresa.com"
+            onkeydown={(e) => e.key === 'Enter' && submitEmail()} />
+          {#if document?.third_party?.email && emailTo !== document?.third_party?.email}
+            <p class="text-xs text-slate-400 mt-1">
+              Email del tercero: <button type="button" onclick={() => emailTo = document.third_party.email}
+                class="text-primary underline cursor-pointer">{document.third_party.email}</button>
+            </p>
+          {/if}
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500 flex items-start gap-2">
+          <i class="mdi mdi-information-outline text-slate-400 mt-0.5 shrink-0"></i>
+          <span>El envío se procesa en cola. El destinatario recibirá el email en segundos.</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 px-6 pb-5">
+        <button onclick={() => showEmailModal = false}
+          class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition cursor-pointer">
+          Cancelar
+        </button>
+        <button onclick={submitEmail} disabled={sendingEmail}
+          class="px-5 py-2 text-sm font-semibold text-white bg-primary rounded-lg
+                 hover:bg-primary-dark disabled:opacity-60 disabled:cursor-not-allowed
+                 flex items-center gap-2 transition cursor-pointer">
+          {#if sendingEmail}
+            <i class="mdi mdi-loading mdi-spin"></i> Enviando...
+          {:else}
+            <i class="mdi mdi-send-outline"></i> Enviar
+          {/if}
+        </button>
+      </div>
+
+    </div>
+  </div>
+{/if}
 
 <!-- ── Modal Nota Débito ─────────────────────────────────────────────────── -->
 {#if showNdModal}

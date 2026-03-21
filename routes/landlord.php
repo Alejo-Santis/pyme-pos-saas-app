@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Rutas del Landlord (SaaS / Admin)
 |--------------------------------------------------------------------------
-| Son accesibles desde el dominio raíz: nextpossaas-app.test
+| Son accesibles desde el dominio raíz: pymepossaas-app.test
 | Aquí viven: registro de empresas, planes, panel super-admin.
 */
 
@@ -26,7 +26,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     // Login (sin auth para poder acceder)
     Route::get('/login',  [AdminAuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AdminAuthController::class, 'login'])->name('login.store');
+    Route::post('/login', [AdminAuthController::class, 'login'])->name('login.store')->middleware('throttle:admin-login');
 
     // Rutas protegidas con guard admin
     Route::middleware(AdminAuthenticate::class)->group(function () {

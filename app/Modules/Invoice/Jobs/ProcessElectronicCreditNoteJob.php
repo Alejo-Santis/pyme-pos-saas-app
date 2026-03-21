@@ -67,6 +67,12 @@ class ProcessElectronicCreditNoteJob implements ShouldQueue
             'document_id' => $this->document->id,
             'error'       => $e->getMessage(),
         ]);
+
+        $this->document->update([
+            'dian_status'   => 'failed',
+            'dian_error'    => substr($e->getMessage(), 0, 250),
+            'dian_attempts' => $this->currentAttempt,
+        ]);
     }
 
     private function delayForAttempt(int $attempt): int

@@ -39,7 +39,6 @@ class ResolutionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateResolution($request);
-        $data['company_id']     = Company::first()?->id;
         $data['current_number'] = $data['from'] - 1;
 
         Resolution::create($data);

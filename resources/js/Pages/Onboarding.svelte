@@ -111,7 +111,7 @@
       <i class="mdi mdi-point-of-sale text-white text-xl"></i>
     </div>
     <div>
-      <span class="text-slate-800 text-xl font-bold">NextPOS</span>
+      <span class="text-slate-800 text-xl font-bold">PymePOS</span>
       <span class="text-slate-400 text-sm ml-2">SaaS</span>
     </div>
   </div>
@@ -588,5 +588,5 @@
 
   </div>
 
-  <p class="text-slate-400 text-xs mt-6">NextPOS SaaS © {new Date().getFullYear()}</p>
+  <p class="text-slate-400 text-xs mt-6">PymePOS SaaS © {new Date().getFullYear()}</p>
 </div>

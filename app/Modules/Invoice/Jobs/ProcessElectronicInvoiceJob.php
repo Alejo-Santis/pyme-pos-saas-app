@@ -70,6 +70,12 @@ class ProcessElectronicInvoiceJob implements ShouldQueue
             'attempts'    => $this->currentAttempt,
             'error'       => $e->getMessage(),
         ]);
+
+        $this->document->update([
+            'dian_status'   => 'failed',
+            'dian_error'    => substr($e->getMessage(), 0, 250),
+            'dian_attempts' => $this->currentAttempt,
+        ]);
     }
 
     private function scheduleRetry(): void

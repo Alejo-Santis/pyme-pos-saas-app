@@ -15,9 +15,7 @@ return new class extends Migration
     {
         // Control de consecutivos por resolución (sincroniza current_number en resolutions)
         Schema::create('sends', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->uuid('company_id');
-            $table->foreign('company_id')->references('id')->on('companies')->cascadeOnDelete();
+            $table->uuid('id')->primary();
             $table->uuid('resolution_id');
             $table->foreign('resolution_id')->references('id')->on('resolutions')->cascadeOnDelete();
             $table->unsignedBigInteger('type_document_id');   // FK → public.type_documents
@@ -32,8 +30,6 @@ return new class extends Migration
             $table->string('internal_code', 50)->nullable();  // código interno correlativo
 
             // Quién emite y quién recibe
-            $table->uuid('company_id');
-            $table->foreign('company_id')->references('id')->on('companies')->cascadeOnDelete();
             $table->uuid('user_id')->nullable();              // usuario que creó el documento
             $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
             $table->uuid('third_party_id')->nullable();       // cliente/proveedor
@@ -83,7 +79,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['company_id', 'type_document_operation_id', 'issue_date']);
+            $table->index(['type_document_operation_id', 'issue_date']);
             $table->index(['third_party_id', 'paid']);
         });
 

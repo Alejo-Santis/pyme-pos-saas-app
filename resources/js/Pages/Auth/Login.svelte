@@ -10,6 +10,8 @@
     remember: false,
   })
 
+  let showPassword = $state(false)
+
   function submit(e) {
     e.preventDefault()
     $form.post('/login', {
@@ -82,21 +84,32 @@
     <div>
       <div class="flex items-center justify-between mb-1">
         <label for="password" class="text-slate-700 text-sm font-medium">Contraseña</label>
-        <a href="#!" class="text-blue-600 text-xs hover:text-blue-700 transition">
-          Olvidé mi contraseña.
+        <a href="/forgot-password" class="text-blue-600 text-xs hover:text-blue-700 transition">
+          Olvidé mi contraseña
         </a>
       </div>
-      <input
-        id="password"
-        type="password"
-        autocomplete="current-password"
-        bind:value={$form.password}
-        onkeydown={(e) => e.key === 'Enter' && submit(e)}
-        class="w-full border border-slate-300 text-slate-800 placeholder-slate-400
-               rounded-lg px-4 py-2.5 text-sm
-               focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-        placeholder="Ingrese su contraseña"
-      />
+      <div class="relative">
+        <input
+          id="password"
+          type={showPassword ? 'text' : 'password'}
+          autocomplete="current-password"
+          bind:value={$form.password}
+          onkeydown={(e) => e.key === 'Enter' && submit(e)}
+          class="w-full border border-slate-300 text-slate-800 placeholder-slate-400
+                 rounded-lg px-4 py-2.5 pr-11 text-sm
+                 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+          placeholder="Ingrese su contraseña"
+        />
+        <button
+          type="button"
+          onclick={() => showPassword = !showPassword}
+          aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+          tabindex="-1"
+        >
+          <i class="mdi {showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'} text-lg"></i>
+        </button>
+      </div>
       {#if errors?.password}
         <p class="text-red-500 text-xs mt-1">{errors.password}</p>
       {/if}

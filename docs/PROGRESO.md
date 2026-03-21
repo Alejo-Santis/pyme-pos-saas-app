@@ -1,4 +1,4 @@
-# NextPOS SaaS — Estado del Proyecto
+# PymePOS SaaS — Estado del Proyecto
 
 > Última actualización: 2026-03-09
 > Stack: Laravel 12 + Svelte 5 (Runes) + Inertia.js v2 + PostgreSQL 16 + Tailwind CSS 4
@@ -51,7 +51,7 @@
 ### Módulo Auth (tenant)
 - [x] **Registro de empresa** (`/register` en dominio central)
   - Crea tenant + schema + migra DB + crea admin user + suscripción trial
-- [x] **Login** por subdominio (`empresa.nextpossaas-app.test/login`)
+- [x] **Login** por subdominio (`empresa.pymepossaas-app.test/login`)
   - Guard `web`, Sanctum SPA, identificación por dominio
 - [x] **Logout**
 - [x] Middleware `CheckOnboardingCompleted` — redirige a `/onboarding` si no completó

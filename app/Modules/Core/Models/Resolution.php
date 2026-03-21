@@ -16,7 +16,6 @@ class Resolution extends Model
 
     protected $fillable = [
         'uuid',
-        'company_id',
         'type_document_id',
         'type_document_operation_id',
         'resolution',
@@ -38,8 +37,4 @@ class Resolution extends Model
         'is_active'       => 'boolean',
     ];
 
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class);
-    }
 }

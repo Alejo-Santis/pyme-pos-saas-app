@@ -2,7 +2,6 @@
 
 namespace App\Modules\Invoice\Models;
 
-use App\Modules\Core\Models\Company;
 use App\Modules\Core\Models\Resolution;
 use App\Modules\Core\Models\ThirdParty;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -27,7 +26,6 @@ class Document extends Model
         'uuid',
         'internal_code',
         'system_number',
-        'company_id',
         'user_id',
         'third_party_id',
         'seller_id',
@@ -60,6 +58,10 @@ class Document extends Model
         'cashier_shift',
         'dian_validation_date_time',
         'pos_terminal_id',
+        'dian_status',
+        'dian_error',
+        'dian_sent_at',
+        'dian_attempts',
     ];
 
     protected $casts = [
@@ -79,6 +81,8 @@ class Document extends Model
         'electronic'             => 'boolean',
         'accounted'              => 'boolean',
         'annulled'               => 'boolean',
+        'dian_sent_at'           => 'datetime',
+        'dian_attempts'          => 'integer',
     ];
 
     // ─── Boot: UUID secundario y código interno ───────────────────────────
@@ -93,11 +97,6 @@ class Document extends Model
     }
 
     // ─── Relaciones ───────────────────────────────────────────────────────
-
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class, 'company_id');
-    }
 
     public function thirdParty(): BelongsTo
     {

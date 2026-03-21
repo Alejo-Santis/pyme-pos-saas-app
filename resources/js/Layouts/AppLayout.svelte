@@ -6,12 +6,10 @@
 
   let { children } = $props()
 
-  // ── Modo de navegación ───────────────────────────────────────────────────────
-  // 'vertical' → sidebar izquierdo (por defecto)
-  // 'horizontal' → topnav completo
-  let navMode = $state('vertical')
-  let sidebarOpen = $state(true)
-  let activeDropdown = $state(null)  // índice del grupo abierto en modo horizontal
+  let navMode        = $state('vertical')
+  let sidebarOpen    = $state(true)
+  let activeDropdown = $state(null)
+  let userMenuOpen   = $state(false)
 
   onMount(() => {
     const saved = localStorage.getItem('navMode')
@@ -24,17 +22,15 @@
     activeDropdown = null
   }
 
-  // ── Datos de página ──────────────────────────────────────────────────────────
   const user    = $derived($page.props.auth?.user)
-  const appName = $derived($page.props.appName ?? 'NextPOS SaaS')
+  const appName = $derived($page.props.appName ?? 'PymePOS SaaS')
   const currentPath = $derived($page.url)
 
-  // ── Grupos de navegación ─────────────────────────────────────────────────────
   const navGroups = [
     {
       label: null,
       items: [
-        { href: '/dashboard', icon: 'mdi-home-city-outline', label: 'Inicio' },
+        { href: '/dashboard', icon: 'mdi-home-outline', label: 'Inicio' },
       ],
     },
     {
@@ -49,21 +45,21 @@
       label: 'Inventario',
       items: [
         { href: '/inventory',            icon: 'mdi-package-variant-closed', label: 'Artículos' },
-        { href: '/inventory/categories', icon: 'mdi-tag-multiple-outline',    label: 'Categorías' },
-        { href: '/inventory/transfers',  icon: 'mdi-transfer',                label: 'Traslados' },
-        { href: '/purchases',            icon: 'mdi-cart-outline',            label: 'Compras' },
+        { href: '/inventory/categories', icon: 'mdi-tag-multiple-outline',   label: 'Categorías' },
+        { href: '/inventory/transfers',  icon: 'mdi-transfer',               label: 'Traslados' },
+        { href: '/purchases',            icon: 'mdi-cart-outline',           label: 'Compras' },
       ],
     },
     {
       label: 'Finanzas',
       items: [
-        { href: '/cash',                      icon: 'mdi-bank-outline',              label: 'Caja y Bancos' },
-        { href: '/accounting/journal',        icon: 'mdi-book-open-outline',         label: 'Libro Diario' },
-        { href: '/accounting/ledger',         icon: 'mdi-book-multiple-outline',     label: 'Libro Mayor' },
-        { href: '/accounting/trial-balance',  icon: 'mdi-scale-balance',             label: 'Balance de Prueba' },
-        { href: '/accounting/income-statement',icon: 'mdi-chart-line',               label: 'Estado de Resultados' },
-        { href: '/accounting/balance-sheet',  icon: 'mdi-calculator-variant-outline',label: 'Balance General' },
-        { href: '/accounting/concepts',       icon: 'mdi-cog-outline',               label: 'Conceptos Contables' },
+        { href: '/cash',                       icon: 'mdi-bank-outline',               label: 'Caja y Bancos' },
+        { href: '/accounting/journal',         icon: 'mdi-book-open-outline',          label: 'Libro Diario' },
+        { href: '/accounting/ledger',          icon: 'mdi-book-multiple-outline',      label: 'Libro Mayor' },
+        { href: '/accounting/trial-balance',   icon: 'mdi-scale-balance',              label: 'Balance de Prueba' },
+        { href: '/accounting/income-statement',icon: 'mdi-chart-line',                 label: 'Estado de Resultados' },
+        { href: '/accounting/balance-sheet',   icon: 'mdi-calculator-variant-outline', label: 'Balance General' },
+        { href: '/accounting/concepts',        icon: 'mdi-cog-outline',                label: 'Conceptos Contables' },
       ],
     },
     {
@@ -72,35 +68,42 @@
         { href: '/payroll/runs',      icon: 'mdi-calculator-variant',       label: 'Liquidaciones' },
         { href: '/payroll/employees', icon: 'mdi-account-hard-hat-outline', label: 'Empleados' },
         { href: '/payroll/novelties', icon: 'mdi-bell-ring-outline',        label: 'Novedades' },
-        { href: '/payroll/benefits',  icon: 'mdi-cash-multiple',            label: 'Prestaciones Sociales' },
+        { href: '/payroll/benefits',  icon: 'mdi-cash-multiple',            label: 'Prestaciones' },
       ],
     },
     {
       label: 'Reportes',
       items: [
-        { href: '/reports/sales',     icon: 'mdi-chart-bar',               label: 'Ventas' },
-        { href: '/reports/cash',      icon: 'mdi-cash-register',            label: 'Caja' },
-        { href: '/reports/inventory', icon: 'mdi-package-variant-closed',   label: 'Inventario' },
+        { href: '/reports/sales',     icon: 'mdi-chart-bar',             label: 'Ventas' },
+        { href: '/reports/cash',      icon: 'mdi-cash-register',         label: 'Caja' },
+        { href: '/reports/inventory', icon: 'mdi-package-variant-closed',label: 'Inventario' },
       ],
     },
     {
       label: 'Configuración',
       items: [
-        { href: '/config/company',        icon: 'mdi-domain',                    label: 'Mi Empresa' },
-        { href: '/config/resolutions',    icon: 'mdi-file-certificate-outline',  label: 'Resoluciones DIAN' },
-        { href: '/config/establishments', icon: 'mdi-store-outline',             label: 'Establecimientos' },
-        { href: '/config/warehouses',     icon: 'mdi-warehouse',                 label: 'Bodegas' },
+        { href: '/config/company',        icon: 'mdi-domain',                   label: 'Mi Empresa' },
+        { href: '/config/resolutions',    icon: 'mdi-file-certificate-outline', label: 'Resoluciones DIAN' },
+        { href: '/config/establishments', icon: 'mdi-store-outline',            label: 'Establecimientos' },
+        { href: '/config/warehouses',     icon: 'mdi-warehouse',                label: 'Bodegas' },
+        { href: '/users',                 icon: 'mdi-account-multiple-outline', label: 'Usuarios' },
+        { href: '/subscription',          icon: 'mdi-crown-outline',            label: 'Mi Suscripción' },
+      ],
+    },
+    {
+      label: 'Auditoría',
+      items: [
+        { href: '/audit/activity', icon: 'mdi-shield-check-outline',   label: 'Log de Actividad' },
+        { href: '/audit/api-logs', icon: 'mdi-api',                    label: 'API DIAN' },
       ],
     },
   ]
 
-  // Todos los hrefs del nav (para detectar coincidencias más específicas)
   const allNavHrefs = $derived(navGroups.flatMap(g => g.items.map(i => i.href)))
 
   function isActive(href) {
     if (currentPath === href) return true
     if (!currentPath.startsWith(href + '/')) return false
-    // No marcar activo si un item más específico también coincide con la ruta actual
     return !allNavHrefs.some(other => other !== href && currentPath.startsWith(other))
   }
 
@@ -112,12 +115,9 @@
     router.post('/logout')
   }
 
-  // ── Grupos colapsables en sidebar vertical ───────────────────────────────────
-  // Mapa: label → true/false (expandido/colapsado)
   let collapsedGroups = $state({})
 
   onMount(() => {
-    // Restaurar estado desde localStorage
     try {
       const saved = JSON.parse(localStorage.getItem('sidebarGroups') ?? '{}')
       collapsedGroups = saved
@@ -129,14 +129,12 @@
     localStorage.setItem('sidebarGroups', JSON.stringify(collapsedGroups))
   }
 
-  // Un grupo está abierto si: tiene un item activo, O no fue explícitamente cerrado
   function isGroupOpen(group) {
     if (!group.label) return true
-    if (groupHasActive(group)) return true          // siempre abierto si tiene item activo
-    return collapsedGroups[group.label] !== true    // cerrado solo si se marcó como cerrado
+    if (groupHasActive(group)) return true
+    return collapsedGroups[group.label] !== true
   }
 
-  // Dropdown en modo horizontal
   function toggleDropdown(idx) {
     activeDropdown = activeDropdown === idx ? null : idx
   }
@@ -144,47 +142,74 @@
   function closeDropdowns() {
     activeDropdown = null
   }
+
+  function toggleUserMenu() {
+    userMenuOpen = !userMenuOpen
+  }
+
+  function closeUserMenu() {
+    userMenuOpen = false
+  }
+
+  // Color de avatar determinístico basado en el nombre
+  const avatarColors = [
+    '#2563eb', '#7c3aed', '#059669', '#d97706',
+    '#dc2626', '#0891b2', '#be185d', '#65a30d',
+  ]
+  const avatarColor = $derived(() => {
+    const name = user?.name ?? 'U'
+    const idx  = name.charCodeAt(0) % avatarColors.length
+    return avatarColors[idx]
+  })
+
+  const userInitials = $derived(
+    (user?.name ?? 'U')
+      .split(' ')
+      .slice(0, 2)
+      .map(w => w[0]?.toUpperCase() ?? '')
+      .join('')
+  )
 </script>
 
-<!-- ══════════════════════════════════════════════════════════════════════════════
-     MODO VERTICAL (sidebar)
-═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════
+     MODO VERTICAL (sidebar light)
+═══════════════════════════════════════════════════════════ -->
 {#if navMode === 'vertical'}
 
-<div class="flex h-screen bg-body overflow-hidden">
+<div class="flex h-screen bg-slate-50 overflow-hidden">
 
-  <!-- Sidebar azul -->
-  <aside class="flex flex-col bg-primary-dark transition-all duration-300 shrink-0 {sidebarOpen ? 'w-60' : 'w-16'}">
+  <!-- Sidebar blanco con borde y acento izquierdo -->
+  <aside class="flex flex-col bg-white border-r border-slate-200 shadow-sm transition-all duration-300 shrink-0 {sidebarOpen ? 'w-60' : 'w-16'}">
 
     <!-- Logo -->
-    <div class="flex items-center gap-3 px-4 h-14 border-b border-white/10 shrink-0">
-      <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+    <div class="flex items-center gap-2.5 px-4 h-14 border-b border-slate-100 shrink-0">
+      <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
         <i class="mdi mdi-lightning-bolt text-white text-base"></i>
       </div>
       {#if sidebarOpen}
         <div class="overflow-hidden">
-          <span class="text-white text-sm font-bold leading-none whitespace-nowrap">NextPOS</span>
-          <span class="text-blue-200 text-sm font-light"> SaaS</span>
+          <span class="text-slate-800 text-sm font-bold leading-none whitespace-nowrap">PymePOS</span>
+          <span class="text-slate-400 text-sm font-light"> SaaS</span>
         </div>
       {/if}
     </div>
 
     <!-- Navegación -->
-    <nav class="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
+    <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
       {#each navGroups as group}
         {#if !group.label}
-          <!-- Items sin grupo (Inicio) — siempre visibles -->
           {#each group.items as item}
             <a
               use:inertia
               href={item.href}
-              class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors group
+              class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors group
                 {isActive(item.href)
-                  ? 'bg-white/20 text-white font-medium'
-                  : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}"
               title={!sidebarOpen ? item.label : undefined}
             >
-              <i class="mdi {item.icon} text-lg shrink-0 {isActive(item.href) ? 'text-white' : 'text-blue-200 group-hover:text-white'}"></i>
+              <i class="mdi {item.icon} text-lg shrink-0
+                {isActive(item.href) ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'}"></i>
               {#if sidebarOpen}
                 <span class="truncate">{item.label}</span>
               {/if}
@@ -192,18 +217,15 @@
           {/each}
 
         {:else if sidebarOpen}
-          <!-- Grupo colapsable (sidebar abierto) -->
           <div class="pt-1">
             <button
               onclick={() => toggleGroup(group.label)}
-              class="w-full flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-colors
-                {groupHasActive(group) ? 'text-white' : 'text-blue-300 hover:text-blue-100'}"
+              class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors
+                {groupHasActive(group) ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}"
             >
               <span class="text-[10px] font-bold uppercase tracking-wider">{group.label}</span>
               <i class="mdi text-sm transition-transform duration-200
-                {isGroupOpen(group) ? 'mdi-chevron-down' : 'mdi-chevron-right'}
-                {groupHasActive(group) ? 'text-blue-200' : 'text-blue-400'}">
-              </i>
+                {isGroupOpen(group) ? 'mdi-chevron-down' : 'mdi-chevron-right'}"></i>
             </button>
 
             {#if isGroupOpen(group)}
@@ -215,10 +237,11 @@
                       href={item.href}
                       class="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-lg text-sm transition-colors group
                         {isActive(item.href)
-                          ? 'bg-white/20 text-white font-medium'
-                          : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                          ? 'bg-primary/10 text-primary font-semibold'
+                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}"
                     >
-                      <i class="mdi {item.icon} text-base shrink-0 {isActive(item.href) ? 'text-white' : 'text-blue-300 group-hover:text-white'}"></i>
+                      <i class="mdi {item.icon} text-base shrink-0
+                        {isActive(item.href) ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'}"></i>
                       <span class="truncate">{item.label}</span>
                     </a>
                   </li>
@@ -228,16 +251,15 @@
           </div>
 
         {:else}
-          <!-- Sidebar colapsado → solo iconos con tooltip, agrupar con separador -->
-          <div class="border-t border-white/10 mx-1 my-1"></div>
+          <div class="border-t border-slate-100 mx-1 my-1"></div>
           {#each group.items as item}
             <a
               use:inertia
               href={item.href}
-              class="flex items-center justify-center w-10 h-10 mx-auto rounded-lg text-sm transition-colors group
+              class="flex items-center justify-center w-10 h-10 mx-auto rounded-lg transition-colors group
                 {isActive(item.href)
-                  ? 'bg-white/20 text-white'
-                  : 'text-blue-200 hover:bg-white/10 hover:text-white'}"
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'}"
               title={item.label}
             >
               <i class="mdi {item.icon} text-lg"></i>
@@ -247,27 +269,62 @@
       {/each}
     </nav>
 
-    <!-- Usuario (pie del sidebar) -->
-    <div class="border-t border-white/10 p-3 shrink-0">
+    <!-- Usuario (pie) -->
+    <div class="border-t border-slate-100 p-3 shrink-0 relative">
       {#if sidebarOpen}
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-            <span class="text-white text-xs font-semibold">
-              {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
-            </span>
+        <button
+          onclick={toggleUserMenu}
+          class="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 transition cursor-pointer group"
+        >
+          <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+               style="background:{avatarColor()}">
+            <span class="text-white text-xs font-bold">{userInitials}</span>
           </div>
-          <div class="flex-1 overflow-hidden">
-            <p class="text-white text-xs font-medium truncate">{user?.name ?? 'Usuario'}</p>
-            <p class="text-blue-300 text-[10px] truncate">{user?.email ?? ''}</p>
+          <div class="flex-1 overflow-hidden text-left">
+            <p class="text-slate-700 text-xs font-semibold truncate">{user?.name ?? 'Usuario'}</p>
+            <p class="text-slate-400 text-[10px] truncate">{user?.email ?? ''}</p>
           </div>
-          <button onclick={logout} class="text-blue-300 hover:text-red-300 transition cursor-pointer" title="Cerrar sesión">
-            <i class="mdi mdi-logout text-base"></i>
-          </button>
-        </div>
-      {:else}
-        <button onclick={logout} class="w-full flex justify-center text-blue-300 hover:text-red-300 transition cursor-pointer" title="Cerrar sesión">
-          <i class="mdi mdi-logout text-base"></i>
+          <i class="mdi mdi-dots-vertical text-slate-400 group-hover:text-slate-600 text-base shrink-0"></i>
         </button>
+      {:else}
+        <button
+          onclick={toggleUserMenu}
+          class="w-full flex justify-center p-1 rounded-lg hover:bg-slate-50 transition cursor-pointer"
+          title="{user?.name ?? 'Usuario'}"
+        >
+          <div class="w-8 h-8 rounded-full flex items-center justify-center"
+               style="background:{avatarColor()}">
+            <span class="text-white text-xs font-bold">{userInitials}</span>
+          </div>
+        </button>
+      {/if}
+
+      <!-- Menú desplegable del usuario -->
+      {#if userMenuOpen}
+        <div class="fixed inset-0 z-40" onclick={closeUserMenu}></div>
+        <div class="absolute bottom-full left-3 right-3 mb-1 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50">
+          <div class="px-3 py-2 border-b border-slate-100 mb-1">
+            <p class="text-slate-800 text-xs font-bold truncate">{user?.name ?? 'Usuario'}</p>
+            <p class="text-slate-400 text-[11px] truncate">{user?.email ?? ''}</p>
+          </div>
+          <a use:inertia href="/profile" onclick={closeUserMenu}
+             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition">
+            <i class="mdi mdi-account-edit-outline text-base text-slate-400"></i>
+            Mi Perfil
+          </a>
+          <a use:inertia href="/config/company" onclick={closeUserMenu}
+             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition">
+            <i class="mdi mdi-domain text-base text-slate-400"></i>
+            Mi Empresa
+          </a>
+          <div class="border-t border-slate-100 mt-1 pt-1">
+            <button onclick={logout}
+               class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition cursor-pointer">
+              <i class="mdi mdi-logout text-base"></i>
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
       {/if}
     </div>
   </aside>
@@ -276,45 +333,33 @@
   <div class="flex flex-col flex-1 overflow-hidden">
 
     <!-- Topbar -->
-    <header class="flex items-center justify-between bg-white border-b border-slate-200 px-4 h-14 shrink-0 shadow-sm">
-
+    <header class="flex items-center justify-between bg-white border-b border-slate-200 px-4 h-14 shrink-0">
       <div class="flex items-center gap-3">
-        <!-- Colapsar sidebar -->
         <button
           onclick={() => sidebarOpen = !sidebarOpen}
           aria-label="Alternar menú lateral"
-          class="text-slate-500 hover:text-primary transition cursor-pointer"
+          class="text-slate-400 hover:text-primary transition cursor-pointer p-1 rounded-lg hover:bg-slate-50"
         >
           <i class="mdi mdi-menu text-xl"></i>
         </button>
+        <!-- Breadcrumb simple -->
+        <span class="text-slate-400 text-xs hidden sm:block">{appName}</span>
       </div>
 
-      <div class="flex items-center gap-3">
-        <span class="text-slate-400 text-xs hidden sm:block font-medium">{appName}</span>
-
-        <!-- Botón cambiar a modo horizontal -->
+      <div class="flex items-center gap-2">
+        <!-- Cambiar modo nav -->
         <button
           onclick={switchNavMode}
           title="Cambiar a menú horizontal"
-          class="text-slate-400 hover:text-primary transition cursor-pointer"
+          class="text-slate-400 hover:text-primary transition cursor-pointer p-1.5 rounded-lg hover:bg-slate-50"
         >
-          <i class="mdi mdi-monitor-dashboard text-xl"></i>
+          <i class="mdi mdi-monitor-dashboard text-lg"></i>
         </button>
-
-        <!-- Avatar usuario -->
-        <div class="flex items-center gap-2">
-          <div class="w-7 h-7 bg-primary rounded-full flex items-center justify-center">
-            <span class="text-white text-xs font-semibold">
-              {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
-            </span>
-          </div>
-          <span class="text-slate-700 text-sm font-medium hidden sm:block">{user?.name ?? ''}</span>
-        </div>
       </div>
     </header>
 
-    <!-- Área de contenido -->
-    <main class="flex-1 overflow-y-auto p-6" in:fade={{ duration: 150 }}>
+    <!-- Contenido -->
+    <main class="flex-1 overflow-y-auto p-5 bg-slate-50" in:fade={{ duration: 150 }}>
       {@render children()}
     </main>
 
@@ -324,89 +369,111 @@
 {/if}
 
 
-<!-- ══════════════════════════════════════════════════════════════════════════════
-     MODO HORIZONTAL (topnav)
-═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════
+     MODO HORIZONTAL (topnav light)
+═══════════════════════════════════════════════════════════ -->
 {#if navMode === 'horizontal'}
 
+<div class="flex flex-col h-screen bg-slate-50 overflow-hidden">
 
-<div class="flex flex-col h-screen bg-body overflow-hidden">
+  <!-- Barra superior blanca con borde inferior -->
+  <header class="bg-white border-b border-slate-200 shrink-0 shadow-sm overflow-visible">
 
-  <!-- Barra de navegación superior azul -->
-  <header class="bg-primary-dark shrink-0 shadow-md overflow-visible">
-
-    <!-- Primera fila: logo + controles de usuario -->
-    <div class="flex items-center justify-between px-4 h-14 border-b border-white/10">
+    <!-- Primera fila: logo + usuario -->
+    <div class="flex items-center justify-between px-4 h-14 border-b border-slate-100">
 
       <!-- Logo -->
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
           <i class="mdi mdi-lightning-bolt text-white text-base"></i>
         </div>
         <div>
-          <span class="text-white text-sm font-bold">NextPOS</span>
-          <span class="text-blue-200 text-sm font-light"> SaaS</span>
+          <span class="text-slate-800 text-sm font-bold">PymePOS</span>
+          <span class="text-slate-400 text-sm font-light"> SaaS</span>
         </div>
       </div>
 
-      <!-- Derecha: nombre app + toggle + usuario + logout -->
-      <div class="flex items-center gap-4">
-        <span class="text-blue-200 text-xs hidden md:block">{appName}</span>
+      <!-- Derecha -->
+      <div class="flex items-center gap-3">
+        <span class="text-slate-400 text-xs hidden md:block">{appName}</span>
 
-        <!-- Botón cambiar a modo vertical -->
         <button
           onclick={switchNavMode}
           title="Cambiar a menú lateral"
-          class="text-blue-200 hover:text-white transition cursor-pointer"
+          class="text-slate-400 hover:text-primary transition cursor-pointer p-1.5 rounded-lg hover:bg-slate-50"
         >
-          <i class="mdi mdi-view-split-vertical text-xl"></i>
+          <i class="mdi mdi-view-split-vertical text-lg"></i>
         </button>
 
-        <!-- Avatar + nombre -->
-        <div class="flex items-center gap-2">
-          <div class="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center">
-            <span class="text-white text-xs font-semibold">
-              {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
-            </span>
-          </div>
-          <span class="text-white text-sm font-medium hidden sm:block">{user?.name ?? ''}</span>
+        <!-- Avatar con dropdown -->
+        <div class="relative">
+          <button
+            onclick={toggleUserMenu}
+            class="flex items-center gap-2 p-1 rounded-lg hover:bg-slate-50 transition cursor-pointer"
+          >
+            <div class="w-8 h-8 rounded-full flex items-center justify-center"
+                 style="background:{avatarColor()}">
+              <span class="text-white text-xs font-bold">{userInitials}</span>
+            </div>
+            <span class="text-slate-700 text-sm font-medium hidden sm:block">{user?.name ?? ''}</span>
+            <i class="mdi mdi-chevron-down text-slate-400 text-sm hidden sm:block transition-transform {userMenuOpen ? 'rotate-180' : ''}"></i>
+          </button>
+
+          {#if userMenuOpen}
+            <div class="fixed inset-0 z-40" onclick={closeUserMenu}></div>
+            <div class="absolute top-full right-0 mt-1 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50">
+              <div class="px-3 py-2 border-b border-slate-100 mb-1">
+                <p class="text-slate-800 text-xs font-bold truncate">{user?.name ?? 'Usuario'}</p>
+                <p class="text-slate-400 text-[11px] truncate">{user?.email ?? ''}</p>
+              </div>
+              <a use:inertia href="/profile" onclick={closeUserMenu}
+                 class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition">
+                <i class="mdi mdi-account-edit-outline text-base text-slate-400"></i>
+                Mi Perfil
+              </a>
+              <a use:inertia href="/config/company" onclick={closeUserMenu}
+                 class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition">
+                <i class="mdi mdi-domain text-base text-slate-400"></i>
+                Mi Empresa
+              </a>
+              <div class="border-t border-slate-100 mt-1 pt-1">
+                <button onclick={logout}
+                   class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition cursor-pointer">
+                  <i class="mdi mdi-logout text-base"></i>
+                  Cerrar sesión
+                </button>
+              </div>
+            </div>
+          {/if}
         </div>
-
-        <!-- Logout -->
-        <button onclick={logout} title="Cerrar sesión" class="text-blue-200 hover:text-red-300 transition cursor-pointer">
-          <i class="mdi mdi-logout text-lg"></i>
-        </button>
       </div>
     </div>
 
-    <!-- Segunda fila: grupos de navegación -->
-    <nav class="flex items-center px-2 h-10 gap-1">
-
+    <!-- Segunda fila: navegación horizontal -->
+    <nav class="flex items-center px-2 h-10 gap-0.5 overflow-x-auto">
       {#each navGroups as group, idx}
         {#if !group.label}
-          <!-- Ítems sin grupo van directo (ej: Inicio) -->
           {#each group.items as item}
             <a
               use:inertia
               href={item.href}
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors
                 {isActive(item.href)
-                  ? 'bg-white/20 text-white font-medium'
-                  : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}"
             >
               <i class="mdi {item.icon} text-base"></i>
               <span>{item.label}</span>
             </a>
           {/each}
         {:else}
-          <!-- Grupos con label → dropdown -->
           <div class="relative">
             <button
               onclick={() => toggleDropdown(idx)}
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors cursor-pointer
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors cursor-pointer
                 {groupHasActive(group) || activeDropdown === idx
-                  ? 'bg-white/20 text-white font-medium'
-                  : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}"
             >
               <i class="mdi {group.items[0].icon} text-base"></i>
               <span>{group.label}</span>
@@ -414,10 +481,8 @@
             </button>
 
             {#if activeDropdown === idx}
-              <!-- Overlay invisible: clic fuera cierra el dropdown -->
               <div class="fixed inset-0 z-40" onclick={closeDropdowns}></div>
-              <!-- Panel del dropdown (z-50 > z-40 para quedar encima del overlay) -->
-              <div class="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-50">
+              <div class="absolute top-full left-0 mt-1 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50">
                 {#each group.items as item}
                   <a
                     use:inertia
@@ -425,8 +490,8 @@
                     onclick={closeDropdowns}
                     class="flex items-center gap-2.5 px-3 py-2 text-sm transition-colors
                       {isActive(item.href)
-                        ? 'bg-primary-soft text-primary-dark font-medium'
-                        : 'text-slate-700 hover:bg-slate-50 hover:text-primary'}"
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}"
                   >
                     <i class="mdi {item.icon} text-base {isActive(item.href) ? 'text-primary' : 'text-slate-400'}"></i>
                     {item.label}
@@ -437,12 +502,11 @@
           </div>
         {/if}
       {/each}
-
     </nav>
   </header>
 
-  <!-- Área de contenido -->
-  <main class="flex-1 overflow-y-auto p-6">
+  <!-- Contenido -->
+  <main class="flex-1 overflow-y-auto p-5 bg-slate-50">
     {@render children()}
   </main>
 
@@ -450,5 +514,4 @@
 
 {/if}
 
-<!-- Toast global: se renderiza una sola vez, aplica a ambos modos de navegación -->
 <Toast />

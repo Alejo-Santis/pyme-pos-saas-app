@@ -95,28 +95,28 @@ abstract class TestCase extends BaseTestCase
     protected function tenantGet(string $uri, array $headers = [])
     {
         return $this->withHeaders(array_merge([
-            'HOST' => static::$testSlug . '.' . config('app.central_domain', 'nextpossaas-app.test'),
+            'HOST' => static::$testSlug . '.' . config('app.central_domain', 'pymepossaas-app.test'),
         ], $headers))->get($uri);
     }
 
     protected function tenantPost(string $uri, array $data = [], array $headers = [])
     {
         return $this->withHeaders(array_merge([
-            'HOST' => static::$testSlug . '.' . config('app.central_domain', 'nextpossaas-app.test'),
+            'HOST' => static::$testSlug . '.' . config('app.central_domain', 'pymepossaas-app.test'),
         ], $headers))->post($uri, $data);
     }
 
     protected function tenantPut(string $uri, array $data = [], array $headers = [])
     {
         return $this->withHeaders(array_merge([
-            'HOST' => static::$testSlug . '.' . config('app.central_domain', 'nextpossaas-app.test'),
+            'HOST' => static::$testSlug . '.' . config('app.central_domain', 'pymepossaas-app.test'),
         ], $headers))->put($uri, $data);
     }
 
     protected function tenantDelete(string $uri, array $headers = [])
     {
         return $this->withHeaders(array_merge([
-            'HOST' => static::$testSlug . '.' . config('app.central_domain', 'nextpossaas-app.test'),
+            'HOST' => static::$testSlug . '.' . config('app.central_domain', 'pymepossaas-app.test'),
         ], $headers))->delete($uri);
     }
 }

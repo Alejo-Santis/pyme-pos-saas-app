@@ -9,6 +9,8 @@
     remember: false,
   })
 
+  let showPassword = $state(false)
+
   function submit(e) {
     e.preventDefault()
     $form.post('/admin/login', {
@@ -17,7 +19,7 @@
   }
 </script>
 
-<svelte:head><title>Admin — NextPOS SaaS</title></svelte:head>
+<svelte:head><title>Admin — PymePOS SaaS</title></svelte:head>
 
 <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
 
@@ -33,7 +35,7 @@
         <i class="mdi mdi-shield-crown text-white text-3xl"></i>
       </div>
       <h1 class="text-white text-xl font-bold">Panel de Administración</h1>
-      <p class="text-slate-400 text-sm mt-1">NextPOS SaaS</p>
+      <p class="text-slate-400 text-sm mt-1">PymePOS SaaS</p>
     </div>
 
     <!-- Card login -->
@@ -51,7 +53,7 @@
             <input
               type="email"
               bind:value={$form.email}
-              placeholder="admin@nextpossaas.com"
+              placeholder="admin@pymepossaas.com"
               autocomplete="email"
               onkeydown={(e) => e.key === 'Enter' && submit(e)}
               class="w-full bg-gray-700 border rounded-lg pl-10 pr-4 py-2.5 text-sm text-white
@@ -72,14 +74,20 @@
           <div class="relative">
             <i class="mdi mdi-lock-outline absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg"></i>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               bind:value={$form.password}
               placeholder="••••••••"
               autocomplete="current-password"
-              class="w-full bg-gray-700 border rounded-lg pl-10 pr-4 py-2.5 text-sm text-white
+              class="w-full bg-gray-700 border rounded-lg pl-10 pr-10 py-2.5 text-sm text-white
                      placeholder:text-slate-500 focus:outline-none focus:ring-2
                      {errors.password ? 'border-red-500 focus:ring-red-500/30' : 'border-white/10 focus:ring-primary/40 focus:border-primary/60'}"
             />
+            <button type="button"
+              onclick={() => showPassword = !showPassword}
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+              tabindex="-1">
+              <i class="mdi {showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'} text-lg"></i>
+            </button>
           </div>
           {#if errors.password}
             <p class="text-red-400 text-xs mt-1">{errors.password}</p>

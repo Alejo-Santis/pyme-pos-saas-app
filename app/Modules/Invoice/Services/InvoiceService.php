@@ -68,7 +68,6 @@ class InvoiceService
             // 5. Crear el documento (el Observer disparará el Job DIAN automáticamente)
             $document = Document::create([
                 'internal_code'               => $internalCode,
-                'company_id'                  => $data['company_id'],
                 'user_id'                     => $data['user_id'],
                 'third_party_id'              => $data['third_party_id'] ?? null,
                 'seller_id'                   => $data['seller_id'] ?? null,
@@ -136,7 +135,7 @@ class InvoiceService
             // 9. Asiento contable automático (factura y compra)
             $this->generateAccountingEntry($document);
 
-            return $document->load(['lines.item', 'thirdParty', 'resolution', 'company']);
+            return $document->load(['lines.item', 'thirdParty', 'resolution']);
         });
     }
 
@@ -232,7 +231,7 @@ class InvoiceService
                 "Documento {$document->internal_code} actualizado."
             );
 
-            return $document->load(['lines.item', 'thirdParty', 'resolution', 'company']);
+            return $document->load(['lines.item', 'thirdParty', 'resolution']);
         });
     }
 

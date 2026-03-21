@@ -107,10 +107,39 @@
       "Bash(sudo -u www-data touch /var/www/pyme-pos-saas-app/bootstrap/cache/test.tmp)",
       "Bash(grep -rn \"from ''@/[Ss]tores/toast\" /var/www/pyme-pos-saas-app/resources/js --include=\"*.svelte\" --include=\"*.js\")",
       "Bash(sudo chmod:*)",
-      "Bash(chmod 664 /var/www/pyme-pos-saas-app/storage/logs/laravel.log)"
+      "Bash(chmod 664 /var/www/pyme-pos-saas-app/storage/logs/laravel.log)",
+      "Bash(grep -r \"NextPOS\\\\|NextPoss\\\\|nextpossaas\\\\|NextPOSSaaS\" /var/www/pyme-pos-saas-app --include=*.php --include=*.svelte --include=*.js --include=*.css --include=*.json -l)",
+      "Bash(psql -U postgres -d pymepossaas_db -c \"SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE ''tenant_%'';\")",
+      "Bash(grep -rn \"NextPOS\\\\|NextPos\\\\|nextpos\\\\|NEXTPOS\\\\|NextPOSSaaS\\\\|nextpossaas\\\\|Next POS\\\\|NextPoss\" /var/www/pyme-pos-saas-app --include=*.php --include=*.svelte --include=*.js --include=*.css --include=*.json --include=*.md --include=*.env* --include=*.conf -l)",
+      "Bash(grep -rn \"NextPOS\\\\|NextPos\\\\|nextpos\\\\|NextPOSSaaS\\\\|Next POS\" /var/www/pyme-pos-saas-app --include=*.php --include=*.svelte --include=*.js --include=*.css --include=*.json --include=*.md --include=*.env*)",
+      "Bash(ls -1 /var/www/pyme-pos-saas-app/app/Modules/*/)",
+      "Bash(grep \"\\\\.php$\" done)",
+      "Bash(grep -r \"class.*Controller\" /var/www/pyme-pos-saas-app/app/Modules/*/Controllers/*.php)",
+      "Bash(grep -r class.*Service /var/www/pyme-pos-saas-app/app/Modules/*/Services/*.php)",
+      "Bash(ls -1 /var/www/pyme-pos-saas-app/resources/js/Pages/*/)",
+      "Bash(grep -h \"^class \" /var/www/pyme-pos-saas-app/app/Modules/*/Models/*.php)",
+      "Bash(grep -l \"namespace\\\\|class\" /var/www/pyme-pos-saas-app/app/Modules/Inventory/Imports/*.php)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(sudo rm:*)",
+      "Bash(sudo touch:*)",
+      "Bash(sudo chown:*)",
+      "Bash(grep -r \"roles\\\\|permissions\\\\|spatie\" /var/www/pyme-pos-saas-app/database/migrations/tenant/ --include=*.php -l)",
+      "Bash(grep -r \"getRoleNames\\\\|hasRole\\\\|assignRole\\\\|Roles\\\\|roles\" /var/www/pyme-pos-saas-app/app/Modules/ --include=*.php -l)",
+      "Bash(php -r \"require ''/var/www/pyme-pos-saas-app/vendor/autoload.php''; echo class_exists\\(''Spatie\\\\Permission\\\\Models\\\\Role''\\) ? ''ok'' : ''no'';\")",
+      "Bash(find /var/www/pyme-pos-saas-app/database/seeders -name *.php)",
+      "Bash(xargs ls:*)",
+      "Bash(php -r \"require ''/var/www/pyme-pos-saas-app/vendor/autoload.php''; echo class_exists\\(''Barryvdh\\\\DomPDF\\\\Facade\\\\Pdf''\\) ? ''dompdf-ok'' : ''no-dompdf'';\")",
+      "Bash(grep -rn \"Horizon\\\\|horizon\" /var/www/pyme-pos-saas-app/app/Providers/ --include=*.php)",
+      "Bash(grep -rn \"gate\\\\|Gate\\\\|horizon\" /var/www/pyme-pos-saas-app/app/ --include=*.php -l)",
+      "Bash(php -r \"require ''/var/www/pyme-pos-saas-app/vendor/autoload.php''; echo class_exists\\(''Laravel\\\\Horizon\\\\Horizon''\\) ? ''ok'' : ''no'';\")",
+      "Bash(grep -rn \"Mail\\\\|Mailable\\\\|mail\" /var/www/pyme-pos-saas-app/app/ --include=*.php -l)",
+      "Bash(chmod -R 775 /var/www/pyme-pos-saas-app/storage)",
+      "Bash(chown -R www-data:www-data /var/www/pyme-pos-saas-app/storage)",
+      "Bash(chown alejo-santis:www-data /var/www/pyme-pos-saas-app/storage/logs/laravel.log)"
     ],
     "additionalDirectories": [
-      "/etc/apache2/sites-available"
+      "/etc/apache2/sites-available",
+      "/var/www/pyme-pos-saas-app/resources/views"
     ]
   }
 }

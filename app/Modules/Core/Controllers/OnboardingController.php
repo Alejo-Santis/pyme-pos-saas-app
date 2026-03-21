@@ -109,7 +109,7 @@ class OnboardingController extends Controller
         auth()->user()->update(['onboarding_completed' => true]);
 
         return redirect()->route('dashboard')
-            ->with('success', '¡Configuración completada! Bienvenido a NextPOS SaaS.');
+            ->with('success', '¡Configuración completada! Bienvenido a PymePOS SaaS.');
     }
 
     /**
@@ -128,7 +128,7 @@ class OnboardingController extends Controller
         auth()->user()->update(['onboarding_completed' => true]);
 
         return redirect()->route('dashboard')
-            ->with('success', '¡Bienvenido a NextPOS SaaS! Puedes configurar la facturación DIAN desde Configuración.');
+            ->with('success', '¡Bienvenido a PymePOS SaaS! Puedes configurar la facturación DIAN desde Configuración.');
     }
 
     /**

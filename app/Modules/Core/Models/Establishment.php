@@ -13,7 +13,6 @@ class Establishment extends Model
     use HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'company_id',
         'name',
         'business_name',
         'address',

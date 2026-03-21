@@ -91,7 +91,6 @@ class SupportDocumentService
 
             $ds = Document::create([
                 'internal_code'               => $internalCode,
-                'company_id'                  => null,   // se omite por multi-tenancy
                 'user_id'                     => $userId,
                 'third_party_id'              => $order->third_party_id,
                 'reference_id'                => null,

@@ -7,6 +7,7 @@ use App\Modules\Auth\Requests\RegisterTenantRequest;
 use App\Modules\Tenant\Models\Plan;
 use App\Modules\Tenant\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -38,19 +39,19 @@ class RegisterController extends Controller
      * Flujo:
      * 1. Valida los datos del formulario
      * 2. Crea el Tenant (dispara TenantCreated → CreateDatabase + MigrateDatabase)
-     * 3. Crea el dominio del tenant (slug.nextpossaas.test)
+     * 3. Crea el dominio del tenant (slug.pymepossaas.test)
      * 4. Inicializa la tenancy y crea el admin dentro del schema del tenant
      * 5. Crea la suscripción trial en el schema public
      * 6. Redirige al login del subdomain del tenant
      */
-    public function store(RegisterTenantRequest $request): RedirectResponse
+    public function store(RegisterTenantRequest $request): SymfonyResponse
     {
         $plan = Plan::where('slug', $request->plan_slug)->firstOrFail();
 
         $tenant = null;
-        $centralDomain = env('CENTRAL_DOMAIN', 'nextpossaas-app.test');
+        $centralDomain = env('CENTRAL_DOMAIN', 'pymepossaas-app.test');
         $subdomain = $request->company_slug;                        // ej: "santinet"
-        $domain    = $subdomain . '.' . $centralDomain;             // ej: "santinet.nextpossaas-app.test"
+        $domain    = $subdomain . '.' . $centralDomain;             // ej: "santinet.pymepossaas-app.test"
 
         try {
             // ── Fase 1: Crear el tenant SIN transacción activa ────────────────
@@ -71,7 +72,7 @@ class RegisterController extends Controller
             // ── Fase 1b: Dominio y suscripción (transaccional en landlord) ────
             DB::beginTransaction();
 
-            // InitializeTenancyByDomain busca el dominio completo (ej: "santinet.nextpossaas-app.test").
+            // InitializeTenancyByDomain busca el dominio completo (ej: "santinet.pymepossaas-app.test").
             $tenant->domains()->create(['domain' => $domain]);
 
             $tenant->subscriptions()->create([

@@ -6,6 +6,9 @@ use App\Modules\Accounting\Controllers\AccountingConceptController;
 use App\Modules\Accounting\Controllers\AccountingController;
 use App\Modules\Accounting\Controllers\FinancialReportController;
 use App\Modules\Auth\Controllers\LoginController;
+use App\Modules\Auth\Controllers\PasswordResetController;
+use App\Modules\Auth\Controllers\ProfileController;
+use App\Modules\Auth\Controllers\UserController;
 use App\Modules\Cash\Controllers\BankController;
 use App\Modules\Cash\Controllers\CashBoxController;
 use App\Modules\Core\Controllers\CompanyController;
@@ -24,6 +27,8 @@ use App\Modules\Payroll\Controllers\PayrollController;
 use App\Modules\Payroll\Controllers\SocialBenefitController;
 use App\Modules\POS\Controllers\PosController;
 use App\Modules\Purchases\Controllers\PurchaseController;
+use App\Modules\Audit\Controllers\AuditController;
+use App\Modules\Tenant\Controllers\SubscriptionController;
 use App\Modules\Reports\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
@@ -34,10 +39,10 @@ use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 | Rutas del Tenant (por empresa)
 |--------------------------------------------------------------------------
 | Estas rutas corren dentro del schema del tenant (empresa cliente).
-| Son accesibles desde el subdominio: {empresa}.nextpossaas-app.test
+| Son accesibles desde el subdominio: {empresa}.pymepossaas-app.test
 |
 | InitializeTenancyByDomain identifica el tenant por dominio completo
-| (ej: santinet.nextpossaas-app.test) y cambia la conexión al schema.
+| (ej: santinet.pymepossaas-app.test) y cambia la conexión al schema.
 */
 
 Route::middleware([
@@ -49,7 +54,13 @@ Route::middleware([
     // ─── Auth (públicas dentro del tenant) ────────────────────────────────
     Route::middleware('guest')->group(function () {
         Route::get('/login', [LoginController::class, 'show'])->name('login');
-        Route::post('/login', [LoginController::class, 'store'])->name('login.store');
+        Route::post('/login', [LoginController::class, 'store'])->name('login.store')->middleware('throttle:tenant-login');
+
+        // Recuperación de contraseña
+        Route::get('/forgot-password',         [PasswordResetController::class, 'showForgotForm'])->name('password.request');
+        Route::post('/forgot-password',        [PasswordResetController::class, 'sendResetLink'])->name('password.email')->middleware('throttle:5,1');
+        Route::get('/reset-password/{token}',  [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+        Route::post('/reset-password',         [PasswordResetController::class, 'resetPassword'])->name('password.update');
     });
 
     Route::post('/logout', [LoginController::class, 'destroy'])
@@ -72,6 +83,31 @@ Route::middleware([
         Route::middleware(['onboarding'])->group(function () {
 
             Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+            // ─── Suscripción ──────────────────────────────────────────────
+            Route::get('/subscription', [SubscriptionController::class, 'show'])->name('subscription');
+
+            // ─── Perfil del usuario ───────────────────────────────────────
+            Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
+            Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+            Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+            // ─── Usuarios del tenant ─────────────────────────────────────
+            Route::prefix('users')->name('users.')->middleware('permission:users.view')->group(function () {
+                Route::get('/',              [UserController::class, 'index'])->name('index');
+                Route::get('/create',        [UserController::class, 'create'])->name('create');
+                Route::post('/',             [UserController::class, 'store'])->name('store');
+                Route::get('/{user}/edit',   [UserController::class, 'edit'])->name('edit');
+                Route::put('/{user}',        [UserController::class, 'update'])->name('update');
+                Route::delete('/{user}',     [UserController::class, 'destroy'])->name('destroy');
+                Route::patch('/{user}/toggle', [UserController::class, 'toggleStatus'])->name('toggle');
+            });
+
+            // ─── Auditoría ───────────────────────────────────────────────
+            Route::prefix('audit')->name('audit.')->group(function () {
+                Route::get('/activity', [AuditController::class, 'activity'])->name('activity');
+                Route::get('/api-logs', [AuditController::class, 'apiLogs'])->name('api-logs');
+            });
 
             // ─── Configuración de empresa (Fase 5) ───────────────────────
             Route::prefix('config')->name('config.')->middleware('permission:config.view')->group(function () {
@@ -157,6 +193,9 @@ Route::middleware([
                 Route::delete('/{document}', [InvoiceController::class, 'destroy'])->name('destroy');
                 Route::post('/{document}/credit-note', [InvoiceController::class, 'storeCreditNote'])->name('credit-note');
                 Route::post('/{document}/debit-note',  [InvoiceController::class, 'storeDebitNote'])->name('debit-note');
+                Route::post('/{document}/retry-dian',  [InvoiceController::class, 'retryDian'])->name('retry-dian')->middleware('throttle:dian-retry');
+                Route::get('/{document}/pdf',          [InvoiceController::class, 'downloadPdf'])->name('pdf');
+                Route::post('/{document}/send-email',  [InvoiceController::class, 'sendEmail'])->name('send-email');
             });
 
             // ─── Caja y bancos ────────────────────────────────────────────

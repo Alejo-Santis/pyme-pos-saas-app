@@ -3,6 +3,8 @@
   import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
   import { router, page } from '@inertiajs/svelte'
   import { toast } from '@/Stores/toast.svelte.js'
+  import { connect, isConnected, printRaw } from '@/Services/QzTrayService.js'
+  import { buildShiftReport } from '@/Services/ReceiptBuilder.js'
 
   let { terminals, myShift, cashBoxes = [] } = $props()
 
@@ -102,6 +104,10 @@
       if (data.success) {
         showCloseModal = false
         toast.success(data.message)
+        // Imprimir reporte de cierre si la terminal tiene impresora configurada
+        if (closeTerminal?.printer_name && closeSummary) {
+          printShiftReport(closeTerminal, closeSummary, data)
+        }
         // Partial reload: solo actualiza myShift y terminals, sin swap de componente
         router.reload({ only: ['myShift', 'terminals'], preserveScroll: true })
       } else {
@@ -111,6 +117,35 @@
       toast.error('Error de red al cerrar el turno.')
     } finally {
       closing = false
+    }
+  }
+
+  async function printShiftReport(terminal, summary, closeData) {
+    try {
+      if (!isConnected()) {
+        const ok = await connect()
+        if (!ok) return // silencioso — el toast de éxito ya se mostró
+      }
+      const shiftData = {
+        cashier_session_key: summary.session_key,
+        shift_opened_at:     summary.opened_at,
+        shift_closed_at:     new Date(),
+        initial_balance:     summary.initial_balance,
+        total_sales:         closeData.total_sales ?? summary.total_sales,
+        total_cash:          summary.total_cash,
+        total_card:          0,
+        total_transfer:      summary.total_transfer,
+      }
+      const data = buildShiftReport({
+        terminal,
+        shift:    shiftData,
+        userName: $page.props.auth?.user?.name ?? 'Cajero',
+        is80mm:   terminal.printer_type === '80mm',
+      })
+      await printRaw(terminal.printer_name, data)
+    } catch (err) {
+      console.warn('[Impresión cierre]', err.message)
+      // No mostrar error — el turno ya se cerró correctamente
     }
   }
 

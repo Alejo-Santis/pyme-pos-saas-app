@@ -1,6 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap');
 @import 'tailwindcss';
 @import '@mdi/font/css/materialdesignicons.min.css';
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap');
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -8,12 +8,12 @@
 @source '../**/*.svelte';
 @source '../**/*.js';
 
-/* ── Paleta de colores NextPOS SaaS (azul, diferente al violeta de xedoc) ── */
+/* ── Paleta de colores PymePOS SaaS (azul, diferente al violeta de xedoc) ── */
 @theme {
   /* Tipografía */
   --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif;
 
-  /* Primary — Azul marca NextPOS */
+  /* Primary — Azul marca PymePOS */
   --color-primary:        #2563eb;   /* blue-600  */
   --color-primary-soft:   #eff6ff;   /* blue-50   */
   --color-primary-dark:   #1d4ed8;   /* blue-700  */

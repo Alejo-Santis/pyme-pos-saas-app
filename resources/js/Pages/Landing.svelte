@@ -59,7 +59,7 @@
 </script>
 
 <svelte:head>
-  <title>NextPOS SaaS — ERP Colombia</title>
+  <title>PymePOS SaaS — ERP Colombia</title>
   <meta name="description" content="Plataforma SaaS de facturación electrónica y gestión empresarial para Colombia. Factura electrónica DIAN, POS, inventario y contabilidad en un solo lugar." />
 </svelte:head>
 
@@ -72,7 +72,7 @@
       <span class="w-8 h-8 bg-[#2563eb] rounded-lg flex items-center justify-center">
         <i class="mdi mdi-storefront-outline text-white text-base"></i>
       </span>
-      NextPOS
+      PymePOS
     </a>
 
     <!-- Nav links (desktop) -->
@@ -306,7 +306,7 @@
         <span class="w-8 h-8 bg-[#2563eb] rounded-lg flex items-center justify-center">
           <i class="mdi mdi-storefront-outline text-white text-base"></i>
         </span>
-        NextPOS SaaS
+        PymePOS SaaS
       </div>
 
       <!-- Links -->
@@ -319,7 +319,7 @@
 
       <!-- Copyright -->
       <p class="text-xs text-blue-300">
-        &copy; {new Date().getFullYear()} NextPOS SaaS Colombia
+        &copy; {new Date().getFullYear()} PymePOS SaaS Colombia
       </p>
     </div>
   </div>

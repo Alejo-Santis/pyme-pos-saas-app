@@ -51,7 +51,6 @@ trait AccountingEngineTrait
             $voucher = AccountingDocument::create([
                 'uuid'                       => Str::uuid(),
                 'internal_code'              => 'COMP-' . now()->format('Ymd') . '-' . strtoupper(Str::random(5)),
-                'company_id'                 => $document->company_id,
                 'user_id'                    => $document->user_id,
                 'third_party_id'             => $document->third_party_id,
                 'document_id'                => $document->id,

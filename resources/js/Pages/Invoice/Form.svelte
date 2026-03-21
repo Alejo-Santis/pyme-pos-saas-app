@@ -110,7 +110,6 @@
     errors  = {}
 
     const payload = {
-      company_id:                  company?.id ?? '',
       type_document_id:            Number(hdr.type_document_id),
       type_document_operation_id:  Number(hdr.type_document_operation_id),
       third_party_id:              hdr.third_party_id  || null,

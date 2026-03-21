@@ -37,7 +37,7 @@
         <i class="mdi mdi-shield-crown text-white text-sm"></i>
       </div>
       <div>
-        <span class="text-slate-800 text-sm font-bold">NextPOS</span>
+        <span class="text-slate-800 text-sm font-bold">PymePOS</span>
         <span class="text-xs text-slate-400 block leading-none">Super Admin</span>
       </div>
     </div>

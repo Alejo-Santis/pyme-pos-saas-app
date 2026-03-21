@@ -49,6 +49,7 @@ class ElectronicDocumentsProcessorService
     {
         $sending = $this->getOrCreateSendingRecord($typeElectronicDocument);
 
+        $this->document->update(['dian_status' => 'processing']);
         $this->logAttempt();
 
         // Construir JSON UBL 2.1
@@ -251,6 +252,20 @@ class ElectronicDocumentsProcessorService
             ],
         ]);
 
+        // Si no hay más reintentos automáticos, marcar el documento como fallido
+        if (! ($shouldRetry && $this->currentAttempt < $this->maxAttempts)) {
+            $this->document->update([
+                'dian_status'   => in_array($type, ['VALIDATION_ERROR_422', 'DIAN_VALIDATION_ERROR']) ? 'rejected' : 'failed',
+                'dian_error'    => $messageStr,
+                'dian_attempts' => $this->currentAttempt,
+            ]);
+        } else {
+            $this->document->update([
+                'dian_status'   => 'processing',
+                'dian_attempts' => $this->currentAttempt,
+            ]);
+        }
+
         $this->logFailure($messageStr);
 
         return [
@@ -289,7 +304,13 @@ class ElectronicDocumentsProcessorService
 
     protected function updateDocumentElectronic(string $uuid, $dateTime): void
     {
-        $update = ['cufe' => $uuid, 'electronic' => true];
+        $update = [
+            'cufe'         => $uuid,
+            'electronic'   => true,
+            'dian_status'  => 'sent',
+            'dian_sent_at' => now(),
+            'dian_error'   => null,
+        ];
 
         if ($dateTime) {
             $update['dian_validation_date_time'] = $this->prepareDianDateTime($dateTime);

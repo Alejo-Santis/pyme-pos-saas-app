@@ -229,7 +229,6 @@ class PosController extends Controller
         $typeDocumentOperationId = $feActive ? 1 : 4;   // 1=Venta → Observer → DIAN
 
         $invoiceData = [
-            'company_id'                 => $company?->id,
             'user_id'                    => $user->id,
             'third_party_id'             => $data['third_party_id'] ?? null,
             'type_document_id'           => $typeDocumentId,

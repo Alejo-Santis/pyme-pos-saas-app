@@ -17,9 +17,6 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
 
-            $table->uuid('company_id');
-            $table->foreign('company_id')->references('id')->on('companies')->cascadeOnDelete();
-
             $table->string('name');                          // nombre del establecimiento
             $table->string('business_name')->nullable();     // razón social si difiere
             $table->string('address')->nullable();

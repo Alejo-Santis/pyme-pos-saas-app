@@ -27,7 +27,7 @@
         <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
           <i class="mdi mdi-lightning-bolt text-white text-lg"></i>
         </div>
-        <span class="text-white text-2xl font-bold tracking-tight">NextPOS</span>
+        <span class="text-white text-2xl font-bold tracking-tight">PymePOS</span>
         <span class="text-blue-200 text-xl font-light">SaaS</span>
       </div>
       <p class="text-blue-200 text-xs mt-1.5 tracking-wide">ERP · Facturación Electrónica DIAN · Colombia</p>
@@ -40,7 +40,7 @@
 
     <!-- Footer -->
     <p class="text-center text-slate-400 text-xs mt-5">
-      &copy; {new Date().getFullYear()} NextPOS SaaS · Todos los derechos reservados
+      &copy; {new Date().getFullYear()} PymePOS SaaS · Todos los derechos reservados
     </p>
 
   </div>

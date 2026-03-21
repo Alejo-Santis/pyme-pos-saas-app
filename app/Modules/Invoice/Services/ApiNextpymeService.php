@@ -2,6 +2,7 @@
 
 namespace App\Modules\Invoice\Services;
 
+use App\Modules\Audit\Services\AuditService;
 use App\Modules\Core\Models\Company;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  *      cuando DIAN_ENVIRONMENT=habilitacion (desarrollo / sandbox).
  *   3. Variables de entorno NEXTPYME_BASE_URL / NEXTPYME_API_KEY para producción.
  *
- * Mientras el proyecto esté en desarrollo siempre se usará la URL del sandbox.
+ * Cada llamada queda registrada en api_logs vía AuditService::logApi().
  */
 class ApiNextpymeService
 {
@@ -39,11 +40,9 @@ class ApiNextpymeService
         $environment = config('app.dian_environment', env('DIAN_ENVIRONMENT', 'habilitacion'));
 
         if ($environment === 'habilitacion') {
-            // Sandbox / habilitación — usar hasta finalizar el proyecto
             $url   = env('NEXTPYME_FE_SANDBOX_URL', '');
             $token = env('NEXTPYME_FE_TOKEN', '');
         } else {
-            // Producción
             $url   = env('NEXTPYME_BASE_URL', '');
             $token = env('NEXTPYME_API_KEY', '');
         }
@@ -52,50 +51,66 @@ class ApiNextpymeService
             $this->apiPath   = rtrim($url, '/');
             $this->apiToken  = $token;
             $this->hasConfig = true;
-
-            Log::info('ApiNextpymeService: usando credenciales del .env', [
-                'environment' => $environment,
-                'url'         => $this->apiPath,
-            ]);
         }
     }
 
     /**
-     * Realiza una petición HTTP a la API de Nextpyme.
+     * Realiza una petición HTTP a la API de Nextpyme y la registra en api_logs.
      *
-     * @param string $method    Método HTTP (POST, GET, etc.)
-     * @param string $endpoint  Ruta relativa (ej: '/ubl2.1/invoice')
-     * @param array  $parameters Body de la petición
-     * @param int    $timeout   Timeout en segundos
+     * @param string      $method      Método HTTP (POST, GET, etc.)
+     * @param string      $endpoint    Ruta relativa (ej: '/ubl2.1/invoice')
+     * @param array       $parameters  Body de la petición
+     * @param int         $timeout     Timeout en segundos
+     * @param string|null $documentId  UUID del documento para api_logs
+     * @param string      $operation   Nombre de la operación para api_logs
+     * @param int         $attempt     Número de intento (para reintentos)
      */
-    public function makeRequest(string $method, string $endpoint, array $parameters = [], int $timeout = 120): array
-    {
+    public function makeRequest(
+        string  $method,
+        string  $endpoint,
+        array   $parameters  = [],
+        int     $timeout     = 120,
+        ?string $documentId  = null,
+        string  $operation   = 'request',
+        int     $attempt     = 1,
+    ): array {
         if (! $this->hasConfig) {
-            Log::warning('ApiNextpymeService: sin configuración de API FE', [
-                'endpoint' => $endpoint,
-                'hint'     => 'Configure api_path_fe y api_token_fe en la empresa, o defina NEXTPYME_FE_SANDBOX_URL y NEXTPYME_FE_TOKEN en .env',
-            ]);
-
-            return [
+            $result = [
                 'statusCode' => 404,
                 'data'       => [
                     'success' => false,
                     'message' => 'Integración DIAN no configurada. Configure las credenciales en Ajustes > Empresa.',
                 ],
             ];
+
+            AuditService::logApi(
+                documentId: $documentId,
+                operation:  $operation,
+                endpoint:   $endpoint,
+                payload:    null,
+                response:   $result['data'],
+                httpStatus: 404,
+                success:    false,
+                durationMs: 0,
+                errorMsg:   'Sin configuración de API FE',
+                attempt:    $attempt,
+            );
+
+            return $result;
         }
 
-        // El endpoint ya incluye /ubl2.1/... — si la base también lo tiene, evitamos duplicado
+        // Construir URL final evitando doble /ubl2.1
         $base = $this->apiPath;
         $path = $endpoint;
 
-        // Si la base termina en /ubl2.1 y el path empieza en /ubl2.1, recortamos el base
         if (str_ends_with($base, '/ubl2.1') && str_starts_with($path, '/ubl2.1/')) {
             $base = substr($base, 0, -strlen('/ubl2.1'));
         }
 
         $url    = $base . $path;
         $method = strtolower($method);
+
+        $startMs = (int) (microtime(true) * 1000);
 
         try {
             $response = Http::withHeaders([
@@ -106,16 +121,50 @@ class ApiNextpymeService
             ->timeout($timeout)
             ->{$method}($url, $parameters);
 
+            $durationMs = (int) (microtime(true) * 1000) - $startMs;
+            $status     = $response->status();
+            $body       = $response->json() ?? [];
+            $success    = $status < 400 && ($body['success'] ?? true);
+
+            AuditService::logApi(
+                documentId: $documentId,
+                operation:  $operation,
+                endpoint:   $url,
+                payload:    $this->sanitizePayload($parameters),
+                response:   $body,
+                httpStatus: $status,
+                success:    $success,
+                durationMs: $durationMs,
+                errorMsg:   $success ? null : ($body['message'] ?? $response->body()),
+                attempt:    $attempt,
+            );
+
             return [
-                'statusCode' => $response->status(),
-                'data'       => $response->json() ?? [],
-                'message'    => $response->status() >= 400 ? $response->body() : null,
+                'statusCode' => $status,
+                'data'       => $body,
+                'message'    => $status >= 400 ? ($body['message'] ?? $response->body()) : null,
             ];
+
         } catch (\Throwable $th) {
+            $durationMs = (int) (microtime(true) * 1000) - $startMs;
+
             Log::error('Error de conexión con Nextpyme', [
                 'url'   => $url,
                 'error' => $th->getMessage(),
             ]);
+
+            AuditService::logApi(
+                documentId: $documentId,
+                operation:  $operation,
+                endpoint:   $url,
+                payload:    $this->sanitizePayload($parameters),
+                response:   null,
+                httpStatus: 500,
+                success:    false,
+                durationMs: $durationMs,
+                errorMsg:   $th->getMessage(),
+                attempt:    $attempt,
+            );
 
             return [
                 'statusCode' => 500,
@@ -127,11 +176,24 @@ class ApiNextpymeService
         }
     }
 
-    /**
-     * Indica si el servicio tiene credenciales válidas para operar.
-     */
     public function isConfigured(): bool
     {
         return $this->hasConfig;
+    }
+
+    /**
+     * Elimina campos sensibles del payload antes de guardarlo en api_logs.
+     */
+    private function sanitizePayload(array $payload): array
+    {
+        $sensitive = ['password', 'token', 'secret', 'key', 'authorization', 'api_key', 'access_token', 'refresh_token', 'bearer', 'private_key'];
+
+        array_walk_recursive($payload, function (&$value, $key) use ($sensitive) {
+            if (in_array(strtolower((string) $key), $sensitive)) {
+                $value = '[REDACTED]';
+            }
+        });
+
+        return $payload;
     }
 }

@@ -44,9 +44,6 @@ class EstablishmentController extends Controller
             Establishment::where('is_main', true)->update(['is_main' => false]);
         }
 
-        $company = Company::first();
-        $data['company_id'] = $company?->id;
-
         Establishment::create($data);
 
         return back()->with('success', 'Establecimiento creado correctamente.');

@@ -205,8 +205,7 @@ class PurchaseService
 
         // Generar asiento contable de compra (fuera de la transacción de stock)
         $order->load('items');
-        $companyId = Company::first()?->id;
-        if ($companyId) {
+        {
             $subtotal  = (float) $order->items->sum('line_extension_amount');
             $totalTax  = (float) $order->items->sum(function ($line) {
                 $tax = is_array($line->tax) ? $line->tax : [];
@@ -215,7 +214,6 @@ class PurchaseService
             $accountingDoc = (object) [
                 'id'                         => $order->id,
                 'type_document_operation_id' => 14,
-                'company_id'                 => $companyId,
                 'user_id'                    => Auth::id(),
                 'third_party_id'             => $order->third_party_id,
                 'internal_code'              => $order->internal_code,

@@ -21,7 +21,6 @@ class AccountingDocument extends Model
     protected $fillable = [
         'uuid',
         'internal_code',
-        'company_id',
         'user_id',
         'third_party_id',
         'document_id',

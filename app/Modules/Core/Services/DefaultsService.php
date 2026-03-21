@@ -34,7 +34,6 @@ class DefaultsService
         foreach ($defaults as $data) {
             Resolution::updateOrCreate(
                 [
-                    'company_id'                 => $company->id,
                     'type_document_operation_id' => $data['type_document_operation_id'],
                     'prefix'                     => $data['prefix'],
                 ],
@@ -69,6 +68,9 @@ class DefaultsService
                 'type_document_identification_id' => $company->type_document_identification_id ?? 6,
                 'dv'                              => $company->dv,
                 'type_organization_id'            => $company->type_organization_id,
+                'type_regime_id'                  => $company->type_regime_id   ?? 2,  // 2 = No responsable IVA
+                'type_liability_id'               => $company->type_liability_id ?? 14, // 14 = No aplica (R-99-PN)
+                'type_third_id'                   => 1,  // 1 = Tercero general
                 'name'                            => $company->business_name,
                 'email'                           => $company->email,
                 'phone'                           => $company->phone,
@@ -90,6 +92,9 @@ class DefaultsService
             [
                 'type_document_identification_id' => 13,   // NIT
                 'type_organization_id'            => 1,    // Persona Natural
+                'type_regime_id'                  => 2,    // No responsable IVA
+                'type_liability_id'               => 14,   // No aplica (R-99-PN)
+                'type_third_id'                   => 1,    // Tercero general
                 'name'                            => 'CONSUMIDOR FINAL',
                 'address'                         => $company->address ?? 'CR 00 00 00',
                 'municipality_id'                 => $company->municipality_id,

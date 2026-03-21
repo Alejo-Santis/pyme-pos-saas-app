@@ -32,8 +32,6 @@ return new class extends Migration
             $table->uuid('uuid')->unique();
             $table->string('internal_code', 50)->nullable();
 
-            $table->uuid('company_id');
-            $table->foreign('company_id')->references('id')->on('companies')->cascadeOnDelete();
             $table->uuid('user_id')->nullable();
             $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
             $table->uuid('third_party_id')->nullable();

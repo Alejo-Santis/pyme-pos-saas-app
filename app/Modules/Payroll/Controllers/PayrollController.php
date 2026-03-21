@@ -144,8 +144,6 @@ class PayrollController extends Controller
     private function generatePayrollEntry(PayrollRun $run, string $userId): void
     {
         try {
-            $companyId = Company::first()?->id;
-            if (! $companyId) return;
 
             $run->loadMissing('details');
 
@@ -165,7 +163,6 @@ class PayrollController extends Controller
             $voucher = AccountingDocument::create([
                 'uuid'                       => Str::uuid(),
                 'internal_code'              => 'NOM-' . $run->period_start->format('Ym') . '-' . strtoupper(Str::random(4)),
-                'company_id'                 => $companyId,
                 'user_id'                    => $userId,
                 'third_party_id'             => null,
                 'document_id'                => null,

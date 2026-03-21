@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Fondo azul con esquinas redondeadas -->
+  <rect width="64" height="64" rx="14" fill="#2563eb"/>
+  <!-- Rayo blanco (forma del ícono mdi-lightning-bolt) -->
+  <polygon points="38,6 22,34 31,34 26,58 42,30 33,30" fill="white"/>
+</svg>

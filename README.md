@@ -1,4 +1,4 @@
-# NextPOS SaaS — ERP Colombia
+# PymePOS SaaS — ERP Colombia
 
 Plataforma SaaS de facturación electrónica y gestión empresarial para Colombia.
 Stack: **Laravel 12 · Svelte 5 · Inertia.js 2 · PostgreSQL 16 · Tailwind CSS 4**
@@ -42,19 +42,19 @@ php artisan key:generate
 Editar `.env` con tus valores locales:
 
 ```env
-APP_NAME="NextPOS SaaS"
+APP_NAME="PymePOS SaaS"
 APP_ENV=local
 APP_DEBUG=true
-APP_URL=http://nextpossaas-app.test
+APP_URL=http://pymepossaas-app.test
 
 # Dominio central — SIN protocolo, SIN barra final
-CENTRAL_DOMAIN=nextpossaas-app.test
+CENTRAL_DOMAIN=pymepossaas-app.test
 
 # PostgreSQL
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=nextpossaas_db
+DB_DATABASE=pymepossaas_db
 DB_USERNAME=postgres
 DB_PASSWORD=tu_password
 
@@ -70,7 +70,7 @@ QUEUE_CONNECTION=database
 
 ```sql
 -- Desde psql o pgAdmin
-CREATE DATABASE nextpossaas_db OWNER postgres;
+CREATE DATABASE pymepossaas_db OWNER postgres;
 ```
 
 ### 4. Migraciones y seeders
@@ -142,19 +142,19 @@ npm run dev
 
 El sistema usa **subdominios** para identificar cada empresa:
 ```
-nextpossaas-app.test          → Landlord (landing, registro, admin)
-empresa1.nextpossaas-app.test → Tenant "empresa1"
-empresa2.nextpossaas-app.test → Tenant "empresa2"
+pymepossaas-app.test          → Landlord (landing, registro, admin)
+empresa1.pymepossaas-app.test → Tenant "empresa1"
+empresa2.pymepossaas-app.test → Tenant "empresa2"
 ```
 
 ### VirtualHost con wildcard de subdominio
 
-Crear `/etc/apache2/sites-available/nextpossaas.conf`:
+Crear `/etc/apache2/sites-available/pymepossaas.conf`:
 
 ```apache
 <VirtualHost *:80>
-    ServerName nextpossaas-app.test
-    ServerAlias *.nextpossaas-app.test
+    ServerName pymepossaas-app.test
+    ServerAlias *.pymepossaas-app.test
 
     DocumentRoot /var/www/pyme-pos-saas-app/public
 
@@ -164,15 +164,15 @@ Crear `/etc/apache2/sites-available/nextpossaas.conf`:
         Require all granted
     </Directory>
 
-    ErrorLog  ${APACHE_LOG_DIR}/nextpossaas-error.log
-    CustomLog ${APACHE_LOG_DIR}/nextpossaas-access.log combined
+    ErrorLog  ${APACHE_LOG_DIR}/pymepossaas-error.log
+    CustomLog ${APACHE_LOG_DIR}/pymepossaas-access.log combined
 </VirtualHost>
 ```
 
 Habilitar y recargar:
 
 ```bash
-sudo a2ensite nextpossaas.conf
+sudo a2ensite pymepossaas.conf
 sudo a2enmod rewrite
 sudo systemctl reload apache2
 ```
@@ -188,7 +188,7 @@ sudo chmod -R 775 storage bootstrap/cache
 
 ## Agregar dominios para pruebas locales
 
-Cada empresa registrada (ej: slug `santinet`) queda en `santinet.nextpossaas-app.test`.
+Cada empresa registrada (ej: slug `santinet`) queda en `santinet.pymepossaas-app.test`.
 Apache ya atiende el wildcard, pero el sistema operativo necesita resolver ese dominio.
 
 ### Opción A — `/etc/hosts` (manual, una línea por empresa)
@@ -198,10 +198,10 @@ sudo nano /etc/hosts
 ```
 
 ```
-127.0.0.1  nextpossaas-app.test
-127.0.0.1  santinet.nextpossaas-app.test
-127.0.0.1  miempresa.nextpossaas-app.test
-127.0.0.1  demo.nextpossaas-app.test
+127.0.0.1  pymepossaas-app.test
+127.0.0.1  santinet.pymepossaas-app.test
+127.0.0.1  miempresa.pymepossaas-app.test
+127.0.0.1  demo.pymepossaas-app.test
 ```
 
 > Agrega una línea cada vez que registres una empresa nueva.
@@ -233,7 +233,7 @@ sudo systemctl restart NetworkManager
 
 Verificar:
 ```bash
-ping santinet.nextpossaas-app.test
+ping santinet.pymepossaas-app.test
 # Debe responder desde 127.0.0.1
 ```
 
@@ -266,18 +266,18 @@ use Illuminate\Support\Facades\Hash;
 
 AdminUser::create([
     'name'     => 'Super Admin',
-    'email'    => 'admin@nextpossaas-app.test',
+    'email'    => 'admin@pymepossaas-app.test',
     'password' => Hash::make('password'),
 ]);
 ```
 
-Acceder en: `http://nextpossaas-app.test/admin/login`
+Acceder en: `http://pymepossaas-app.test/admin/login`
 
 ---
 
 ## Registrar una empresa de prueba
 
-1. Ir a `http://nextpossaas-app.test/register`
+1. Ir a `http://pymepossaas-app.test/register`
 2. Completar el formulario (nombre empresa, NIT, admin, contraseña, plan)
 3. El sistema crea automáticamente:
    - Schema `tenant_{slug}` en PostgreSQL
@@ -285,9 +285,9 @@ Acceder en: `http://nextpossaas-app.test/admin/login`
    - Roles y permisos (Spatie)
    - Plan Único de Cuentas — PUC Colombia
    - Usuario administrador dentro del schema
-4. Redirige al login del subdominio: `http://{slug}.nextpossaas-app.test/login`
+4. Redirige al login del subdominio: `http://{slug}.pymepossaas-app.test/login`
 
-> Si usas `/etc/hosts`, recuerda agregar `127.0.0.1 {slug}.nextpossaas-app.test` antes de abrir el login.
+> Si usas `/etc/hosts`, recuerda agregar `127.0.0.1 {slug}.pymepossaas-app.test` antes de abrir el login.
 
 ---
 
@@ -359,16 +359,16 @@ La empresa está implícita en el `search_path` de PostgreSQL.
 
 | URL | Descripción |
 |---|---|
-| `nextpossaas-app.test/` | Landing page pública |
-| `nextpossaas-app.test/register` | Registro de nueva empresa |
-| `nextpossaas-app.test/admin/login` | Login super-admin |
-| `nextpossaas-app.test/admin/dashboard` | Panel super-admin |
-| `{slug}.nextpossaas-app.test/login` | Login del ERP de la empresa |
-| `{slug}.nextpossaas-app.test/dashboard` | Dashboard del ERP |
-| `{slug}.nextpossaas-app.test/invoices` | Facturación electrónica |
-| `{slug}.nextpossaas-app.test/pos` | Punto de venta |
-| `{slug}.nextpossaas-app.test/inventory` | Inventario |
-| `{slug}.nextpossaas-app.test/accounting` | Contabilidad |
+| `pymepossaas-app.test/` | Landing page pública |
+| `pymepossaas-app.test/register` | Registro de nueva empresa |
+| `pymepossaas-app.test/admin/login` | Login super-admin |
+| `pymepossaas-app.test/admin/dashboard` | Panel super-admin |
+| `{slug}.pymepossaas-app.test/login` | Login del ERP de la empresa |
+| `{slug}.pymepossaas-app.test/dashboard` | Dashboard del ERP |
+| `{slug}.pymepossaas-app.test/invoices` | Facturación electrónica |
+| `{slug}.pymepossaas-app.test/pos` | Punto de venta |
+| `{slug}.pymepossaas-app.test/inventory` | Inventario |
+| `{slug}.pymepossaas-app.test/accounting` | Contabilidad |
 
 ---
 
