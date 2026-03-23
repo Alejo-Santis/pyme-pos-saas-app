@@ -4,6 +4,7 @@ namespace App\Modules\Core\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Core\Models\Company;
+use App\Modules\Core\Models\Resolution;
 use App\Modules\Core\Services\DefaultsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,7 +85,8 @@ class OnboardingController extends Controller
         $company = Company::firstOrFail();
 
         // Guardar la resolución real FEV que el usuario configuró
-        $company->resolutions()->updateOrCreate(
+        // Nota: NO usar $company->resolutions() — la tabla no tiene company_id (multi-tenant implícito)
+        Resolution::updateOrCreate(
             ['resolution' => $request->resolution, 'type_document_operation_id' => 1],
             [
                 'uuid'                       => \Illuminate\Support\Str::uuid(),

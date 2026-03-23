@@ -29,7 +29,7 @@ class DefaultsService
      */
     public function seedResolutions(Company $company): void
     {
-        $defaults = $this->defaultResolutions($company->id);
+        $defaults = $this->defaultResolutions();
 
         foreach ($defaults as $data) {
             Resolution::updateOrCreate(
@@ -111,7 +111,7 @@ class DefaultsService
 
     // ── Catálogo de resoluciones predeterminadas ───────────────────────────
 
-    private function defaultResolutions(string $companyId): array
+    private function defaultResolutions(): array
     {
         // Prefijos y operation IDs basados en xedoc ToolTrait::setDefaultResolutions
         // La resolución SETP es la de habilitación DIAN para FEV (type_document_operation_id=1)

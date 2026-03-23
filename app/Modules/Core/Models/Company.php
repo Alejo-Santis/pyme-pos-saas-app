@@ -4,7 +4,6 @@ namespace App\Modules\Core\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Empresa del tenant — datos tributarios DIAN y de contacto.
@@ -56,8 +55,5 @@ class Company extends Model
         'is_active'                     => 'boolean',
     ];
 
-    public function resolutions(): HasMany
-    {
-        return $this->hasMany(Resolution::class);
-    }
+
 }

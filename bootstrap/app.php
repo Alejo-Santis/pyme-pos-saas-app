@@ -50,7 +50,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Database\QueryException $e,
             Request $request
         ) {
-            $sqlState = $e->getSQLState() ?? '';
+            $prev = $e->getPrevious();
+            $sqlState = ($prev instanceof \PDOException && isset($prev->errorInfo[0]))
+                ? (string) $prev->errorInfo[0]
+                : '';
 
             // 42P01 = tabla/relación no existe (schema eliminado / migración pendiente)
             // 3D000 = base de datos no existe

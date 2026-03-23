@@ -18,8 +18,7 @@ class ResolutionController extends Controller
 {
     public function index(): Response
     {
-        $resolutions = Resolution::with('company')
-            ->orderByDesc('is_active')
+        $resolutions = Resolution::orderByDesc('is_active')
             ->orderByDesc('created_at')
             ->get();
 
