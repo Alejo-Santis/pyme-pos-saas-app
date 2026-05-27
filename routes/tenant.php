@@ -16,6 +16,7 @@ use App\Modules\Core\Controllers\DashboardController;
 use App\Modules\Core\Controllers\EstablishmentController;
 use App\Modules\Core\Controllers\OnboardingController;
 use App\Modules\Core\Controllers\ResolutionController;
+use App\Modules\Core\Controllers\SetupController;
 use App\Modules\Core\Controllers\ThirdPartyController;
 use App\Modules\Core\Controllers\WarehouseController;
 use App\Modules\Inventory\Controllers\ItemCategoryController;
@@ -83,6 +84,7 @@ Route::middleware([
         Route::middleware(['onboarding'])->group(function () {
 
             Route::get('/dashboard', DashboardController::class)->name('dashboard');
+            Route::get('/setup', [SetupController::class, 'index'])->name('setup');
 
             // ─── Suscripción ──────────────────────────────────────────────
             Route::get('/subscription', [SubscriptionController::class, 'show'])->name('subscription');

@@ -13,6 +13,7 @@
   let {
     auth, stats = {}, sales = [], revenue = [], purchases = [],
     recentDocuments = [],
+    setup = {},
     year = new Date().getFullYear(), flash = {}
   } = $props()
 
@@ -23,6 +24,7 @@
   const today = new Date()
 
   const currentMonth = today.getMonth() // 0-based
+  const setupNext = $derived(setup.next_step ?? null)
 
   let canvasSales, canvasRevenue, canvasPurchases
   let chartSales, chartRevenue, chartPurchases
@@ -297,6 +299,48 @@
       {/each}
     </div>
   </div>
+
+  {#if setupNext && (setup.percent ?? 0) < 100}
+    <div class="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 shadow-sm">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex items-start gap-3">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600">
+            <i class="mdi {setupNext.icon} text-xl text-white"></i>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-sm font-bold text-slate-800">Configura tu ERP</h2>
+              <span class="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-blue-700">{setup.percent ?? 0}%</span>
+            </div>
+            <p class="mt-1 text-sm text-slate-600">
+              Siguiente: <span class="font-semibold text-slate-800">{setupNext.title}</span>. {setupNext.description}
+            </p>
+            <div class="mt-3 h-2 max-w-lg rounded-full bg-white">
+              <div class="h-2 rounded-full bg-blue-600" style="width: {setup.percent ?? 0}%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a
+            use:inertia
+            href={setupNext.href}
+            class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
+          >
+            <span>{setupNext.action}</span>
+            <i class="mdi mdi-arrow-right text-base"></i>
+          </a>
+          <a
+            use:inertia
+            href="/setup"
+            class="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+          >
+            <i class="mdi mdi-map-check-outline text-base"></i>
+            <span>Ver guía</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- ── KPI Cards ─────────────────────────────────────────────────────────── -->
   <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">

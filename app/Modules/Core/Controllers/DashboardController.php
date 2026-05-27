@@ -3,6 +3,7 @@
 namespace App\Modules\Core\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Core\Services\SetupProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -124,6 +125,7 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'stats'           => $stats,
+            'setup'           => app(SetupProgressService::class)->progress(),
             'sales'           => $sales,
             'revenue'         => $revenue,
             'purchases'       => $purchases,

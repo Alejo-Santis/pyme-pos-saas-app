@@ -31,6 +31,7 @@
       label: null,
       items: [
         { href: '/dashboard', icon: 'mdi-home-outline', label: 'Inicio' },
+        { href: '/setup',     icon: 'mdi-map-check-outline', label: 'Primeros pasos' },
       ],
     },
     {
