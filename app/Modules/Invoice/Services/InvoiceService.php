@@ -3,6 +3,7 @@
 namespace App\Modules\Invoice\Services;
 
 use App\Modules\Core\Models\Resolution;
+use App\Modules\Audit\Services\AuditService;
 use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Models\DocumentLine;
 use App\Shared\Services\InternalCodeService;
@@ -46,10 +47,11 @@ class InvoiceService
 
             // 1. Código interno único (D1-00000001, D4-00000001, etc.)
             $internalCode = $this->internalCodeService->reserveInternalCode($typeOpId);
+            $systemNumber = $this->numberFromInternalCode($internalCode);
 
             // 2. Consecutivo de resolución DIAN (si aplica)
             $prefix = $data['prefix'] ?? null;
-            $number = $data['number'] ?? null;
+            $number = $data['number'] ?? $systemNumber;
 
             if (! empty($data['resolution_id'])) {
                 /** @var Resolution $resolution */
@@ -68,6 +70,7 @@ class InvoiceService
             // 5. Crear el documento (el Observer disparará el Job DIAN automáticamente)
             $document = Document::create([
                 'internal_code'               => $internalCode,
+                'system_number'               => $systemNumber,
                 'user_id'                     => $data['user_id'],
                 'third_party_id'              => $data['third_party_id'] ?? null,
                 'seller_id'                   => $data['seller_id'] ?? null,
@@ -134,6 +137,8 @@ class InvoiceService
 
             // 9. Asiento contable automático (factura y compra)
             $this->generateAccountingEntry($document);
+
+            AuditService::created($document, "Documento {$internalCode} creado por valor {$totals['total']}.", 'Invoice');
 
             return $document->load(['lines.item', 'thirdParty', 'resolution']);
         });
@@ -223,6 +228,8 @@ class InvoiceService
                 }
             }
 
+            $original = $document->getOriginal();
+
             $document->update(collect($data)->except('lines')->toArray());
 
             $this->createDocumentHistory(
@@ -230,6 +237,8 @@ class InvoiceService
                 null,
                 "Documento {$document->internal_code} actualizado."
             );
+
+            AuditService::updated($document, $original, "Documento {$document->internal_code} actualizado.", 'Invoice');
 
             return $document->load(['lines.item', 'thirdParty', 'resolution']);
         });
@@ -275,6 +284,8 @@ class InvoiceService
                 null,
                 "Documento {$document->internal_code} anulado."
             );
+
+            AuditService::deleted($document, "Documento {$document->internal_code} anulado.", 'Invoice');
         });
 
         return $document;
@@ -455,5 +466,14 @@ class InvoiceService
         $resolution->update(['current_number' => $next]);
 
         return [$resolution->prefix, $next];
+    }
+
+    private function numberFromInternalCode(string $internalCode): int
+    {
+        if (preg_match('/-(\d+)$/', $internalCode, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 1;
     }
 }

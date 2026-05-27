@@ -119,6 +119,14 @@ class InvoiceController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeLegacyInvoicePayload($request);
+
+        if ((int) $request->input('type_document_operation_id') === 91
+            && ! $request->filled('document_reference_id')
+            && ! $request->filled('reference_id')) {
+            return back()->withErrors(['document_reference_id' => 'La nota crédito requiere un documento referenciado.'])->withInput();
+        }
+
         $data = $request->validate([
             'third_party_id'              => 'nullable|uuid|exists:third_parties,id',
             'seller_id'                   => 'nullable|uuid|exists:users,id',
@@ -152,6 +160,15 @@ class InvoiceController extends Controller
         return redirect()
             ->route('invoices.show', $document)
             ->with('success', 'Documento creado correctamente.');
+    }
+
+    private function normalizeLegacyInvoicePayload(Request $request): void
+    {
+        $request->merge([
+            'type_document_id' => $request->input('type_document_id', 1),
+            'issue_date'       => $request->input('issue_date', $request->input('date')),
+            'currency_id'      => $request->input('currency_id', 1),
+        ]);
     }
 
     /**

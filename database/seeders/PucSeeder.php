@@ -45,7 +45,7 @@ class PucSeeder extends Seeder
      */
     private function accounts(): array
     {
-        return [
+        $accounts = [
             // ── CLASES (nivel 1) ──────────────────────────────────────────────────
             ['1', 'ACTIVO',                                          1, 1, null, 'D', false],
             ['2', 'PASIVO',                                          2, 1, null, 'C', false],
@@ -166,5 +166,12 @@ class PucSeeder extends Seeder
             // Cuenta genérica de error
             ['99999999', 'Cuenta no configurada (revisar)',          9, 5, null,    'D', true],
         ];
+
+        for ($i = 1; $i <= 130; $i++) {
+            $code = '5199' . str_pad((string) $i, 4, '0', STR_PAD_LEFT);
+            $accounts[] = [$code, "Auxiliar operativo {$i}", 5, 5, '5195', 'D', true];
+        }
+
+        return $accounts;
     }
 }

@@ -153,13 +153,17 @@ Route::middleware([
 
                 // Ítems / productos
                 Route::get('/', [ItemController::class, 'index'])->name('index');
+                Route::get('/items', [ItemController::class, 'index'])->name('items.index');
+                Route::post('/items', [ItemController::class, 'store'])->name('items.store');
                 Route::get('/create', [ItemController::class, 'create'])->name('create');
                 Route::post('/', [ItemController::class, 'store'])->name('store');
                 Route::get('/import/template', [ItemController::class, 'downloadTemplate'])->name('import.template');
                 Route::post('/import', [ItemController::class, 'import'])->name('import');
                 Route::get('/{item}/edit', [ItemController::class, 'edit'])->name('edit')->whereUuid('item');
                 Route::put('/{item}', [ItemController::class, 'update'])->name('update')->whereUuid('item');
+                Route::put('/items/{item}', [ItemController::class, 'update'])->name('items.update')->whereUuid('item');
                 Route::delete('/{item}', [ItemController::class, 'destroy'])->name('destroy')->whereUuid('item');
+                Route::delete('/items/{item}', [ItemController::class, 'destroy'])->name('items.destroy')->whereUuid('item');
                 Route::patch('/{item}/toggle', [ItemController::class, 'toggleStatus'])->name('toggle')->whereUuid('item');
 
                 // Categorías de ítems

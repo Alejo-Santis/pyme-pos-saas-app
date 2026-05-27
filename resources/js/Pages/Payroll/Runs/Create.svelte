@@ -79,7 +79,7 @@
     <!-- Parámetros legales vigentes -->
     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-wrap gap-6 text-sm">
       <div>
-        <span class="text-blue-600 font-semibold">SMMLV 2025:</span>
+        <span class="text-blue-600 font-semibold">SMMLV vigente:</span>
         <span class="text-blue-800 ml-1">{fmt(smmlv)}</span>
       </div>
       <div>

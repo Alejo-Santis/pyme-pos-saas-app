@@ -17,15 +17,15 @@ return new class extends Migration
             $table->uuid('uuid')->unique();
 
             // Identificación tributaria
-            $table->unsignedBigInteger('type_document_identification_id'); // FK → public
+            $table->unsignedBigInteger('type_document_identification_id')->nullable(); // FK → public
             $table->string('identification_number', 20);
             $table->char('dv', 1)->nullable();               // dígito de verificación (solo NIT)
 
             // Clasificación tributaria — FK a catálogos públicos
-            $table->unsignedBigInteger('type_organization_id');  // Persona Natural/Jurídica
-            $table->unsignedBigInteger('type_regime_id');        // Régimen tributario
-            $table->unsignedBigInteger('type_liability_id');     // Responsabilidad tributaria
-            $table->unsignedBigInteger('type_third_id');         // Cliente/Proveedor/Otro → public.type_thirds
+            $table->unsignedBigInteger('type_organization_id')->nullable();  // Persona Natural/Jurídica
+            $table->unsignedBigInteger('type_regime_id')->nullable();        // Régimen tributario
+            $table->unsignedBigInteger('type_liability_id')->nullable();     // Responsabilidad tributaria
+            $table->unsignedBigInteger('type_third_id')->nullable();         // Cliente/Proveedor/Otro → public.type_thirds
 
             // Datos personales/empresa
             $table->string('name');                           // razón social o primer nombre

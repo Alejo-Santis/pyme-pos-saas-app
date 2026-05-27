@@ -65,7 +65,7 @@ test('calcula prima de servicios correctamente', function () {
     $days   = 180;  // 6 meses
     $prima  = round($salary * $days / 360);
 
-    expect($prima)->toBe(1000000);
+    expect($prima)->toEqual(1000000);
 });
 
 test('calcula cesantías correctamente', function () {
@@ -74,7 +74,7 @@ test('calcula cesantías correctamente', function () {
     $days     = 360;  // 1 año
     $cesantias = round($salary * $days / 360);
 
-    expect($cesantias)->toBe(2000000);
+    expect($cesantias)->toEqual(2000000);
 });
 
 test('calcula vacaciones correctamente', function () {
@@ -83,5 +83,5 @@ test('calcula vacaciones correctamente', function () {
     $days        = 360;  // 1 año
     $vacaciones  = round($salary * $days / 720);
 
-    expect($vacaciones)->toBe(1000000);
+    expect($vacaciones)->toEqual(1000000);
 });

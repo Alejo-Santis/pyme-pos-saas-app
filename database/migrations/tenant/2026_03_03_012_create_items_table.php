@@ -39,9 +39,9 @@ return new class extends Migration
             $table->string('reference', 100)->nullable();     // referencia del fabricante
 
             // Clasificación — FK a catálogos globales (public schema via search_path)
-            $table->unsignedBigInteger('clasification_id');  // Producto/Servicio/Otro → public.item_clasification
-            $table->unsignedBigInteger('tax_category_id');   // Gravado/Exento/Excluido → public.item_tax_categories
-            $table->unsignedBigInteger('unit_measure_id');   // FK → public.unit_measures
+            $table->unsignedBigInteger('clasification_id')->nullable();  // Producto/Servicio/Otro → public.item_clasification
+            $table->unsignedBigInteger('tax_category_id')->nullable();   // Gravado/Exento/Excluido → public.item_tax_categories
+            $table->unsignedBigInteger('unit_measure_id')->nullable();   // FK → public.unit_measures
             $table->uuid('group_id')->nullable();             // FK → item_groups
             $table->uuid('line_id')->nullable();              // FK → item_lines
 

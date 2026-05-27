@@ -11,28 +11,17 @@ use App\Modules\Payroll\Models\PayrollSocialBenefit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class PayrollCalculationService
 {
     // ──────────────────────────────────────────────────────────────
-    // CONSTANTES LEGALES COLOMBIA 2025
-    // Actualizar anualmente según decreto de salario mínimo
+    // Valores fallback. En operación normal se leen de payroll_legal_parameters.
     // ──────────────────────────────────────────────────────────────
 
-    // Salario Mínimo Mensual Legal Vigente 2025
-    const SMMLV = 1423500;
+    const SMMLV = 1750905;
 
-    // Auxilio de transporte 2025 (para empleados con salario ≤ 2 SMMLV)
-    const TRANSPORT_ALLOWANCE = 202033;
-
-    // Límite para auxilio de transporte: 2 SMMLV
-    const TRANSPORT_ALLOWANCE_LIMIT = self::SMMLV * 2;
-
-    // Límite para exoneración de SENA e ICBF: 10 SMMLV (Ley 1607/2012)
-    const SENA_ICBF_EXEMPTION_LIMIT = self::SMMLV * 10;
-
-    // Límite para fondo de solidaridad pensional: 4 SMMLV
-    const SOLIDARITY_FUND_LIMIT = self::SMMLV * 4;
+    const TRANSPORT_ALLOWANCE = 249095;
 
     // ── Aportes empleado ──
     const HEALTH_EMPLOYEE_RATE  = 0.04;   // 4%
@@ -55,7 +44,108 @@ class PayrollCalculationService
     const CESANTIAS_INTEREST_RATE     = 0.12; // 12% anual sobre cesantías
 
     // UVT 2025 para retención en la fuente
-    const UVT = 49799;
+    const UVT = 52374;
+
+    public static function legalParameters(?int $year = null): array
+    {
+        $year ??= (int) now()->year;
+
+        $fallback = [
+            'year'                       => $year,
+            'smmlv'                      => (float) self::SMMLV,
+            'transport_allowance'        => (float) self::TRANSPORT_ALLOWANCE,
+            'uvt'                        => (float) self::UVT,
+            'health_employee_rate'       => (float) self::HEALTH_EMPLOYEE_RATE,
+            'pension_employee_rate'      => (float) self::PENSION_EMPLOYEE_RATE,
+            'solidarity_base_rate'       => (float) self::SOLIDARITY_BASE_RATE,
+            'health_employer_rate'       => (float) self::HEALTH_EMPLOYER_RATE,
+            'pension_employer_rate'      => (float) self::PENSION_EMPLOYER_RATE,
+            'ccf_rate'                   => (float) self::CCF_RATE,
+            'sena_rate'                  => (float) self::SENA_RATE,
+            'icbf_rate'                  => (float) self::ICBF_RATE,
+            'cesantias_interest_rate'    => (float) self::CESANTIAS_INTEREST_RATE,
+        ];
+
+        try {
+            if (! Schema::hasTable('payroll_legal_parameters')) {
+                return $fallback;
+            }
+
+            $row = DB::table('payroll_legal_parameters')
+                ->where('year', $year)
+                ->where('is_active', true)
+                ->first();
+
+            if (! $row) {
+                return $fallback;
+            }
+
+            return array_merge($fallback, [
+                'smmlv'                   => (float) $row->smmlv,
+                'transport_allowance'     => (float) $row->transport_allowance,
+                'uvt'                     => (float) $row->uvt,
+                'health_employee_rate'    => (float) $row->health_employee_rate,
+                'pension_employee_rate'   => (float) $row->pension_employee_rate,
+                'solidarity_base_rate'    => (float) $row->solidarity_base_rate,
+                'health_employer_rate'    => (float) $row->health_employer_rate,
+                'pension_employer_rate'   => (float) $row->pension_employer_rate,
+                'ccf_rate'                => (float) $row->ccf_rate,
+                'sena_rate'               => (float) $row->sena_rate,
+                'icbf_rate'               => (float) $row->icbf_rate,
+                'cesantias_interest_rate' => (float) $row->cesantias_interest_rate,
+            ]);
+        } catch (\Throwable) {
+            return $fallback;
+        }
+    }
+
+    public static function smmlv(?int $year = null): float
+    {
+        return self::legalParameters($year)['smmlv'];
+    }
+
+    public static function transportAllowance(?int $year = null): float
+    {
+        return self::legalParameters($year)['transport_allowance'];
+    }
+
+    public function calculate(array $data): array
+    {
+        $salary = (float) ($data['salary'] ?? 0);
+        $workedDays = max(0, min(30, (int) ($data['worked_days'] ?? 30)));
+        $grossSalary = round($salary * $workedDays / 30, 2);
+
+        $transport = round((float) ($data['transport'] ?? 0) * $workedDays / 30, 2);
+        $healthRate = ((float) ($data['health_deduction'] ?? 4)) / 100;
+        $pensionRate = ((float) ($data['pension_deduction'] ?? 4)) / 100;
+
+        $extraEarnings = 0;
+        $extraDeductions = 0;
+
+        foreach (($data['novelties'] ?? []) as $novelty) {
+            $value = (float) ($novelty['value'] ?? 0);
+            match ($novelty['type'] ?? '') {
+                'bonus', 'commission', 'earning' => $extraEarnings += $value,
+                'deduction', 'loan'              => $extraDeductions += $value,
+                default                          => null,
+            };
+        }
+
+        $healthDeduction = round($grossSalary * $healthRate, 2);
+        $pensionDeduction = round($grossSalary * $pensionRate, 2);
+        $totalDeductions = $healthDeduction + $pensionDeduction + $extraDeductions;
+        $totalEarnings = $grossSalary + $transport + $extraEarnings;
+
+        return [
+            'gross_salary'        => $grossSalary,
+            'transport_allowance' => $transport,
+            'health_deduction'    => $healthDeduction,
+            'pension_deduction'   => $pensionDeduction,
+            'total_deductions'    => $totalDeductions,
+            'total_earnings'      => $totalEarnings,
+            'net_salary'          => round($totalEarnings - $totalDeductions, 2),
+        ];
+    }
 
     /**
      * Calcula y persiste la liquidación completa de nómina para todos
@@ -114,6 +204,7 @@ class PayrollCalculationService
     {
         $periodStart = Carbon::parse($run->period_start);
         $periodEnd   = Carbon::parse($run->period_end);
+        $params      = self::legalParameters((int) $periodEnd->year);
 
         // Días trabajados en el período (Colombia usa mes de 30 días)
         $workedDays = $this->workedDays($contract, $periodStart, $periodEnd);
@@ -126,8 +217,8 @@ class PayrollCalculationService
 
         // Auxilio de transporte (solo si salario ≤ 2 SMMLV y no es integral)
         $transportAllowance = 0;
-        if (!$isIntegral && $contract->has_transport_allowance && $salary <= self::TRANSPORT_ALLOWANCE_LIMIT) {
-            $transportAllowance = round(self::TRANSPORT_ALLOWANCE * $workedDays / 30, 2);
+        if (!$isIntegral && $contract->has_transport_allowance && $salary <= ($params['smmlv'] * 2)) {
+            $transportAllowance = round($params['transport_allowance'] * $workedDays / 30, 2);
         }
 
         // Novedades del período (horas extra, comisiones, bonificaciones, incapacidades)
@@ -158,9 +249,9 @@ class PayrollCalculationService
         $proportionalBase = round($contributionBase * $workedDays / 30, 2);
 
         // ── DEDUCCIONES EMPLEADO ─────────────────────────────────
-        $healthEmployee  = round($proportionalBase * self::HEALTH_EMPLOYEE_RATE, 2);
-        $pensionEmployee = round($proportionalBase * self::PENSION_EMPLOYEE_RATE, 2);
-        $solidarityFund  = $this->calculateSolidarityFund($salary);
+        $healthEmployee  = round($proportionalBase * $params['health_employee_rate'], 2);
+        $pensionEmployee = round($proportionalBase * $params['pension_employee_rate'], 2);
+        $solidarityFund  = $this->calculateSolidarityFund($salary, $params);
 
         // Aportes voluntarios (AFC + pensión voluntaria)
         $voluntaryHealth  = (float) $contract->voluntary_health_amount;
@@ -168,7 +259,7 @@ class PayrollCalculationService
 
         // Retención en la fuente
         $incomeTax = $contract->has_income_tax_withholding
-            ? $this->calculateIncomeTax($totalEarned, $healthEmployee, $pensionEmployee, $solidarityFund)
+            ? $this->calculateIncomeTax($totalEarned, $healthEmployee, $pensionEmployee, $solidarityFund, $params)
             : 0;
 
         $totalDeductions = $healthEmployee + $pensionEmployee + $solidarityFund
@@ -177,18 +268,18 @@ class PayrollCalculationService
         $netPay = round($totalEarned - $totalDeductions, 2);
 
         // ── APORTES EMPLEADOR (costo, no descuento al empleado) ──
-        $healthEmployer  = round($proportionalBase * self::HEALTH_EMPLOYER_RATE, 2);
-        $pensionEmployer = round($proportionalBase * self::PENSION_EMPLOYER_RATE, 2);
+        $healthEmployer  = round($proportionalBase * $params['health_employer_rate'], 2);
+        $pensionEmployer = round($proportionalBase * $params['pension_employer_rate'], 2);
         $arlEmployer     = round($proportionalBase * $contract->arl_rate, 2);
-        $ccfEmployer     = round($proportionalBase * self::CCF_RATE, 2);
+        $ccfEmployer     = round($proportionalBase * $params['ccf_rate'], 2);
 
         // SENA e ICBF: exonerados si salario ≤ 10 SMMLV (Ley 1607/2012)
-        $senaEmployer = $salary <= self::SENA_ICBF_EXEMPTION_LIMIT
+        $senaEmployer = $salary <= ($params['smmlv'] * 10)
             ? 0
-            : round($proportionalBase * self::SENA_RATE, 2);
-        $icbfEmployer = $salary <= self::SENA_ICBF_EXEMPTION_LIMIT
+            : round($proportionalBase * $params['sena_rate'], 2);
+        $icbfEmployer = $salary <= ($params['smmlv'] * 10)
             ? 0
-            : round($proportionalBase * self::ICBF_RATE, 2);
+            : round($proportionalBase * $params['icbf_rate'], 2);
 
         $totalEmployerCost = $salary + $transportAllowance
                            + $healthEmployer + $pensionEmployer + $arlEmployer
@@ -284,6 +375,7 @@ class PayrollCalculationService
     {
         $salary      = (float) $contract->salary;
         $daysWorked  = $this->daysWorkedInSemester($contract, $year, $semester);
+        $params      = self::legalParameters($year);
         $benefits    = [];
 
         // Prima de servicios: salario/30 * días trabajados en el semestre
@@ -301,7 +393,7 @@ class PayrollCalculationService
         );
 
         // Intereses sobre cesantías: 12% anual (proporcional al tiempo)
-        $interesesAmount = round($cesantiasAmount * self::CESANTIAS_INTEREST_RATE * $daysWorked / 360, 2);
+        $interesesAmount = round($cesantiasAmount * $params['cesantias_interest_rate'] * $daysWorked / 360, 2);
         $benefits[] = PayrollSocialBenefit::updateOrCreate(
             ['employee_id' => $contract->employee_id, 'contract_id' => $contract->id, 'type' => 'intereses_cesantias', 'year' => $year, 'semester' => $semester],
             ['base_salary' => $salary, 'days_worked' => $daysWorked, 'amount' => $interesesAmount]
@@ -424,17 +516,17 @@ class PayrollCalculationService
      * Aplica para salarios > 4 SMMLV.
      * 1% base + 0.2% adicional por cada SMMLV por encima de 16 SMMLV.
      */
-    private function calculateSolidarityFund(float $salary): float
+    private function calculateSolidarityFund(float $salary, array $params): float
     {
-        if ($salary <= self::SOLIDARITY_FUND_LIMIT) {
+        if ($salary <= ($params['smmlv'] * 4)) {
             return 0;
         }
 
-        $rate = self::SOLIDARITY_BASE_RATE;
+        $rate = $params['solidarity_base_rate'];
 
         // Adicional por salarios > 16 SMMLV
-        if ($salary > self::SMMLV * 16) {
-            $smmlvMultiple = floor($salary / self::SMMLV);
+        if ($salary > $params['smmlv'] * 16) {
+            $smmlvMultiple = floor($salary / $params['smmlv']);
             $extraBlocks   = floor(($smmlvMultiple - 16) / 2);
             $rate += $extraBlocks * 0.002;
             $rate  = min($rate, 0.02); // máx 2%
@@ -452,7 +544,8 @@ class PayrollCalculationService
         float $totalEarned,
         float $healthEmployee,
         float $pensionEmployee,
-        float $solidarityFund
+        float $solidarityFund,
+        array $params
     ): float {
         // Base gravable mensual (sin auxilio de transporte para retención)
         $deductions  = $healthEmployee + $pensionEmployee + $solidarityFund;
@@ -460,7 +553,7 @@ class PayrollCalculationService
 
         // Anualizar para aplicar tabla del Art. 383
         $annualBase = $baseGravable * 12;
-        $uvt        = self::UVT;
+        $uvt        = $params['uvt'] ?: self::UVT;
 
         // Tabla simplificada Art. 383 E.T. (rangos en UVT anuales)
         $annualUvt = $annualBase / $uvt;

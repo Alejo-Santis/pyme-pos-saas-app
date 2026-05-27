@@ -2,7 +2,7 @@
   import { useForm } from '@inertiajs/svelte';
   import AppLayout from '@/Layouts/AppLayout.svelte';
 
-  let { employee, contract, typeContracts, typePeriods, typeWorkers } = $props();
+  let { employee, contract, typeContracts, typePeriods, typeWorkers, payrollLegal = {} } = $props();
 
   const isEdit = !!employee;
 
@@ -56,8 +56,8 @@
     }
   }
 
-  // SMMLV 2025 para mostrar advertencia
-  const SMMLV = 1423500;
+  const SMMLV = payrollLegal.smmlv ?? 1750905;
+  const payrollYear = payrollLegal.year ?? new Date().getFullYear();
   const fmtCOP = v => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v ?? 0);
 
   const docTypes = ['CC', 'CE', 'PA', 'TI', 'NIT', 'PT'];
@@ -279,7 +279,7 @@
             {#if $form.errors.salary}
               <p class="text-red-500 text-xs mt-1">{$form.errors.salary}</p>
             {:else}
-              <p class="text-xs text-slate-400 mt-1">SMMLV 2025: {fmtCOP(SMMLV)}</p>
+              <p class="text-xs text-slate-400 mt-1">SMMLV {payrollYear}: {fmtCOP(SMMLV)}</p>
             {/if}
           </div>
 

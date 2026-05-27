@@ -122,7 +122,12 @@ php artisan tenants:migrate:fresh
 
 ```bash
 # Ejecutar en todos los tenants
+php artisan tenants:seed --class=TenantDatabaseSeeder
+
+# Seeders tenant individuales, si necesitas repetir solo una parte
 php artisan tenants:seed --class=PucSeeder
+php artisan tenants:seed --class=AccountingConceptSeeder
+php artisan tenants:seed --class=PayrollLegalParametersSeeder
 php artisan tenants:seed --class=TenantRolesSeeder
 ```
 

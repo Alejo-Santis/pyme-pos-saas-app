@@ -83,7 +83,7 @@ class SocialBenefitController extends Controller
             ],
             'preview'   => $preview,
             'filters'   => $request->only('employee_id', 'type', 'date_from', 'date_to'),
-            'smmlv'     => PayrollCalculationService::SMMLV,
+            'smmlv'     => PayrollCalculationService::smmlv((int) now()->year),
         ]);
     }
 
@@ -161,7 +161,7 @@ class SocialBenefitController extends Controller
         $to        = \Carbon\Carbon::parse($dateTo);
         $days      = (int) $from->diffInDays($to) + 1;
         $salary    = (float) $contract->salary;
-        $transport = $contract->has_transport_allowance ? PayrollCalculationService::TRANSPORT_ALLOWANCE : 0;
+        $transport = $contract->has_transport_allowance ? PayrollCalculationService::transportAllowance((int) $to->year) : 0;
         $base      = $salary + ($type !== PayrollSocialBenefit::TYPE_VACACIONES ? $transport : 0);
 
         $amount = match ($type) {

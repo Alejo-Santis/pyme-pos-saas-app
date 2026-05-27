@@ -3,6 +3,7 @@
 namespace App\Modules\POS\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Audit\Services\AuditService;
 use App\Modules\Cash\Models\BankAccount;
 use App\Modules\Cash\Models\BankAccountMovement;
 use App\Modules\Cash\Models\CashBox;
@@ -83,7 +84,8 @@ class PosController extends Controller
             ->first();
 
         if ($existingShift && $existingShift->pos_terminal_id !== $terminal->id) {
-            return back()->withErrors(['terminal' => 'Ya tienes un turno activo en otra terminal. Ciérralo primero.']);
+            $message = 'Ya tienes un turno activo en otra terminal. Ciérralo primero.';
+            return back()->withErrors(['terminal' => $message, 'shift' => $message]);
         }
 
         // Verificar que la terminal no tenga otro usuario activo
@@ -101,7 +103,7 @@ class PosController extends Controller
         ]);
 
         // Crear o reactivar turno
-        PosTerminalUser::updateOrCreate(
+        $shift = PosTerminalUser::updateOrCreate(
             ['pos_terminal_id' => $terminal->id, 'user_id' => $user->id],
             [
                 'initial_balance'     => $data['initial_balance'],
@@ -118,6 +120,8 @@ class PosController extends Controller
                 'state'               => true,
             ]
         );
+
+        AuditService::created($shift, "Turno POS abierto en {$terminal->name}.", 'POS');
 
         return redirect()
             ->route('pos.terminal', $terminal)
@@ -256,6 +260,8 @@ class PosController extends Controller
         // ── Registrar movimientos de caja / banco ─────────────────────────
         $this->registerPaymentMovements($terminal, $shift, $document, $data['payment_forms']);
 
+        AuditService::created($document, "Venta POS {$document->internal_code} registrada en {$terminal->name}.", 'POS');
+
         return response()->json([
             'success'       => true,
             'document_id'   => $document->id,
@@ -357,6 +363,8 @@ class PosController extends Controller
         $countedCash  = (float) $data['counted_cash'];
         $difference   = $countedCash - $expectedCash;  // + sobrante, - faltante
 
+        $original = $shift->getOriginal();
+
         $shift->update([
             'active_shift'    => false,
             'state'           => false,
@@ -369,6 +377,8 @@ class PosController extends Controller
             'close_notes'     => $data['close_notes'] ?? null,
             'shift_closed_at' => now(),
         ]);
+
+        AuditService::updated($shift, $original, "Turno POS cerrado en {$terminal->name}.", 'POS');
 
         $diffLabel = $difference >= 0
             ? 'Sobrante $' . number_format($difference, 0, ',', '.')
@@ -402,7 +412,9 @@ class PosController extends Controller
         ]);
 
         $data['serial_number'] = 'POS-' . strtoupper(substr(md5(uniqid()), 0, 8));
-        PosTerminal::create($data);
+        $terminal = PosTerminal::create($data);
+
+        AuditService::created($terminal, "Terminal POS {$terminal->name} creada.", 'POS');
 
         return back()->with('success', 'Terminal creada correctamente.');
     }
@@ -425,13 +437,19 @@ class PosController extends Controller
             'state'            => 'boolean',
         ]);
 
+        $original = $terminal->getOriginal();
+
         $terminal->update($data);
+
+        AuditService::updated($terminal, $original, "Terminal POS {$terminal->name} actualizada.", 'POS');
 
         return back()->with('success', 'Terminal actualizada.');
     }
 
     public function destroyTerminal(PosTerminal $terminal): RedirectResponse
     {
+        AuditService::deleted($terminal, "Terminal POS {$terminal->name} eliminada.", 'POS');
+
         $terminal->delete();
 
         return back()->with('success', 'Terminal eliminada.');

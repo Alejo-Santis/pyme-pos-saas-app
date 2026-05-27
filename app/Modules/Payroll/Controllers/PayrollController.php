@@ -61,8 +61,8 @@ class PayrollController extends Controller
             'periodStart'   => $periodStart,
             'periodEnd'     => $periodEnd,
             'preview'       => $preview,
-            'smmlv'         => PayrollCalculationService::SMMLV,
-            'transportAllowance' => PayrollCalculationService::TRANSPORT_ALLOWANCE,
+            'smmlv'         => PayrollCalculationService::smmlv((int) now()->year),
+            'transportAllowance' => PayrollCalculationService::transportAllowance((int) now()->year),
         ]);
     }
 

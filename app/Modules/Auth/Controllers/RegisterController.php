@@ -91,8 +91,7 @@ class RegisterController extends Controller
             // ── Fase 2: Operaciones dentro del schema del tenant ──────────────
             tenancy()->initialize($tenant);
 
-            (new \Database\Seeders\TenantRolesSeeder())->run();
-            (new \Database\Seeders\PucSeeder())->run();
+            (new \Database\Seeders\TenantDatabaseSeeder())->run();
 
             $admin = \App\Models\User::create([
                 'name'     => $request->admin_name,
@@ -142,4 +141,3 @@ class RegisterController extends Controller
         return Inertia::location($loginUrl);
     }
 }
-

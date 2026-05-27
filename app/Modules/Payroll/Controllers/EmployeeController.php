@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Payroll\Imports\EmployeeImport;
 use App\Modules\Payroll\Models\Employee;
 use App\Modules\Payroll\Models\EmployeeContract;
+use App\Modules\Payroll\Services\PayrollCalculationService;
 use App\Shared\Exports\ArrayExport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,11 +44,14 @@ class EmployeeController extends Controller
             'typeContracts' => $this->typeContracts(),
             'typePeriods'   => $this->typePeriods(),
             'typeWorkers'   => $this->typeWorkers(),
+            'payrollLegal'  => PayrollCalculationService::legalParameters((int) now()->year),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeLegacyEmployeePayload($request);
+
         $employeeData = $request->validate([
             'document_type'          => 'required|string|max:5',
             'identification_number'  => 'required|string|max:20|unique:employees',
@@ -75,7 +79,7 @@ class EmployeeController extends Controller
             'job_title'                  => 'required|string|max:100',
             'cost_center'                => 'nullable|string|max:60',
             'arl_risk_class'             => 'required|integer|between:1,5',
-            'salary'                     => 'required|numeric|min:' . \App\Modules\Payroll\Services\PayrollCalculationService::SMMLV,
+            'salary'                     => 'required|numeric|min:' . PayrollCalculationService::smmlv((int) now()->year),
             'is_comprehensive_salary'    => 'boolean',
             'has_transport_allowance'    => 'boolean',
             'voluntary_health_amount'    => 'nullable|numeric|min:0',
@@ -96,6 +100,32 @@ class EmployeeController extends Controller
 
         return redirect()->route('payroll.employees.show', $employee)
             ->with('success', "Empleado {$employee->full_name} creado correctamente.");
+    }
+
+    private function normalizeLegacyEmployeePayload(Request $request): void
+    {
+        if ($request->filled('name') && ! $request->filled('first_name')) {
+            $parts = preg_split('/\s+/', trim((string) $request->input('name')), 2);
+            $request->merge([
+                'first_name' => $parts[0] ?? $request->input('name'),
+                'last_name'  => $parts[1] ?? 'Sin apellido',
+            ]);
+        }
+
+        $request->merge([
+            'document_type'          => $request->input('document_type', $request->input('identification_type', 'CC')),
+            'gender'                 => $request->input('gender', 3),
+            'type_contract_id'       => $request->input('type_contract_id', 2),
+            'type_worker_id'         => $request->input('type_worker_id', 1),
+            'payroll_period_id'      => $request->input('payroll_period_id', 1),
+            'job_title'              => $request->input('job_title', $request->input('position', 'Empleado')),
+            'arl_risk_class'         => $request->input('arl_risk_class', 1),
+            'salary'                 => $request->input('salary', PayrollCalculationService::smmlv((int) now()->year)),
+            'start_date'             => $request->input('start_date', now()->toDateString()),
+            'is_comprehensive_salary'=> $request->boolean('is_comprehensive_salary', false),
+            'has_transport_allowance'=> $request->boolean('has_transport_allowance', true),
+            'has_income_tax_withholding' => $request->boolean('has_income_tax_withholding', false),
+        ]);
     }
 
     public function show(Employee $employee): Response
@@ -119,6 +149,7 @@ class EmployeeController extends Controller
             'typeContracts' => $this->typeContracts(),
             'typePeriods'   => $this->typePeriods(),
             'typeWorkers'   => $this->typeWorkers(),
+            'payrollLegal'  => PayrollCalculationService::legalParameters((int) now()->year),
         ]);
     }
 
@@ -195,7 +226,7 @@ class EmployeeController extends Controller
             'salario_integral / auxilio_transporte: SI o NO',
             'clase_arl: 1 al 5',
             'fechas: formato DD/MM/YYYY',
-            'salario mínimo: $' . number_format(\App\Modules\Payroll\Services\PayrollCalculationService::SMMLV, 0, ',', '.'),
+            'salario mínimo: $' . number_format(PayrollCalculationService::smmlv((int) now()->year), 0, ',', '.'),
         ];
 
         return Excel::download(

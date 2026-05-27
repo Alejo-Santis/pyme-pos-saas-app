@@ -298,10 +298,10 @@ chown -R www-data:www-data storage bootstrap/cache
 chmod -R 755 storage bootstrap/cache
 
 # 6. Migraciones landlord (schema public)
-php artisan migrate --path=database/migrations/landlord
+php artisan migrate --force
 
-# 7. Seeders landlord (planes por defecto)
-php artisan db:seed --class=LandlordSeeder
+# 7. Seeders landlord (planes, catalogos globales y super-admin)
+php artisan db:seed --force
 
 # 8. Optimizar para producción
 php artisan config:cache
@@ -326,8 +326,9 @@ composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 
 # 4. Migraciones (landlord + tenants)
-php artisan migrate --path=database/migrations/landlord
+php artisan migrate --force
 php artisan tenants:migrate  # aplica a todos los tenants existentes
+php artisan tenants:seed --class=TenantDatabaseSeeder
 
 # 5. Regenerar caches
 php artisan optimize
@@ -446,13 +447,14 @@ Subir backups a S3/R2 para redundancia geográfica es altamente recomendado.
 [ ] Certbot configurado con certificado wildcard
 [ ] Repositorio clonado en /var/www/pymepossaas
 [ ] .env configurado con valores de producción
-[ ] php artisan migrate (landlord)
-[ ] php artisan db:seed --class=LandlordSeeder (planes)
+[ ] php artisan migrate --force (landlord/public)
+[ ] php artisan db:seed --force (planes, catalogos globales, super-admin)
+[ ] php artisan tenants:migrate y tenants:seed --class=TenantDatabaseSeeder ejecutados si ya existen tenants
 [ ] npm run build ejecutado (assets compilados)
 [ ] php artisan optimize ejecutado
 [ ] Supervisor configurado con Horizon corriendo
 [ ] Permisos correctos en storage/ y bootstrap/cache/
-[ ] Admin user creado: php artisan tinker → AdminUser::create([...])
+[ ] Admin user creado: php artisan db:seed --class=SuperAdminSeeder --force
 [ ] Probada la URL: tudominio.com/admin/login
 [ ] Probado el registro de empresa: tudominio.com/register
 [ ] Verificado que el subdominio nuevo funciona después de registrar empresa
@@ -463,17 +465,18 @@ Subir backups a S3/R2 para redundancia geográfica es altamente recomendado.
 
 ## 14. Crear el primer admin en producción
 
-```php
-# php artisan tinker
+Define estas variables en `.env`:
 
-use App\Modules\Admin\Models\AdminUser;
-use Illuminate\Support\Facades\Hash;
+```bash
+SUPER_ADMIN_NAME="Super Admin"
+SUPER_ADMIN_EMAIL=admin@tudominio.com
+SUPER_ADMIN_PASSWORD="contraseña_muy_segura"
+```
 
-AdminUser::create([
-    'name'     => 'Super Admin',
-    'email'    => 'admin@tudominio.com',
-    'password' => Hash::make('contraseña_muy_segura'),
-]);
+Luego ejecuta:
+
+```bash
+php artisan db:seed --class=SuperAdminSeeder --force
 ```
 
 Luego accede a: `https://tudominio.com/admin/login`

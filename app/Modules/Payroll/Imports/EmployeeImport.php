@@ -4,6 +4,7 @@ namespace App\Modules\Payroll\Imports;
 
 use App\Modules\Payroll\Models\Employee;
 use App\Modules\Payroll\Models\EmployeeContract;
+use App\Modules\Payroll\Services\PayrollCalculationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -14,7 +15,7 @@ class EmployeeImport implements ToCollection, WithHeadingRow
     public int   $imported = 0;
     public array $errors   = [];
 
-    private const SMMLV = 1_423_500;
+    private float $smmlv;
 
     // Catálogos en memoria
     private array $contractTypes  = [];
@@ -28,6 +29,7 @@ class EmployeeImport implements ToCollection, WithHeadingRow
         $this->workerTypes    = DB::table('payroll_type_workers')->pluck('id', 'code')->toArray();
         $this->periods        = DB::table('payroll_periods')->pluck('id', 'code')->toArray();
         $this->maritalStatuses = DB::table('payroll_marital_statuses')->pluck('id', 'code')->toArray();
+        $this->smmlv = PayrollCalculationService::smmlv((int) now()->year);
     }
 
     public function collection(Collection $rows): void
@@ -88,8 +90,8 @@ class EmployeeImport implements ToCollection, WithHeadingRow
             return;
         }
 
-        if ($salary < self::SMMLV) {
-            $this->errors[] = "Fila {$rowNum}: El salario ({$salary}) es inferior al SMMLV (" . self::SMMLV . ").";
+        if ($salary < $this->smmlv) {
+            $this->errors[] = "Fila {$rowNum}: El salario ({$salary}) es inferior al SMMLV ({$this->smmlv}).";
             return;
         }
 
@@ -104,7 +106,7 @@ class EmployeeImport implements ToCollection, WithHeadingRow
         $maritalStatusId = $this->maritalStatuses[$maritalCode]   ?? (reset($this->maritalStatuses) ?: null);
 
         // Transporte: solo para salarios ≤ 2 SMMLV
-        if ($salary > self::SMMLV * 2) {
+        if ($salary > $this->smmlv * 2) {
             $hasTransport = false;
         }
 

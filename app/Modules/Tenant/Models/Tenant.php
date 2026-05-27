@@ -15,6 +15,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     use HasDatabase;
     use HasDomains;
 
+    protected $casts = [
+        'trial_ends_at' => 'datetime',
+    ];
+
     /**
      * Columnas que stancl/tenancy no debe serializar en el campo JSON 'data'.
      * Todo lo que esté aquí se guarda como columna real en la tabla tenants.
@@ -81,5 +85,13 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function isOperational(): bool
     {
         return $this->status === 'active' || $this->isOnTrial();
+    }
+
+    /**
+     * Alias usado por controladores/vistas del tenant.
+     */
+    public function canOperate(): bool
+    {
+        return $this->isOperational();
     }
 }
