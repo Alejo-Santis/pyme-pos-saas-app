@@ -1,7 +1,12 @@
 <script>
   import { useForm } from '@inertiajs/svelte'
 
-  let { plans = [], errors = {} } = $props()
+  let {
+    plans = [],
+    errors = {},
+    tenantDomainMode = 'subdomain',
+    tenantDomainSuffix = window.location.hostname,
+  } = $props()
 
   const defaultPlanSlug = $derived(plans[1]?.slug ?? plans[0]?.slug ?? '')
   let selectedPlan = $state('')
@@ -83,13 +88,19 @@
   function goToLogin() {
     const slug = loginSlug.trim()
     if (!slug) return
-    const base = window.location.hostname
+    const base = tenantDomainMode === 'suffix' ? tenantDomainSuffix : window.location.hostname
     window.location.href = `${window.location.protocol}//${slug}.${base}/login`
   }
 
   function formatPrice(price) {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(price)
   }
+
+  const tenantDomainPreview = $derived(
+    $form.company_slug
+      ? `${$form.company_slug}.${tenantDomainSuffix}`
+      : `empresa.${tenantDomainSuffix}`
+  )
 </script>
 
 <div class="relative min-h-screen bg-slate-100 flex items-center justify-center p-4 overflow-hidden">
@@ -213,7 +224,7 @@
             </div>
 
             <div>
-              <label for="company_slug" class="block text-slate-700 text-sm font-medium mb-1">Identificador (subdominio) *</label>
+              <label for="company_slug" class="block text-slate-700 text-sm font-medium mb-1">Identificador de empresa *</label>
               <input
                 id="company_slug"
                 type="text"
@@ -224,7 +235,7 @@
                 placeholder="mi-empresa"
               />
               <p class="text-slate-400 text-xs mt-1">
-                Tu URL: <span class="text-blue-600 font-medium">{$form.company_slug || 'mi-empresa'}.pymepossaas-app.test</span>
+                Tu URL: <span class="text-blue-600 font-medium">{tenantDomainPreview}</span>
               </p>
               {#if errors?.company_slug}
                 <p class="text-red-500 text-xs mt-1">{errors.company_slug}</p>
@@ -413,7 +424,7 @@
                 onkeydown={(e) => e.key === 'Enter' && goToLogin()}
                 class="text-slate-700 placeholder-slate-400 outline-none w-24 min-w-0 bg-transparent"
               />
-              <span class="text-slate-400 truncate">.pymepossaas-app.test</span>
+              <span class="text-slate-400 truncate">.{tenantDomainSuffix}</span>
             </div>
             <button
               type="button"

@@ -30,6 +30,10 @@ class RegisterController extends Controller
 
         return Inertia::render('Auth/Register', [
             'plans' => $plans,
+            'tenantDomainMode' => env('TENANT_DOMAIN_MODE', 'subdomain'),
+            'tenantDomainSuffix' => env('TENANT_DOMAIN_MODE', 'subdomain') === 'suffix'
+                ? env('TENANT_DOMAIN_SUFFIX', env('CENTRAL_DOMAIN', 'pymepossaas-app.test'))
+                : env('CENTRAL_DOMAIN', 'pymepossaas-app.test'),
         ]);
     }
 
@@ -49,9 +53,7 @@ class RegisterController extends Controller
         $plan = Plan::where('slug', $request->plan_slug)->firstOrFail();
 
         $tenant = null;
-        $centralDomain = env('CENTRAL_DOMAIN', 'pymepossaas-app.test');
-        $subdomain = $request->company_slug;                        // ej: "santinet"
-        $domain    = $subdomain . '.' . $centralDomain;             // ej: "santinet.pymepossaas-app.test"
+        $domain = $this->tenantDomain($request->company_slug);
 
         try {
             // ── Fase 1: Crear el tenant SIN transacción activa ────────────────
@@ -134,10 +136,30 @@ class RegisterController extends Controller
         // 5. Redirigir al login del subdominio del tenant.
         // ?registered=1 le indica al LoginController que muestre el mensaje de bienvenida,
         // ya que el flash de sesión no cruza entre dominios distintos (central → tenant).
-        $loginUrl = 'http://' . $domain . '/login?registered=1';
+        $loginUrl = $this->appScheme() . '://' . $domain . '/login?registered=1';
 
         // Inertia::location() fuerza una redirección real del browser (no via Axios),
         // lo que evita el error CORS al cruzar del dominio central al subdominio del tenant.
         return Inertia::location($loginUrl);
+    }
+
+    private function tenantDomain(string $slug): string
+    {
+        if (env('TENANT_DOMAIN_MODE', 'subdomain') === 'suffix') {
+            $suffix = trim((string) env('TENANT_DOMAIN_SUFFIX', env('CENTRAL_DOMAIN', 'pymepossaas-app.test')), '.');
+
+            return "{$slug}.{$suffix}";
+        }
+
+        $centralDomain = trim((string) env('CENTRAL_DOMAIN', 'pymepossaas-app.test'), '.');
+
+        return "{$slug}.{$centralDomain}";
+    }
+
+    private function appScheme(): string
+    {
+        $scheme = parse_url((string) config('app.url'), PHP_URL_SCHEME);
+
+        return $scheme ?: (request()->isSecure() ? 'https' : 'http');
     }
 }

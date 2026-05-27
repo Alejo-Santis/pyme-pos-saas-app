@@ -152,6 +152,8 @@ empresa1.pymepossaas-app.test → Tenant "empresa1"
 empresa2.pymepossaas-app.test → Tenant "empresa2"
 ```
 
+Para un despliegue demo en AWS Free Tier con DuckDNS, revisa [docs/AWS_DEMO_DEPLOY.md](docs/AWS_DEMO_DEPLOY.md).
+
 ### VirtualHost con wildcard de subdominio
 
 Crear `/etc/apache2/sites-available/pymepossaas.conf`:

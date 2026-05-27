@@ -26,7 +26,7 @@ Cuando una empresa se registra con el slug `santinet`, su ERP queda en:
 1. Usuario visita: santinet.tudominio.com/invoices
 2. DNS resuelve *.tudominio.com → IP de tu servidor
 3. Nginx recibe la petición y la pasa a PHP/Laravel
-4. Middleware InitializeTenancyBySubdomain extrae "santinet" del host
+4. Middleware InitializeTenancyByDomain lee el host completo
 5. Busca en tabla `domains` → encuentra tenant_id
 6. Cambia search_path de PostgreSQL a schema tenant_santinet
 7. Laravel sirve la página con datos de esa empresa
@@ -127,6 +127,8 @@ APP_URL=https://tudominio.com
 
 # Dominio central (landlord) — SIN www, SIN protocolo
 CENTRAL_DOMAIN=tudominio.com
+TENANT_DOMAIN_MODE=subdomain
+TENANT_DOMAIN_SUFFIX=
 
 # PostgreSQL
 DB_CONNECTION=pgsql
@@ -354,8 +356,8 @@ Route::middleware('web')->domain(config('tenancy.central_domains')[0])->group(
     base_path('routes/landlord.php')
 );
 
-// tenant.php — para subdominios (*.tudominio.com)
-Route::middleware(['web', InitializeTenancyBySubdomain::class])->group(
+// tenant.php — para dominios tenant registrados en tabla domains
+Route::middleware(['web', InitializeTenancyByDomain::class])->group(
     base_path('routes/tenant.php')
 );
 ```
