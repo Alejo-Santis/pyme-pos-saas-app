@@ -1,5 +1,6 @@
 <script>
   import { useForm, router, inertia } from '@inertiajs/svelte'
+  import BrandLogo from '@/Components/BrandLogo.svelte'
 
   let {
     organizations  = [],
@@ -107,13 +108,7 @@
 
   <!-- Logo / título -->
   <div class="flex items-center gap-2 mb-8">
-    <div class="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow">
-      <i class="mdi mdi-point-of-sale text-white text-xl"></i>
-    </div>
-    <div>
-      <span class="text-slate-800 text-xl font-bold">PymePOS</span>
-      <span class="text-slate-400 text-sm ml-2">SaaS</span>
-    </div>
+    <BrandLogo size="md" />
   </div>
 
   <!-- Tarjeta principal -->

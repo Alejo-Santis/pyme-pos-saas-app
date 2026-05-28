@@ -1,5 +1,6 @@
 <script>
   import { useForm } from '@inertiajs/svelte'
+  import BrandLogo from '@/Components/BrandLogo.svelte'
 
   let {
     plans = [],
@@ -128,13 +129,7 @@
 
     <!-- Header -->
     <div class="bg-blue-600 rounded-t-2xl py-5 text-center shadow-md">
-      <div class="flex items-center justify-center gap-2">
-        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-          <i class="mdi mdi-lightning-bolt text-white text-lg"></i>
-        </div>
-        <span class="text-white text-2xl font-bold tracking-tight">PymePOS</span>
-        <span class="text-blue-200 text-xl font-light">SaaS</span>
-      </div>
+      <BrandLogo tone="light" size="md" class="justify-center" />
       <p class="text-blue-200 text-xs mt-1.5">Crea tu empresa y empieza a facturar electrónicamente</p>
     </div>
 

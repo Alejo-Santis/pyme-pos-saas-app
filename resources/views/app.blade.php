@@ -8,8 +8,7 @@
     <title inertia>{{ config('app.name') }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="alternate icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">

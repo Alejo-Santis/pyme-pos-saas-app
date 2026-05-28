@@ -1,5 +1,6 @@
 <script>
   import { page, router, inertia } from '@inertiajs/svelte'
+  import BrandLogo from '@/Components/BrandLogo.svelte'
 
   let { children } = $props()
 
@@ -36,11 +37,8 @@
 
     <!-- Logo / título panel -->
     <div class="flex items-center gap-2 px-4 h-14 border-b border-slate-100 shrink-0">
-      <div class="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-        <i class="mdi mdi-shield-crown text-white text-sm"></i>
-      </div>
-      <div>
-        <span class="text-slate-800 text-sm font-bold">PymePOS</span>
+      <BrandLogo variant="brand" size="sm" />
+      <div class="min-w-0">
         <span class="text-xs text-slate-400 block leading-none">Super Admin</span>
       </div>
     </div>

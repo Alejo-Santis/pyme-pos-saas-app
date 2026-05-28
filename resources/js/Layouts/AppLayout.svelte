@@ -2,6 +2,7 @@
   import { page, router, inertia } from '@inertiajs/svelte'
   import { onMount } from 'svelte'
   import { fade } from 'svelte/transition'
+  import BrandLogo from '@/Components/BrandLogo.svelte'
   import Toast from '@/Components/UI/Toast.svelte'
 
   let { children } = $props()
@@ -185,14 +186,10 @@
 
     <!-- Logo -->
     <div class="flex items-center gap-2.5 px-4 h-14 border-b border-slate-100 shrink-0">
-      <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-        <i class="mdi mdi-lightning-bolt text-white text-base"></i>
-      </div>
       {#if sidebarOpen}
-        <div class="overflow-hidden">
-          <span class="text-slate-800 text-sm font-bold leading-none whitespace-nowrap">PymePOS</span>
-          <span class="text-slate-400 text-sm font-light"> SaaS</span>
-        </div>
+        <BrandLogo size="sm" />
+      {:else}
+        <BrandLogo variant="mark" size="md" />
       {/if}
     </div>
 
@@ -392,13 +389,7 @@
 
       <!-- Logo -->
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-          <i class="mdi mdi-lightning-bolt text-white text-base"></i>
-        </div>
-        <div>
-          <span class="text-slate-800 text-sm font-bold">PymePOS</span>
-          <span class="text-slate-400 text-sm font-light"> SaaS</span>
-        </div>
+        <BrandLogo size="sm" />
       </div>
 
       <!-- Derecha -->

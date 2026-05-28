@@ -1,4 +1,6 @@
 <script>
+  import BrandLogo from '@/Components/BrandLogo.svelte'
+
   let {
     plans = [],
     tenantDomainMode = 'subdomain',
@@ -95,11 +97,8 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
 
     <!-- Logo -->
-    <a href="/" class="flex items-center gap-2 font-bold text-xl text-[#1e3a5f]">
-      <span class="w-8 h-8 bg-[#2563eb] rounded-lg flex items-center justify-center">
-        <i class="mdi mdi-storefront-outline text-white text-base"></i>
-      </span>
-      PymePOS
+    <a href="/" class="flex items-center">
+      <BrandLogo variant="brand" size="md" />
     </a>
 
     <!-- Nav links (desktop) -->
@@ -390,11 +389,8 @@
     <div class="flex flex-col md:flex-row items-center justify-between gap-6">
 
       <!-- Logo -->
-      <div class="flex items-center gap-2 text-white font-bold text-lg">
-        <span class="w-8 h-8 bg-[#2563eb] rounded-lg flex items-center justify-center">
-          <i class="mdi mdi-storefront-outline text-white text-base"></i>
-        </span>
-        PymePOS SaaS
+      <div class="flex items-center">
+        <BrandLogo tone="light" size="md" />
       </div>
 
       <!-- Links -->

@@ -1,5 +1,6 @@
 <script>
   import { useForm } from '@inertiajs/svelte'
+  import BrandLogo from '@/Components/BrandLogo.svelte'
 
   let { errors = {} } = $props()
 
@@ -27,13 +28,19 @@
   <div class="absolute inset-0 pointer-events-none opacity-20"
        style="background: radial-gradient(ellipse at 50% 0%, #2563eb 0%, transparent 70%)"></div>
 
+  <a
+    href="/"
+    class="absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 text-slate-400 hover:text-white text-sm transition"
+  >
+    <i class="mdi mdi-arrow-left"></i>
+    Volver a PymePOS
+  </a>
+
   <div class="relative w-full max-w-sm z-10">
 
     <!-- Logo -->
     <div class="text-center mb-8">
-      <div class="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-primary/30">
-        <i class="mdi mdi-shield-crown text-white text-3xl"></i>
-      </div>
+      <BrandLogo variant="mark" size="lg" class="justify-center mb-3" />
       <h1 class="text-white text-xl font-bold">Panel de Administración</h1>
       <p class="text-slate-400 text-sm mt-1">PymePOS SaaS</p>
     </div>
@@ -45,12 +52,13 @@
 
         <!-- Email -->
         <div>
-          <label class="block text-slate-300 text-sm font-medium mb-1.5">
+          <label for="admin-email" class="block text-slate-300 text-sm font-medium mb-1.5">
             Correo electrónico
           </label>
           <div class="relative">
             <i class="mdi mdi-email-outline absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg"></i>
             <input
+              id="admin-email"
               type="email"
               bind:value={$form.email}
               placeholder="admin@pymepossaas.com"
@@ -68,12 +76,13 @@
 
         <!-- Password -->
         <div>
-          <label class="block text-slate-300 text-sm font-medium mb-1.5">
+          <label for="admin-password" class="block text-slate-300 text-sm font-medium mb-1.5">
             Contraseña
           </label>
           <div class="relative">
             <i class="mdi mdi-lock-outline absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg"></i>
             <input
+              id="admin-password"
               type={showPassword ? 'text' : 'password'}
               bind:value={$form.password}
               placeholder="••••••••"
@@ -85,6 +94,7 @@
             <button type="button"
               onclick={() => showPassword = !showPassword}
               class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               tabindex="-1">
               <i class="mdi {showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'} text-lg"></i>
             </button>

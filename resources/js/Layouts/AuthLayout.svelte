@@ -1,4 +1,6 @@
 <script>
+  import BrandLogo from '@/Components/BrandLogo.svelte'
+
   let { children } = $props()
 </script>
 
@@ -23,15 +25,9 @@
 
     <!-- Cabecera de la tarjeta: banda azul con logo -->
     <div class="bg-primary rounded-t-2xl py-6 text-center shadow-md">
-      <div class="flex items-center justify-center gap-2">
-        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-          <i class="mdi mdi-lightning-bolt text-white text-lg"></i>
-        </div>
-        <a href="/" class="flex items-center gap-1">
-            <span class="text-white text-2xl font-bold tracking-tight">PymePOS</span>
-        </a>
-        <span class="text-blue-200 text-xl font-light">SaaS</span>
-      </div>
+      <a href="/" class="inline-flex">
+        <BrandLogo tone="light" size="md" />
+      </a>
       <p class="text-blue-200 text-xs mt-1.5 tracking-wide">ERP · Facturación Electrónica DIAN · Colombia</p>
     </div>
 
