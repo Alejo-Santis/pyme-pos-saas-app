@@ -36,12 +36,38 @@ Cuando una empresa se registra con el slug `santinet`, su ERP queda en:
 
 ## 2. DNS — Configuración del dominio
 
+### Si todavía no tienes dominio propio
+
+Para una prueba muy inicial puedes abrir la app por la IP pública del servidor:
+
+```text
+http://IP_DEL_SERVIDOR
+```
+
+Pero eso no sirve bien para este SaaS multi-tenant, porque los tenants se identifican por dominio o subdominio. Es decir, el sistema necesita URLs como:
+
+```text
+tudominio.com
+empresa1.tudominio.com
+empresa2.tudominio.com
+```
+
+Con solo una IP no puedes crear automáticamente URLs tipo `empresa1.IP_DEL_SERVIDOR`. Por eso hay tres escenarios:
+
+| Escenario | Sirve para | Limitación |
+|---|---|---|
+| IP pública | Probar que Laravel/Nginx levantan | No sirve bien para tenants por subdominio |
+| DuckDNS/no-ip o dominios gratuitos | Demo pequeña con pocos tenants | Normalmente debes crear cada dominio tenant manualmente |
+| Dominio propio + wildcard DNS | Producción o prueba real SaaS | Es la opción recomendada |
+
+Para un ambiente de pruebas serio, compra un dominio económico y usa Cloudflare como DNS. Lo importante no es que el dominio sea costoso, sino que permita un registro wildcard `*`.
+
 Necesitas configurar **un solo registro wildcard** en tu proveedor de DNS:
 
 ```
 Tipo    Nombre    Valor           TTL
 A       @         IP_DEL_SERVIDOR 300
-A       *         IP_DEL_SERVIDOR 300   ← wildcard para subdominos
+A       *         IP_DEL_SERVIDOR 300   ← wildcard para subdominios
 AAAA    @         IPV6 (opcional) 300
 AAAA    *         IPV6 (opcional) 300
 ```
@@ -179,8 +205,18 @@ TELESCOPE_ENABLED=false
 
 ## 5. SSL Wildcard — Certificado para *.tudominio.com
 
-Necesitas un certificado wildcard porque cada empresa tiene su propio subdominio.
-Un certificado normal solo cubre `tudominio.com` — no los subdominios.
+Sí: con Certbot puedes generar certificados SSL gratuitos usando Let's Encrypt.
+
+Para este proyecto necesitas un certificado wildcard porque cada empresa tiene su propio subdominio. Un certificado normal para `tudominio.com` solo cubre el dominio central; no cubre automáticamente `empresa1.tudominio.com`, `empresa2.tudominio.com`, etc.
+
+Certbot tiene dos formas comunes de validar certificados:
+
+| Método | Comando típico | Sirve para wildcard |
+|---|---|---|
+| HTTP/Nginx challenge | `certbot --nginx -d tudominio.com` | No |
+| DNS challenge | `certbot certonly --dns-cloudflare ... -d "*.tudominio.com"` | Sí |
+
+Para wildcard necesitas validación por DNS. Por eso se recomienda Cloudflare u otro DNS con plugin compatible para Certbot.
 
 ### Con Certbot + Cloudflare DNS (recomendado)
 
@@ -207,6 +243,28 @@ certbot certonly \
 ```
 
 El certificado cubre `tudominio.com` Y todos los subdominios `*.tudominio.com`.
+
+### Si no tienes wildcard y usas dominios individuales
+
+Para una demo con dominios separados, por ejemplo DuckDNS:
+
+```text
+miapp.duckdns.org
+cliente1.duckdns.org
+cliente2.duckdns.org
+```
+
+puedes usar Certbot con Nginx:
+
+```bash
+apt install certbot python3-certbot-nginx
+certbot --nginx \
+  -d miapp.duckdns.org \
+  -d cliente1.duckdns.org \
+  -d cliente2.duckdns.org
+```
+
+La limitación es que cada nuevo tenant con dominio individual debe agregarse al DNS, al `server_name` de Nginx y al certificado. Para creación automática de tenants, usa dominio propio con wildcard.
 
 ---
 

@@ -6,6 +6,14 @@ Esta guía es para un ambiente de pruebas con pocos usuarios: compañeros, clien
 
 El sistema identifica cada empresa por dominio completo.
 
+Si todavía no tienes dominio propio, puedes levantar el servidor por IP para validar instalación, base de datos y Nginx:
+
+```text
+http://IP_PUBLICA_DEL_SERVIDOR
+```
+
+Eso sirve solo como prueba técnica inicial. Para probar el SaaS como realmente funcionará con tenants, necesitas dominios, porque cada empresa entra por una URL propia. Sin dominio wildcard, no hay creación automática cómoda de URLs tenant.
+
 ### Opción recomendada para producción real
 
 Usar un dominio propio con wildcard:
@@ -183,7 +191,48 @@ server_name erp.tudominio.com *.erp.tudominio.com;
 
 ## 6. SSL
 
-Para demo puedes iniciar en HTTP, pero si usarás clientes reales de prueba, usa HTTPS.
+Para demo puedes iniciar en HTTP, pero si usarás clientes reales de prueba, usa HTTPS. Certbot genera certificados gratuitos con Let's Encrypt.
+
+Hay dos casos:
+
+```text
+Dominio propio wildcard:
+erp.tudominio.com
+cliente1.erp.tudominio.com
+cliente2.erp.tudominio.com
+
+DuckDNS/dominios individuales:
+miapp.duckdns.org
+cliente1.duckdns.org
+cliente2.duckdns.org
+```
+
+Para dominio propio con wildcard necesitas validación DNS, por ejemplo con Cloudflare:
+
+```bash
+sudo apt install -y certbot python3-certbot-dns-cloudflare
+
+sudo mkdir -p /root/.secrets
+sudo nano /root/.secrets/cloudflare.ini
+```
+
+Contenido:
+
+```ini
+dns_cloudflare_api_token = TU_TOKEN_CLOUDFLARE_API
+```
+
+```bash
+sudo chmod 600 /root/.secrets/cloudflare.ini
+
+sudo certbot certonly \
+  --dns-cloudflare \
+  --dns-cloudflare-credentials /root/.secrets/cloudflare.ini \
+  -d erp.tudominio.com \
+  -d "*.erp.tudominio.com"
+```
+
+Este certificado cubre el dominio central y todos los tenants bajo `*.erp.tudominio.com`.
 
 Con dominios DuckDNS individuales:
 
@@ -192,7 +241,7 @@ sudo apt install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d miapp.duckdns.org -d cliente1.duckdns.org -d cliente2.duckdns.org
 ```
 
-Cada nuevo tenant DuckDNS requiere agregar el dominio al certificado o emitir otro certificado.
+Cada nuevo tenant DuckDNS requiere agregar el dominio al DNS, al `server_name` de Nginx y al certificado o emitir otro certificado. Por eso DuckDNS sirve para demo controlada, pero no es cómodo para altas automáticas.
 
 ## 7. Queue Worker
 
