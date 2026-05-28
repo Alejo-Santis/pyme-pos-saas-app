@@ -17,6 +17,9 @@
     { href: '/admin/dashboard', icon: 'mdi-view-dashboard-outline', label: 'Dashboard' },
     { href: '/admin/tenants',   icon: 'mdi-domain',                  label: 'Empresas'  },
     { href: '/admin/plans',     icon: 'mdi-layers-outline',           label: 'Planes'    },
+    { href: '/admin/billing',   icon: 'mdi-credit-card-outline',      label: 'Cartera'   },
+    { href: '/admin/users',     icon: 'mdi-shield-account-outline',   label: 'Admins'    },
+    { href: '/admin/audit',     icon: 'mdi-history',                  label: 'Auditoría' },
   ]
 
   const currentPath = $derived($page.url)

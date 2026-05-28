@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Inventory\Imports\ItemImport;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Inventory\Models\ItemCategory;
+use App\Modules\Tenant\Services\PlanLimitsService;
 use App\Shared\Exports\ArrayExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,8 @@ class ItemController extends Controller
      */
     public function store(Request $request)
     {
+        app(PlanLimitsService::class)->ensureCanCreateItem();
+
         $data = $request->validate([
             'internal_code'      => 'nullable|string|max:100|unique:items',
             'name'               => 'required|string|max:255',

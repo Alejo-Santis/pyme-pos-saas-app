@@ -17,6 +17,7 @@ use App\Modules\Invoice\Jobs\ProcessElectronicSupportDocumentJob;
 use App\Modules\Invoice\Services\CreditNoteService;
 use App\Modules\Invoice\Services\DebitNoteService;
 use App\Modules\Invoice\Services\InvoiceService;
+use App\Modules\Tenant\Services\PlanLimitsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -119,6 +120,8 @@ class InvoiceController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        app(PlanLimitsService::class)->ensureCanCreateInvoice();
+
         $this->normalizeLegacyInvoicePayload($request);
 
         if ((int) $request->input('type_document_operation_id') === 91

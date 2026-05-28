@@ -2,7 +2,7 @@
   import { useForm } from '@inertiajs/svelte'
   import AuthLayout from '@/Layouts/AuthLayout.svelte'
 
-  let { errors = {}, flash = {}, justRegistered = false } = $props()
+  let { errors = {}, flash = {}, justRegistered = false, centralDomain = '' } = $props()
 
   const form = useForm({
     email: '',
@@ -12,15 +12,32 @@
 
   let showPassword = $state(false)
 
-  function submit(e) {
+  const submit = (e) => {
     e.preventDefault()
     $form.post('/login', {
       onFinish: () => $form.reset('password'),
     })
   }
+
+  const goToLanding = () => {
+    if (!centralDomain) return
+    window.location.href = `${window.location.protocol}//${centralDomain}/`
+  }
 </script>
 
 <AuthLayout>
+
+  <!-- Botón volver a landing -->
+  {#if centralDomain}
+    <button
+      type="button"
+      onclick={goToLanding}
+      class="mb-4 inline-flex items-center gap-1.5 text-slate-600 hover:text-blue-600 text-sm transition"
+    >
+      <i class="mdi mdi-arrow-left"></i>
+      Volver a PymePOS
+    </button>
+  {/if}
 
   <!-- Encabezado -->
   <div class="text-center mb-6">

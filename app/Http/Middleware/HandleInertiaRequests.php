@@ -68,6 +68,8 @@ class HandleInertiaRequests extends Middleware
                 'info'    => fn () => $request->session()->get('info'),
             ],
 
+            'impersonation' => fn () => $request->session()->get('impersonated_by_admin'),
+
             // Nombre de la app
             'appName' => config('app.name'),
         ]);

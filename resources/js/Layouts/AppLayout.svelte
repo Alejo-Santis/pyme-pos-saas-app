@@ -24,6 +24,7 @@
 
   const user    = $derived($page.props.auth?.user)
   const appName = $derived($page.props.appName ?? 'PymePOS SaaS')
+  const impersonation = $derived($page.props.impersonation)
   const currentPath = $derived($page.url)
 
   const navGroups = [
@@ -361,6 +362,12 @@
 
     <!-- Contenido -->
     <main class="flex-1 overflow-y-auto p-5 bg-slate-50" in:fade={{ duration: 150 }}>
+      {#if impersonation}
+        <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+          <i class="mdi mdi-account-switch-outline text-lg"></i>
+          <span>Sesión de soporte iniciada por {impersonation.admin_name ?? impersonation.admin_email}.</span>
+        </div>
+      {/if}
       {@render children()}
     </main>
 
@@ -508,6 +515,12 @@
 
   <!-- Contenido -->
   <main class="flex-1 overflow-y-auto p-5 bg-slate-50">
+    {#if impersonation}
+      <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+        <i class="mdi mdi-account-switch-outline text-lg"></i>
+        <span>Sesión de soporte iniciada por {impersonation.admin_name ?? impersonation.admin_email}.</span>
+      </div>
+    {/if}
     {@render children()}
   </main>
 

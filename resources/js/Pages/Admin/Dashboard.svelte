@@ -3,7 +3,34 @@
   import { onMount } from 'svelte'
   import { inertia } from '@inertiajs/svelte'
 
-  let { stats = {}, monthlyGrowth = {}, recentTenants = [] } = $props()
+  let { stats = {}, monthlyGrowth = {}, recentTenants = [], trialsEndingSoon = [], recentAudit = [] } = $props()
+
+  function formatCurrency(value) {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      maximumFractionDigits: 0,
+    }).format(Number(value ?? 0))
+  }
+
+  const eventLabel = {
+    created: 'Creó',
+    updated: 'Actualizó',
+    deleted: 'Eliminó',
+    login: 'Ingresó',
+    logout: 'Salió',
+    password_updated: 'Cambió contraseña',
+    status_toggled: 'Cambió estado',
+    plan_updated: 'Cambió plan',
+    subscription_updated: 'Actualizó suscripción',
+    trial_extended: 'Extendió trial',
+    tenant_status_updated: 'Cambió tenant',
+    domain_updated: 'Cambió dominio',
+    notification_sent: 'Envió notificación',
+    technical_action_run: 'Ejecutó acción técnica',
+    impersonation_created: 'Creó impersonación',
+    impersonation_consumed: 'Entró como soporte',
+  }
 
   // Colores de estado
   const statusColor = {
@@ -115,7 +142,19 @@
       <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-slate-500 text-xs uppercase tracking-wide font-semibold">Suscripciones activas</p>
+            <p class="text-slate-500 text-xs uppercase tracking-wide font-semibold">MRR estimado</p>
+            <p class="text-2xl font-bold text-slate-800 mt-1">{formatCurrency(stats.estimated_mrr ?? 0)}</p>
+          </div>
+          <div class="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center">
+            <i class="mdi mdi-cash-multiple text-emerald-600 text-2xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-slate-500 text-xs uppercase tracking-wide font-semibold">Suscripciones</p>
             <p class="text-3xl font-bold text-slate-800 mt-1">{stats.total_subscriptions ?? 0}</p>
           </div>
           <div class="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center">
@@ -127,11 +166,11 @@
       <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-slate-500 text-xs uppercase tracking-wide font-semibold">Planes activos</p>
-            <p class="text-3xl font-bold text-slate-800 mt-1">{stats.total_plans ?? 0}</p>
+            <p class="text-slate-500 text-xs uppercase tracking-wide font-semibold">Trials por vencer</p>
+            <p class="text-3xl font-bold text-red-600 mt-1">{stats.trials_ending_soon ?? 0}</p>
           </div>
-          <div class="w-11 h-11 bg-purple-50 rounded-xl flex items-center justify-center">
-            <i class="mdi mdi-layers-outline text-purple-600 text-2xl"></i>
+          <div class="w-11 h-11 bg-red-50 rounded-xl flex items-center justify-center">
+            <i class="mdi mdi-calendar-alert text-red-600 text-2xl"></i>
           </div>
         </div>
       </div>
@@ -186,6 +225,54 @@
         {/if}
       </div>
 
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-slate-700">Trials por vencer</h3>
+          <a use:inertia href="/admin/tenants?status=trial" class="text-xs text-primary hover:underline">Ver trials</a>
+        </div>
+
+        {#if trialsEndingSoon.length === 0}
+          <p class="text-slate-400 text-sm text-center py-6">No hay trials venciendo en los próximos 7 días</p>
+        {:else}
+          <div class="space-y-3">
+            {#each trialsEndingSoon as tenant}
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <a use:inertia href="/admin/tenants/{tenant.id}" class="text-sm font-medium text-slate-700 hover:text-primary">{tenant.name}</a>
+                  <p class="text-xs text-slate-400">{tenant.email} · {tenant.plan}</p>
+                </div>
+                <span class="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 font-semibold">{tenant.trial_ends_at}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-slate-700">Actividad reciente</h3>
+          <a use:inertia href="/admin/audit" class="text-xs text-primary hover:underline">Ver auditoría</a>
+        </div>
+
+        {#if recentAudit.length === 0}
+          <p class="text-slate-400 text-sm text-center py-6">Sin actividad registrada</p>
+        {:else}
+          <div class="space-y-3">
+            {#each recentAudit as log}
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-medium text-slate-700">{eventLabel[log.event] ?? log.event}</p>
+                  <p class="text-xs text-slate-400">{log.admin_name} · {log.module}</p>
+                </div>
+                <span class="text-xs text-slate-400 whitespace-nowrap">{log.created_at}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
 </AdminLayout>

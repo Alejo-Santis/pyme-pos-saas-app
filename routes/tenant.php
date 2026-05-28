@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Accounting\Controllers\AccountingConceptController;
 use App\Modules\Accounting\Controllers\AccountingController;
 use App\Modules\Accounting\Controllers\FinancialReportController;
+use App\Modules\Auth\Controllers\ImpersonationController;
 use App\Modules\Auth\Controllers\LoginController;
 use App\Modules\Auth\Controllers\PasswordResetController;
 use App\Modules\Auth\Controllers\ProfileController;
@@ -53,6 +54,9 @@ Route::middleware([
 ])->group(function () {
 
     // ─── Auth (públicas dentro del tenant) ────────────────────────────────
+    Route::get('/impersonate/{token}', [ImpersonationController::class, 'consume'])
+        ->name('impersonate.consume');
+
     Route::middleware('guest')->group(function () {
         Route::get('/login', [LoginController::class, 'show'])->name('login');
         Route::post('/login', [LoginController::class, 'store'])->name('login.store')->middleware('throttle:tenant-login');
@@ -93,6 +97,8 @@ Route::middleware([
             Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
             Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
             Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+            Route::middleware(['tenant.operational'])->group(function () {
 
             // ─── Usuarios del tenant ─────────────────────────────────────
             Route::prefix('users')->name('users.')->middleware('permission:users.view')->group(function () {
@@ -330,6 +336,8 @@ Route::middleware([
                 Route::get('/inventory', [ReportController::class, 'inventory'])->name('inventory');
                 Route::get('/inventory/export', [ReportController::class, 'exportInventory'])->name('inventory.export');
             });
+
+            }); // fin middleware tenant.operational
 
         }); // fin middleware onboarding
 

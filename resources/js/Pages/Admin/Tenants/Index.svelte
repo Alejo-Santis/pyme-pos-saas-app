@@ -151,14 +151,27 @@
                   <td class="px-4 py-3 text-slate-500 text-xs">{tenant.trial_ends_at ?? '—'}</td>
                   <td class="px-4 py-3 text-slate-500 text-xs">{tenant.created_at}</td>
                   <td class="px-4 py-3">
-                    <a
-                      use:inertia
-                      href="/admin/tenants/{tenant.id}"
-                      class="text-primary hover:text-primary-dark transition"
-                      title="Ver detalle"
-                    >
-                      <i class="mdi mdi-chevron-right text-xl"></i>
-                    </a>
+                    <div class="flex items-center justify-end gap-2">
+                      {#if tenant.login_url}
+                        <a
+                          href={tenant.login_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          class="text-slate-400 hover:text-primary transition"
+                          title="Abrir login tenant"
+                        >
+                          <i class="mdi mdi-login-variant text-lg"></i>
+                        </a>
+                      {/if}
+                      <a
+                        use:inertia
+                        href="/admin/tenants/{tenant.id}"
+                        class="text-primary hover:text-primary-dark transition"
+                        title="Ver detalle"
+                      >
+                        <i class="mdi mdi-chevron-right text-xl"></i>
+                      </a>
+                    </div>
                   </td>
                 </tr>
               {/each}

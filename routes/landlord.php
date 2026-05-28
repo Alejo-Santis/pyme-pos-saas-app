@@ -2,9 +2,12 @@
 
 use App\Http\Middleware\AdminAuthenticate;
 use App\Modules\Admin\Controllers\AdminAuthController;
+use App\Modules\Admin\Controllers\AdminBillingController;
 use App\Modules\Admin\Controllers\AdminDashboardController;
 use App\Modules\Admin\Controllers\AdminPlanController;
 use App\Modules\Admin\Controllers\AdminTenantController;
+use App\Modules\Admin\Controllers\AdminUserController;
+use App\Modules\Admin\Controllers\LandlordAuditController;
 use App\Modules\Auth\Controllers\RegisterController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,6 +46,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{id}',                    [AdminTenantController::class, 'show'])->name('show');
             Route::patch('/{id}/status',           [AdminTenantController::class, 'updateStatus'])->name('update-status');
             Route::patch('/{id}/plan',             [AdminTenantController::class, 'updatePlan'])->name('update-plan');
+            Route::patch('/{id}/domain',           [AdminTenantController::class, 'updateDomain'])->name('update-domain');
+            Route::patch('/{id}/subscription',     [AdminTenantController::class, 'updateSubscription'])->name('update-subscription');
+            Route::post('/{id}/extend-trial',      [AdminTenantController::class, 'extendTrial'])->name('extend-trial');
+            Route::post('/{id}/notification',      [AdminTenantController::class, 'sendNotification'])->name('send-notification');
+            Route::post('/{id}/technical-action',  [AdminTenantController::class, 'runTechnicalAction'])->name('technical-action');
+            Route::post('/{id}/impersonate',       [AdminTenantController::class, 'impersonate'])->name('impersonate');
         });
 
         // Gestión de planes
@@ -53,5 +62,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('/{id}',       [AdminPlanController::class, 'destroy'])->name('destroy');
             Route::patch('/{id}/toggle', [AdminPlanController::class, 'toggleActive'])->name('toggle');
         });
+
+        Route::get('/billing', [AdminBillingController::class, 'index'])->name('billing.index');
+        Route::post('/billing/payments', [AdminBillingController::class, 'storePayment'])->name('billing.payments.store');
+
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/',                    [AdminUserController::class, 'index'])->name('index');
+            Route::post('/',                   [AdminUserController::class, 'store'])->name('store');
+            Route::put('/{id}',                [AdminUserController::class, 'update'])->name('update');
+            Route::patch('/{id}/password',     [AdminUserController::class, 'updatePassword'])->name('password');
+            Route::patch('/{id}/toggle',       [AdminUserController::class, 'toggle'])->name('toggle');
+        });
+
+        Route::get('/audit', [LandlordAuditController::class, 'index'])->name('audit.index');
     });
 });

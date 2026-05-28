@@ -39,6 +39,17 @@ class SuperAdminSeeder extends Seeder
         );
 
         if (! $admin->wasRecentlyCreated) {
+            if (env('SUPER_ADMIN_PASSWORD')) {
+                $admin->forceFill([
+                    'name'      => $name,
+                    'password'  => Hash::make($password),
+                    'is_active' => true,
+                ])->save();
+
+                $this->command?->info("Super-admin actualizado: {$email}");
+                return;
+            }
+
             $this->command?->info("Super-admin ya existe: {$email}");
             return;
         }

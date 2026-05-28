@@ -34,6 +34,7 @@ class RegisterController extends Controller
             'tenantDomainSuffix' => env('TENANT_DOMAIN_MODE', 'subdomain') === 'suffix'
                 ? env('TENANT_DOMAIN_SUFFIX', env('CENTRAL_DOMAIN', 'pymepossaas-app.test'))
                 : env('CENTRAL_DOMAIN', 'pymepossaas-app.test'),
+            'centralDomain' => config('tenancy.central_domain') ?? env('CENTRAL_DOMAIN'),
         ]);
     }
 

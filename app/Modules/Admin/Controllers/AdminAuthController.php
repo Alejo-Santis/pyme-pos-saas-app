@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminUser;
+use App\Modules\Admin\Services\LandlordAuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -12,6 +13,10 @@ use Inertia\Response;
 
 class AdminAuthController extends Controller
 {
+    public function __construct(private LandlordAuditService $audit)
+    {
+    }
+
     // Mostrar login del panel admin
     public function showLogin(): Response|\Illuminate\Http\RedirectResponse
     {
@@ -47,12 +52,23 @@ class AdminAuthController extends Controller
 
         $request->session()->regenerate();
 
+        $this->audit->record('login', 'auth', $user, [], [
+            'email' => $user->email,
+        ]);
+
         return redirect()->intended(route('admin.dashboard'));
     }
 
     // Cerrar sesión
     public function logout(Request $request)
     {
+        $admin = Auth::guard('admin')->user();
+        if ($admin) {
+            $this->audit->record('logout', 'auth', $admin, [], [
+                'email' => $admin->email,
+            ]);
+        }
+
         Auth::guard('admin')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

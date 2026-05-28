@@ -34,7 +34,19 @@ class SubscriptionController extends Controller
             // Todos los planes disponibles para mostrar opciones de upgrade
             $plans = Plan::where('is_active', true)
                 ->orderBy('sort_order')
-                ->get(['id', 'name', 'slug', 'description', 'price_monthly', 'price_yearly', 'features', 'trial_days']);
+                ->get(['id', 'name', 'slug', 'description', 'price_monthly', 'price_yearly', 'max_users', 'max_products', 'max_invoices_monthly', 'features', 'trial_days'])
+                ->map(fn (Plan $plan) => [
+                    'id' => $plan->id,
+                    'name' => $plan->name,
+                    'slug' => $plan->slug,
+                    'description' => $plan->description,
+                    'price_monthly' => $plan->price_monthly,
+                    'price_yearly' => $plan->price_yearly,
+                    'max_users' => $plan->max_users,
+                    'max_products' => $plan->max_products,
+                    'max_invoices_monthly' => $plan->max_invoices_monthly,
+                    'features' => $this->enabledFeatureLabels($plan->features ?? []),
+                ]);
 
             tenancy()->initialize($tenant);
         } else {
@@ -56,7 +68,10 @@ class SubscriptionController extends Controller
                     'name'        => $subscription->plan->name,
                     'slug'        => $subscription->plan->slug,
                     'description' => $subscription->plan->description,
-                    'features'    => $subscription->plan->features,
+                    'features'    => $this->enabledFeatureLabels($subscription->plan->features ?? []),
+                    'max_users'   => $subscription->plan->max_users,
+                    'max_products' => $subscription->plan->max_products,
+                    'max_invoices_monthly' => $subscription->plan->max_invoices_monthly,
                     'price_monthly' => $subscription->plan->price_monthly,
                     'price_yearly'  => $subscription->plan->price_yearly,
                 ] : null,
@@ -70,5 +85,25 @@ class SubscriptionController extends Controller
                 'can_operate'   => $tenant->canOperate(),
             ] : null,
         ]);
+    }
+
+    private function enabledFeatureLabels(array $features): array
+    {
+        $labels = [
+            'dian_fe' => 'Facturacion electronica',
+            'pos' => 'POS',
+            'accounting' => 'Contabilidad',
+            'inventory' => 'Inventario',
+            'payroll' => 'Nomina',
+            'multi_branch' => 'Multi sede',
+            'api_access' => 'Acceso API',
+        ];
+
+        return collect($features)
+            ->filter()
+            ->keys()
+            ->map(fn (string $key) => $labels[$key] ?? $key)
+            ->values()
+            ->all();
     }
 }

@@ -20,6 +20,7 @@ class LoginController extends Controller
     {
         return Inertia::render('Auth/Login', [
             'justRegistered' => $request->boolean('registered'),
+            'centralDomain' => config('tenancy.central_domain') ?? env('CENTRAL_DOMAIN'),
         ]);
     }
 

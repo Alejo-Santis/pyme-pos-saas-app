@@ -6,6 +6,7 @@
     errors = {},
     tenantDomainMode = 'subdomain',
     tenantDomainSuffix = window.location.hostname,
+    centralDomain = '',
   } = $props()
 
   const defaultPlanSlug = $derived(plans[1]?.slug ?? plans[0]?.slug ?? '')
@@ -83,6 +84,11 @@
     $form.post('/register')
   }
 
+  const goToLanding = () => {
+    if (!centralDomain) return
+    window.location.href = `${window.location.protocol}//${centralDomain}/`
+  }
+
   let loginSlug = $state('')
 
   function goToLogin() {
@@ -136,10 +142,24 @@
     <div class="bg-white rounded-b-2xl shadow-xl px-8 py-7">
 
       <div class="mb-6">
-        <h1 class="text-slate-800 text-lg font-bold">Registro de empresa</h1>
-        <p class="text-slate-500 text-sm mt-0.5">
-          Comienza con {plans[0]?.trial_days ?? 15} días de prueba gratuita. Sin tarjeta de crédito.
-        </p>
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h1 class="text-slate-800 text-lg font-bold">Registro de empresa</h1>
+            <p class="text-slate-500 text-sm mt-0.5">
+              Comienza con {plans[0]?.trial_days ?? 15} días de prueba gratuita. Sin tarjeta de crédito.
+            </p>
+          </div>
+          {#if centralDomain}
+            <button
+              type="button"
+              onclick={goToLanding}
+              class="text-slate-600 hover:text-blue-600 transition p-1 rounded-lg hover:bg-slate-100"
+              title="Volver a PymePOS"
+            >
+              <i class="mdi mdi-close text-xl"></i>
+            </button>
+          {/if}
+        </div>
       </div>
 
       {#if errors?.general}

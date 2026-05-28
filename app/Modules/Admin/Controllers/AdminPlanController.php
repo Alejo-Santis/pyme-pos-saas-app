@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Admin\Services\LandlordAuditService;
 use App\Modules\Tenant\Models\Plan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,10 @@ use Inertia\Response;
 
 class AdminPlanController extends Controller
 {
+    public function __construct(private LandlordAuditService $audit)
+    {
+    }
+
     private array $allFeatures = [
         'dian_fe', 'pos', 'accounting', 'inventory', 'payroll', 'multi_branch', 'api_access',
     ];
@@ -59,7 +64,11 @@ class AdminPlanController extends Controller
         $data['sort_order'] = Plan::max('sort_order') + 1;
         $data['features']   = $this->parseFeatures($request);
 
-        Plan::create($data);
+        $plan = Plan::create($data);
+
+        $this->audit->record('created', 'plans', $plan, [], $plan->only([
+            'name', 'slug', 'price_monthly', 'price_yearly', 'trial_days', 'is_active',
+        ]));
 
         return back()->with('success', "Plan '{$data['name']}' creado correctamente.");
     }
@@ -67,10 +76,19 @@ class AdminPlanController extends Controller
     public function update(Request $request, string $id): RedirectResponse
     {
         $plan = Plan::findOrFail($id);
+        $oldValues = $plan->only([
+            'name', 'description', 'price_monthly', 'price_yearly', 'max_users',
+            'max_products', 'max_invoices_monthly', 'features', 'trial_days', 'is_active',
+        ]);
         $data = $this->validatePlan($request);
         $data['features'] = $this->parseFeatures($request);
 
         $plan->update($data);
+
+        $this->audit->record('updated', 'plans', $plan, $oldValues, $plan->only([
+            'name', 'description', 'price_monthly', 'price_yearly', 'max_users',
+            'max_products', 'max_invoices_monthly', 'features', 'trial_days', 'is_active',
+        ]));
 
         return back()->with('success', "Plan '{$plan->name}' actualizado correctamente.");
     }
@@ -85,7 +103,10 @@ class AdminPlanController extends Controller
             ]);
         }
 
+        $oldValues = $plan->only(['name', 'slug', 'price_monthly', 'price_yearly', 'is_active']);
         $plan->delete();
+
+        $this->audit->record('deleted', 'plans', $plan, $oldValues);
 
         return back()->with('success', 'Plan eliminado correctamente.');
     }
@@ -93,7 +114,12 @@ class AdminPlanController extends Controller
     public function toggleActive(string $id): RedirectResponse
     {
         $plan = Plan::findOrFail($id);
+        $oldValues = $plan->only(['is_active']);
         $plan->update(['is_active' => ! $plan->is_active]);
+
+        $this->audit->record('status_toggled', 'plans', $plan, $oldValues, [
+            'is_active' => $plan->is_active,
+        ]);
 
         return back()->with('success', 'Estado del plan actualizado.');
     }
