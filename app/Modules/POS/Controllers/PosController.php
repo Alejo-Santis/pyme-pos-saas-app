@@ -8,6 +8,7 @@ use App\Modules\Cash\Models\BankAccount;
 use App\Modules\Cash\Models\BankAccountMovement;
 use App\Modules\Cash\Models\CashBox;
 use App\Modules\Cash\Models\CashMovement;
+use App\Modules\Cash\Services\PaymentSettlementService;
 use App\Modules\Core\Models\Company;
 use App\Modules\Core\Models\Resolution;
 use App\Modules\Core\Models\ThirdParty;
@@ -39,7 +40,8 @@ use Inertia\Response;
 class PosController extends Controller
 {
     public function __construct(
-        private readonly InvoiceService $invoiceService
+        private readonly InvoiceService $invoiceService,
+        private readonly PaymentSettlementService $paymentSettlementService
     ) {}
 
     // ── Paso 1: Selección de terminal ─────────────────────────────────────
@@ -176,6 +178,10 @@ class PosController extends Controller
             'thirds'      => $thirds,
             'recentSales' => $recentSales,
             'taxes'       => DB::table('taxes')->get(['id', 'name', 'percent', 'code']),
+            'bankAccounts' => BankAccount::with('bank:id,name')
+                ->where('state', true)
+                ->orderBy('name')
+                ->get(['id', 'bank_id', 'name', 'type', 'account_bank_number']),
             'company'     => Company::first(['id', 'business_name', 'identification_number', 'prices_with_taxes_included']),
         ]);
     }
@@ -198,6 +204,9 @@ class PosController extends Controller
             'payment_forms.*.payment_form_id'   => 'required|integer',
             'payment_forms.*.payment_method_id' => 'required|integer',
             'payment_forms.*.value'             => 'required|numeric|min:0',
+            'payment_forms.*.cash_box_id'       => 'nullable|uuid|exists:cash_boxes,id',
+            'payment_forms.*.bank_account_id'   => 'nullable|uuid|exists:bank_accounts,id',
+            'payment_forms.*.transaction_reference' => 'nullable|string|max:100',
             'taxes'           => 'nullable|array',
             'note'            => 'nullable|string|max:500',
             'lines'           => 'required|array|min:1',
@@ -258,7 +267,7 @@ class PosController extends Controller
         }
 
         // ── Registrar movimientos de caja / banco ─────────────────────────
-        $this->registerPaymentMovements($terminal, $shift, $document, $data['payment_forms']);
+        $this->paymentSettlementService->registerSalePayments($terminal, $shift, $document, $data['payment_forms']);
 
         AuditService::created($document, "Venta POS {$document->internal_code} registrada en {$terminal->name}.", 'POS');
 
@@ -455,88 +464,4 @@ class PosController extends Controller
         return back()->with('success', 'Terminal eliminada.');
     }
 
-    // ─── Helpers privados ─────────────────────────────────────────────────
-
-    /**
-     * Crea movimientos de caja / cuenta bancaria por cada forma de pago de la venta POS.
-     *
-     * Métodos de pago:
-     *   10 → Efectivo    → CashMovement (débito en caja de la terminal)
-     *   42 → Transferencia
-     *   48 → Tarjeta crédito  → BankAccountMovement (cuenta bancaria por defecto)
-     *   49 → Tarjeta débito
-     *   Otros → CashMovement (caja) como fallback
-     */
-    private function registerPaymentMovements(
-        PosTerminal     $terminal,
-        PosTerminalUser $shift,
-        Document        $document,
-        array           $paymentForms
-    ): void {
-        $today    = now()->toDateString();
-        $ref      = $shift->cashier_session_key;
-        $desc     = "Venta POS {$document->internal_code}";
-        $cashBox  = $terminal->cash_box_id ? CashBox::find($terminal->cash_box_id) : CashBox::getMain();
-        $bankAcc  = BankAccount::where('state', true)->first(); // cuenta bancaria por defecto
-
-        $cashTotal     = 0;
-        $cardTotal     = 0;
-        $transferTotal = 0;
-
-        foreach ($paymentForms as $form) {
-            $amount = (float) ($form['value'] ?? 0);
-            if ($amount <= 0) continue;
-
-            $methodId = (int) ($form['payment_method_id'] ?? 10);
-
-            if ($methodId === 10) {
-                // Efectivo → caja
-                $cashTotal += $amount;
-
-                if ($cashBox) {
-                    CashMovement::create([
-                        'cash_box_id'  => $cashBox->id,
-                        'user_id'      => $document->user_id,
-                        'third_party_id' => $document->third_party_id,
-                        'document_id'  => $document->id,
-                        'debit'        => $amount,
-                        'credit'       => 0,
-                        'issue_date'   => $today,
-                        'description'  => $desc,
-                        'reference'    => $ref,
-                        'state'        => true,
-                    ]);
-                }
-            } else {
-                // Tarjeta o transferencia → cuenta bancaria
-                if ($methodId === 42) {
-                    $transferTotal += $amount;
-                } else {
-                    $cardTotal += $amount;
-                }
-
-                if ($bankAcc) {
-                    BankAccountMovement::create([
-                        'bank_account_id' => $bankAcc->id,
-                        'user_id'         => $document->user_id,
-                        'third_party_id'  => $document->third_party_id,
-                        'document_id'     => $document->id,
-                        'debit'           => $amount,
-                        'credit'          => 0,
-                        'issue_date'      => $today,
-                        'description'     => $desc . ' (pago electrónico)',
-                        'reference'       => $ref,
-                        'state'           => true,
-                    ]);
-                }
-            }
-        }
-
-        // Actualizar acumulados del turno
-        $shift->increment('total_sales', $document->total);
-        $shift->increment('total_cash', $cashTotal);
-        $shift->increment('total_card', $cardTotal);
-        $shift->increment('total_transfer', $transferTotal);
-        $shift->increment('current_balance', $cashTotal);
-    }
 }

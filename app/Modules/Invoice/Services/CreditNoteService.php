@@ -2,8 +2,7 @@
 
 namespace App\Modules\Invoice\Services;
 
-use App\Modules\Cash\Models\CashBox;
-use App\Modules\Cash\Models\CashMovement;
+use App\Modules\Cash\Services\PaymentSettlementService;
 use App\Modules\Core\Models\Company;
 use App\Modules\Invoice\Models\Document;
 use App\Shared\Services\InternalCodeService;
@@ -38,7 +37,8 @@ class CreditNoteService
     ];
 
     public function __construct(
-        private readonly InternalCodeService $internalCodeService
+        private readonly InternalCodeService $internalCodeService,
+        private readonly PaymentSettlementService $paymentSettlementService
     ) {}
 
     /**
@@ -147,8 +147,8 @@ class CreditNoteService
                 }
             }
 
-            // Registrar egreso en caja (devuelve dinero al cliente)
-            $this->reverseCashMovement($original, $nc, $totals['total']);
+            // Registrar devolución por los mismos medios originales, hasta cubrir la NC.
+            $this->paymentSettlementService->registerCreditNoteRefund($original, $nc);
 
             // Actualizar balance del documento original
             $newBalance = max(0, (float) $original->balance - $totals['total']);
@@ -258,37 +258,6 @@ class CreditNoteService
             ];
         }
         $nc->lines()->insert($rows);
-    }
-
-    /**
-     * Registra el egreso de caja: el dinero sale de la caja al cliente.
-     */
-    private function reverseCashMovement(Document $original, Document $nc, float $amount): void
-    {
-        if ($amount <= 0) return;
-
-        // Buscar el movimiento de caja original de esta factura
-        $originalMovement = CashMovement::where('document_id', $original->id)
-            ->where('debit', '>', 0)
-            ->where('state', true)
-            ->first();
-
-        $cashBoxId = $originalMovement?->cash_box_id ?? CashBox::getMain()?->id;
-
-        if (! $cashBoxId) return;
-
-        CashMovement::create([
-            'cash_box_id'    => $cashBoxId,
-            'user_id'        => $nc->user_id,
-            'third_party_id' => $nc->third_party_id,
-            'document_id'    => $nc->id,
-            'debit'          => 0,
-            'credit'         => $amount,
-            'issue_date'     => now()->toDateString(),
-            'description'    => "Devolución NC {$nc->internal_code} (ref. {$original->internal_code})",
-            'reference'      => $original->internal_code,
-            'state'          => true,
-        ]);
     }
 
     // ─── Cálculos (reutilizados de InvoiceService via ToolTrait) ─────────

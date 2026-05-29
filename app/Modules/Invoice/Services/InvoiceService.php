@@ -4,6 +4,7 @@ namespace App\Modules\Invoice\Services;
 
 use App\Modules\Core\Models\Resolution;
 use App\Modules\Audit\Services\AuditService;
+use App\Modules\Cash\Services\PaymentSettlementService;
 use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Models\DocumentLine;
 use App\Shared\Services\InternalCodeService;
@@ -32,7 +33,8 @@ class InvoiceService
     use ToolTrait, AccountingEngineTrait;
 
     public function __construct(
-        private readonly InternalCodeService $internalCodeService
+        private readonly InternalCodeService $internalCodeService,
+        private readonly PaymentSettlementService $paymentSettlementService
     ) {}
 
     // ─── CRUD principal ───────────────────────────────────────────────────
@@ -94,11 +96,16 @@ class InvoiceService
                 'invoice_lines'               => $invoiceLinesJson,
                 'legal_monetary_totals'       => $legalMonetaryTotalsJson,
                 'cashier_shift'               => $data['cashier_shift'] ?? null,
+                'pos_terminal_id'             => $data['pos_terminal_id'] ?? null,
                 'paid'                        => false,
                 'electronic'                  => false,
                 'accounted'                   => false,
                 'annulled'                    => false,
             ]);
+
+            if (! empty($data['payment_forms'])) {
+                $this->paymentSettlementService->syncDocumentPaymentMethods($document, $data['payment_forms']);
+            }
 
             // 6. Crear líneas de detalle (documents_details)
             if (! empty($lines)) {

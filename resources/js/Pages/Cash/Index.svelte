@@ -73,6 +73,10 @@
       <p class="text-sm text-slate-500 mt-0.5">Gestión de efectivo y cuentas bancarias</p>
     </div>
     <div class="flex gap-2">
+      <a href="/cash/receipts"
+         class="inline-flex items-center gap-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
+        <i class="mdi mdi-receipt-text-outline"></i> Recibos
+      </a>
       <a href="/cash/banks"
          class="inline-flex items-center gap-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
         <i class="mdi mdi-bank-outline"></i> Bancos

@@ -1,5 +1,6 @@
 <script>
   import { router, inertia } from '@inertiajs/svelte'
+  import { onMount, tick } from 'svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
 
   let {
@@ -66,6 +67,60 @@
 
   let errors  = $state({})
   let loading = $state(false)
+  let showShortcuts = $state(false)
+  let customerSelect
+  let resolutionSelect
+
+  const isTypingTarget = (target) =>
+    ['INPUT', 'SELECT', 'TEXTAREA'].includes(target?.tagName) || target?.isContentEditable
+
+  onMount(() => {
+    const handler = (event) => {
+      if (event.key === 'F1') {
+        event.preventDefault()
+        showShortcuts = !showShortcuts
+        return
+      }
+
+      if (event.key === 'F2') {
+        event.preventDefault()
+        customerSelect?.focus()
+        return
+      }
+
+      if (event.key === 'F3') {
+        event.preventDefault()
+        focusLine()
+        return
+      }
+
+      if (event.key === 'Escape' && showShortcuts) {
+        event.preventDefault()
+        showShortcuts = false
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'l') {
+        event.preventDefault()
+        addLine()
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault()
+        if (!loading) submit()
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Backspace' && !isTypingTarget(event.target)) {
+        event.preventDefault()
+        removeLine(lines.length - 1)
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  })
 
   // Auto-relleno al seleccionar artículo
   function onItemSelect(idx) {
@@ -86,7 +141,17 @@
     }
   }
 
-  function addLine()       { lines.push(emptyLine()) }
+  async function focusLine(index = lines.length - 1) {
+    await tick()
+    globalThis.document
+      ?.querySelector(`[data-invoice-line-item="${index}"]`)
+      ?.focus()
+  }
+
+  async function addLine() {
+    lines.push(emptyLine())
+    await focusLine(lines.length - 1)
+  }
   function removeLine(idx) { if (lines.length > 1) lines.splice(idx, 1) }
 
   // ── Cálculos por línea ───────────────────────────────────────────────────
@@ -143,19 +208,54 @@
   <div class="max-w-6xl mx-auto space-y-5">
 
     <!-- Cabecera -->
-    <div class="flex items-center gap-3">
-      <a use:inertia href="/invoices" class="text-slate-400 hover:text-slate-600 transition">
-        <i class="mdi mdi-arrow-left text-xl"></i>
-      </a>
-      <div>
-        <h1 class="text-xl font-bold text-slate-800">
-          {isEdit ? 'Editar documento' : 'Nuevo documento'}
-        </h1>
-        <p class="text-sm text-slate-500 mt-0.5">
-          {isEdit ? `${document.prefix ?? ''}${document.number ?? ''}` : 'Facturación electrónica DIAN'}
-        </p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <a use:inertia href="/invoices" class="text-slate-400 hover:text-slate-600 transition" title="Volver">
+          <i class="mdi mdi-arrow-left text-xl"></i>
+        </a>
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">
+            {isEdit ? 'Editar documento' : 'Nuevo documento'}
+          </h1>
+          <p class="text-sm text-slate-500 mt-0.5">
+            {isEdit ? `${document.prefix ?? ''}${document.number ?? ''}` : 'Facturación electrónica DIAN'}
+          </p>
+        </div>
       </div>
+      <button
+        type="button"
+        onclick={() => showShortcuts = !showShortcuts}
+        class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition cursor-pointer"
+      >
+        <i class="mdi mdi-keyboard-outline text-base"></i>
+        Atajos
+        <span class="hidden sm:inline text-slate-400">F1</span>
+      </button>
     </div>
+
+    {#if showShortcuts}
+      <div class="bg-slate-900 text-white rounded-xl border border-slate-800 shadow-sm px-5 py-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold flex items-center gap-2">
+              <i class="mdi mdi-keyboard-outline"></i>
+              Atajos de facturación
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3 text-xs">
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">F2</kbd> Cliente</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">F3</kbd> Primera línea</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">Ctrl + L</kbd> Nueva línea</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">Ctrl + Enter</kbd> Guardar</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">Esc</kbd> Cerrar ayuda</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">F1</kbd> Mostrar/ocultar</p>
+            </div>
+          </div>
+          <button type="button" onclick={() => showShortcuts = false} class="text-white/60 hover:text-white cursor-pointer" title="Cerrar ayuda">
+            <i class="mdi mdi-close text-lg"></i>
+          </button>
+        </div>
+      </div>
+    {/if}
 
     {#if errors.document}
       <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
@@ -223,7 +323,7 @@
         <!-- Tercero -->
         <div class="sm:col-span-2">
           <label class="block text-sm font-medium text-slate-700 mb-1">Tercero (cliente)</label>
-          <select bind:value={hdr.third_party_id}
+          <select bind:this={customerSelect} bind:value={hdr.third_party_id}
             class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
             <option value="">— Consumidor final —</option>
             {#each thirds as t}
@@ -238,7 +338,7 @@
         {#if hdr.type_document_id === '1'}
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Resolución DIAN</label>
-            <select bind:value={hdr.resolution_id}
+            <select bind:this={resolutionSelect} bind:value={hdr.resolution_id}
               class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
               <option value="">Sin resolución</option>
               {#each resolutions as r}
@@ -289,6 +389,7 @@
                 <!-- Selector de artículo -->
                 <td class="px-3 py-2">
                   <select
+                    data-invoice-line-item={idx}
                     bind:value={line.item_id}
                     onchange={() => onItemSelect(idx)}
                     class="w-full border border-slate-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">

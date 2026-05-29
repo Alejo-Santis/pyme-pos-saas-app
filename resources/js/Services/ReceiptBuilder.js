@@ -94,6 +94,9 @@ export function buildReceipt({ company, terminal, shift, sale, lines: saleLines,
 
   const payMethodName = {
     10: 'Efectivo',
+    30: 'Transferencia',
+    45: 'Transf. bancaria',
+    47: 'Nequi/billetera',
     42: 'Transferencia',
     48: 'T. Crédito',
     49: 'T. Débito',

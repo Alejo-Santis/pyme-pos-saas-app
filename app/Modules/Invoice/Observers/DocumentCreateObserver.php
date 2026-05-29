@@ -3,6 +3,8 @@
 namespace App\Modules\Invoice\Observers;
 
 use App\Modules\Core\Models\Company;
+use App\Modules\Invoice\Jobs\ProcessElectronicCreditNoteJob;
+use App\Modules\Invoice\Jobs\ProcessElectronicDebitNoteJob;
 use App\Modules\Invoice\Jobs\ProcessElectronicInvoiceJob;
 use App\Modules\Invoice\Jobs\ProcessElectronicSupportDocumentJob;
 use App\Modules\Invoice\Models\Document;
@@ -44,6 +46,18 @@ class DocumentCreateObserver
         if ($document->type_document_operation_id == 1) {
             ProcessElectronicInvoiceJob::dispatch($document, 1);
             Log::info('ProcessElectronicInvoiceJob despachado', ['document_id' => $document->id]);
+        }
+
+        // type_document_operation_id == 91 → Nota Crédito Electrónica
+        if ($document->type_document_operation_id == 91) {
+            ProcessElectronicCreditNoteJob::dispatch($document, 1);
+            Log::info('ProcessElectronicCreditNoteJob despachado', ['document_id' => $document->id]);
+        }
+
+        // type_document_operation_id == 92 → Nota Débito Electrónica
+        if ($document->type_document_operation_id == 92) {
+            ProcessElectronicDebitNoteJob::dispatch($document, 1);
+            Log::info('ProcessElectronicDebitNoteJob despachado', ['document_id' => $document->id]);
         }
 
         // type_document_operation_id == 5 → Documento Soporte

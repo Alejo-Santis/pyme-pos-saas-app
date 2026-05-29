@@ -1,10 +1,11 @@
 <script>
   import { router, page } from '@inertiajs/svelte'
+  import { onMount, tick } from 'svelte'
   import { connect, isConnected, printRaw } from '@/Services/QzTrayService.js'
   import { buildReceipt } from '@/Services/ReceiptBuilder.js'
   import { toast } from '@/Stores/toast.svelte.js'
 
-  let { terminal, shift, items, thirds, recentSales, taxes, company } = $props()
+  let { terminal, shift, items, thirds, recentSales, taxes, bankAccounts = [], company } = $props()
 
   // ── Estado de la venta ────────────────────────────────────────────────
   let lines         = $state([])
@@ -17,6 +18,10 @@
   let lastSaleCtx   = $state(null)    // contexto completo para reimprimir
   let searchItem    = $state('')
   let searchThird   = $state('')
+  let showShortcuts = $state(false)
+  let itemSearchInput
+  let thirdSearchInput
+  let firstPaymentInput
 
   // ── Estado de impresora ───────────────────────────────────────────────
   let printerReady    = $state(false)
@@ -24,6 +29,71 @@
   let printing        = $state(false)
 
   const hasPrinter = $derived(!!terminal.printer_name)
+
+  onMount(() => {
+    itemSearchInput?.focus()
+
+    const handler = async (event) => {
+      if (event.key === 'F1') {
+        event.preventDefault()
+        showShortcuts = !showShortcuts
+        return
+      }
+
+      if (event.key === 'F2') {
+        event.preventDefault()
+        itemSearchInput?.focus()
+        itemSearchInput?.select()
+        return
+      }
+
+      if (event.key === 'F3') {
+        event.preventDefault()
+        thirdSearchInput?.focus()
+        thirdSearchInput?.select()
+        return
+      }
+
+      if (event.key === 'F4') {
+        event.preventDefault()
+        autoFillPayment()
+        await tick()
+        firstPaymentInput?.focus()
+        firstPaymentInput?.select()
+        return
+      }
+
+      if (event.key === 'F8') {
+        event.preventDefault()
+        clearSale()
+        itemSearchInput?.focus()
+        return
+      }
+
+      if (event.key === 'F9') {
+        event.preventDefault()
+        if (!processing && lines.length > 0 && totalPaid >= totals.total) processSale()
+        return
+      }
+
+      if (event.key === 'Escape') {
+        if (showShortcuts) {
+          event.preventDefault()
+          showShortcuts = false
+          return
+        }
+        if (searchItem || searchThird) {
+          event.preventDefault()
+          searchItem = ''
+          searchThird = ''
+          itemSearchInput?.focus()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  })
 
   // Intentar conectar a QZ Tray al cargar la página (si hay impresora configurada)
   $effect(() => {
@@ -113,6 +183,36 @@
     paymentForms = [...paymentForms]
   }
 
+  function addPaymentForm(methodId = 30) {
+    paymentForms = [...paymentForms, {
+      payment_form_id: 1,
+      payment_method_id: methodId,
+      value: 0,
+      bank_account_id: methodId === 10 ? null : (bankAccounts[0]?.id ?? null),
+      transaction_reference: '',
+    }]
+  }
+
+  function onPaymentMethodChange(pf) {
+    if (Number(pf.payment_method_id) === 10) {
+      pf.bank_account_id = null
+      pf.transaction_reference = ''
+    } else if (!pf.bank_account_id) {
+      pf.bank_account_id = bankAccounts[0]?.id ?? null
+    }
+
+    paymentForms = [...paymentForms]
+  }
+
+  function removePaymentForm(idx) {
+    if (paymentForms.length === 1) {
+      paymentForms = [{ payment_form_id: 1, payment_method_id: 10, value: 0 }]
+      return
+    }
+
+    paymentForms = paymentForms.filter((_, i) => i !== idx)
+  }
+
   function autoFillPayment() {
     if (paymentForms.length === 1) {
       paymentForms[0].value = totals.total
@@ -124,6 +224,10 @@
   async function processSale() {
     if (lines.length === 0) { saleError = 'Agrega al menos un artículo.'; return }
     if (totalPaid < totals.total) { saleError = 'El pago no cubre el total.'; return }
+    if (paymentForms.some(p => Number(p.payment_method_id) !== 10 && !p.bank_account_id)) {
+      saleError = 'Configura una cuenta bancaria para pagos electrónicos.'
+      return
+    }
     saleError = ''
 
     processing = true
@@ -138,7 +242,11 @@
     try {
       const res = await fetch(`/pos/${terminal.id}/sale`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '',
+        },
         body: JSON.stringify({
           third_party_id: selectedThird?.id ?? null,
           payment_forms:  paymentForms,
@@ -220,7 +328,7 @@
 </script>
 
 <!-- Layout propio para POS (sin sidebar) -->
-<div class="flex h-screen bg-slate-100 overflow-hidden select-none">
+<div class="relative flex h-screen bg-slate-100 overflow-hidden select-none">
 
   <!-- ── Columna izquierda: catálogo + líneas ─────────────────────────── -->
   <div class="flex flex-col flex-1 min-w-0">
@@ -254,14 +362,47 @@
             <span class="hidden md:inline">{printerChecking ? 'Conectando…' : printerReady ? 'Impresora OK' : 'Sin impresora'}</span>
           </span>
         {/if}
+        <button
+          onclick={() => showShortcuts = !showShortcuts}
+          class="flex items-center gap-1 bg-blue-800/50 hover:bg-blue-800 px-2 py-0.5 rounded text-blue-100 cursor-pointer"
+          title="Atajos de teclado (F1)"
+        >
+          <i class="mdi mdi-keyboard-outline"></i>
+          <span class="hidden md:inline">Atajos</span>
+        </button>
       </div>
     </header>
+
+    {#if showShortcuts}
+      <div class="absolute left-4 top-14 z-50 w-[min(560px,calc(100vw-2rem))] rounded-xl bg-slate-900 text-white shadow-xl border border-slate-700 px-5 py-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold flex items-center gap-2">
+              <i class="mdi mdi-keyboard-outline"></i>
+              Atajos POS
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-xs">
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">F2</kbd> Buscar producto</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">F3</kbd> Buscar cliente</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">F4</kbd> Pago exacto</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">F8</kbd> Limpiar venta</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">F9</kbd> Cobrar</p>
+              <p><kbd class="bg-white/10 px-1.5 py-0.5 rounded">Esc</kbd> Limpiar búsqueda/cerrar ayuda</p>
+            </div>
+          </div>
+          <button onclick={() => showShortcuts = false} class="text-white/60 hover:text-white cursor-pointer" title="Cerrar ayuda">
+            <i class="mdi mdi-close text-lg"></i>
+          </button>
+        </div>
+      </div>
+    {/if}
 
     <!-- Buscador de artículos -->
     <div class="relative px-3 py-2 bg-white border-b border-slate-200 shrink-0">
       <div class="relative">
         <i class="mdi mdi-barcode-scan absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
         <input
+          bind:this={itemSearchInput}
           type="text"
           bind:value={searchItem}
           placeholder="Buscar artículo por nombre, código o código de barras…"
@@ -406,6 +547,7 @@
       {:else}
         <div class="relative">
           <input
+            bind:this={thirdSearchInput}
             type="text"
             bind:value={searchThird}
             placeholder="Consumidor final (opcional)"
@@ -454,27 +596,64 @@
     <div class="p-4 border-b border-slate-100 space-y-2">
       <div class="flex items-center justify-between mb-1">
         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pago</p>
-        <button onclick={autoFillPayment} class="text-xs text-blue-600 hover:underline cursor-pointer">
-          Pagar exacto
-        </button>
+        <div class="flex items-center gap-2">
+          <button onclick={() => addPaymentForm()} class="text-xs text-slate-600 hover:text-blue-600 cursor-pointer" title="Agregar medio de pago">
+            <i class="mdi mdi-plus-circle-outline"></i>
+          </button>
+          <button onclick={autoFillPayment} class="text-xs text-blue-600 hover:underline cursor-pointer">
+            Pagar exacto
+          </button>
+        </div>
       </div>
 
       {#each paymentForms as pf, idx}
-        <div class="flex items-center gap-2">
-          <select bind:value={pf.payment_method_id} class="flex-1 text-xs border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-blue-400">
+        <div class="grid grid-cols-[1fr_7rem_1.75rem] gap-2">
+          <select
+            bind:value={pf.payment_method_id}
+            onchange={() => onPaymentMethodChange(pf)}
+            class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-blue-400"
+          >
             <option value={10}>Efectivo</option>
-            <option value={42}>Transferencia</option>
+            <option value={30}>Transferencia</option>
+            <option value={45}>Transferencia bancaria</option>
+            <option value={47}>Nequi / billetera</option>
             <option value={48}>Tarjeta Crédito</option>
             <option value={49}>Tarjeta Débito</option>
           </select>
           <input
+            bind:this={firstPaymentInput}
             type="number"
             min="0"
             step="1000"
             bind:value={pf.value}
             oninput={() => { pf.value = Number(pf.value) || 0; paymentForms = [...paymentForms] }}
-            class="w-28 text-sm text-right border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-blue-400"
+            class="text-sm text-right border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-blue-400"
           />
+          <button onclick={() => removePaymentForm(idx)} class="text-slate-400 hover:text-red-600 cursor-pointer" title="Quitar pago">
+            <i class="mdi mdi-close-circle-outline"></i>
+          </button>
+          {#if pf.payment_method_id !== 10}
+            <select
+              bind:value={pf.bank_account_id}
+              class="col-span-3 text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-blue-400"
+            >
+              {#if bankAccounts.length === 0}
+                <option value={null}>Sin cuenta bancaria configurada</option>
+              {:else}
+                {#each bankAccounts as account}
+                  <option value={account.id}>
+                    {account.bank?.name ? account.bank.name + ' · ' : ''}{account.name}{account.account_bank_number ? ' · ' + account.account_bank_number : ''}
+                  </option>
+                {/each}
+              {/if}
+            </select>
+            <input
+              type="text"
+              bind:value={pf.transaction_reference}
+              placeholder="Referencia"
+              class="col-span-3 text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-blue-400"
+            />
+          {/if}
         </div>
       {/each}
 

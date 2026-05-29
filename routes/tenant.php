@@ -12,6 +12,7 @@ use App\Modules\Auth\Controllers\ProfileController;
 use App\Modules\Auth\Controllers\UserController;
 use App\Modules\Cash\Controllers\BankController;
 use App\Modules\Cash\Controllers\CashBoxController;
+use App\Modules\Cash\Controllers\ReceiptController;
 use App\Modules\Core\Controllers\CompanyController;
 use App\Modules\Core\Controllers\DashboardController;
 use App\Modules\Core\Controllers\EstablishmentController;
@@ -220,6 +221,9 @@ Route::middleware([
                 Route::get('/boxes/{cashBox}', [CashBoxController::class, 'show'])->name('boxes.show');
                 Route::post('/boxes/{cashBox}/movements', [CashBoxController::class, 'storeMovement'])->name('boxes.movements.store');
                 Route::post('/boxes/transfer', [CashBoxController::class, 'transfer'])->name('boxes.transfer');
+                Route::get('/receipts', [ReceiptController::class, 'index'])->name('receipts.index');
+                Route::post('/receipts', [ReceiptController::class, 'storeCashReceipt'])->name('receipts.store');
+                Route::post('/payment-receipts', [ReceiptController::class, 'storePaymentReceipt'])->name('payment-receipts.store');
 
                 // Bancos y cuentas bancarias
                 Route::get('/banks', [BankController::class, 'index'])->name('banks.index');
