@@ -50,7 +50,10 @@ class Employee extends Model
 
     public function activeContract()
     {
-        return $this->hasOne(EmployeeContract::class)->where('state', true)->latestOfMany('start_date');
+        return $this->hasOne(EmployeeContract::class)
+            ->where('state', true)
+            ->orderByDesc('start_date')
+            ->orderByDesc('created_at');
     }
 
     public function novelties()

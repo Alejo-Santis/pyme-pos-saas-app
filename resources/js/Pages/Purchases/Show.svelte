@@ -14,6 +14,19 @@
   }
 
   const cfg = $derived(statusConfig[order.status] ?? { label: order.status, cls: 'bg-slate-100 text-slate-700' })
+  const lines = $derived(order.items ?? [])
+  const itemCount = $derived(lines.length)
+  const totalQuantity = $derived(lines.reduce((sum, line) => sum + Number(line.invoice_quantity ?? 0), 0))
+  const subtotal = $derived(lines.reduce((sum, line) => sum + Number(line.line_extension_amount ?? 0), 0))
+  const avgUnitCost = $derived(totalQuantity > 0 ? subtotal / totalQuantity : 0)
+  const statusSteps = [
+    { key: 'draft', label: 'Borrador', icon: 'mdi-file-outline' },
+    { key: 'approved', label: 'Aprobada', icon: 'mdi-check-decagram-outline' },
+    { key: 'partial', label: 'En recepción', icon: 'mdi-truck-delivery-outline' },
+    { key: 'received', label: 'Recibida', icon: 'mdi-package-variant-closed-check' },
+  ]
+  const normalizedStatus = $derived(order.status === 'pending' ? 'draft' : order.status)
+  const statusIndex = $derived(Math.max(0, statusSteps.findIndex(step => step.key === normalizedStatus)))
 
   // ── Modal recepción ─────────────────────────────────────────────────────────
   let showReceiveModal = $state(false)
@@ -71,29 +84,32 @@
 </script>
 
 <AppLayout title="Orden de Compra {order.internal_code}">
-  <div class="max-w-5xl mx-auto">
+  <div class="max-w-7xl mx-auto space-y-5">
 
     <!-- Encabezado -->
-    <div class="flex items-start justify-between mb-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div class="flex items-center gap-3">
-        <a href="/purchases" class="text-slate-400 hover:text-slate-600">
+        <a href="/purchases" class="text-slate-400 hover:text-slate-600" title="Volver a compras">
           <i class="mdi mdi-arrow-left text-xl"></i>
         </a>
         <div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <h1 class="text-2xl font-bold text-slate-800">{order.internal_code}</h1>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {cfg.cls}">
               {cfg.label}
             </span>
           </div>
           <p class="text-sm text-slate-500 mt-0.5">
-            {order.third_party?.name ?? 'Sin proveedor'} · {fmtDate(order.issue_date)}
+            {order.third_party?.name ?? 'Sin proveedor'} · Emitida {fmtDate(order.issue_date)}
           </p>
+          {#if order.reference}
+            <p class="text-xs text-slate-400 mt-1">Referencia proveedor: {order.reference}</p>
+          {/if}
         </div>
       </div>
 
       <!-- Acciones -->
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         {#if order.status === 'draft'}
           <form method="POST" action="/purchases/{order.id}/approve">
             <input type="hidden" name="_method" value="POST"/>
@@ -138,67 +154,202 @@
       </div>
     {/if}
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Resumen operativo -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="bg-white border border-slate-200 rounded-xl px-4 py-3">
+        <p class="text-xs font-semibold text-slate-400 uppercase">Total orden</p>
+        <p class="text-xl font-bold text-slate-800 mt-1">{fmt(order.amount)}</p>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl px-4 py-3">
+        <p class="text-xs font-semibold text-slate-400 uppercase">Lineas</p>
+        <p class="text-xl font-bold text-slate-800 mt-1">{itemCount}</p>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl px-4 py-3">
+        <p class="text-xs font-semibold text-slate-400 uppercase">Cantidad</p>
+        <p class="text-xl font-bold text-slate-800 mt-1">{totalQuantity.toLocaleString('es-CO')}</p>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl px-4 py-3">
+        <p class="text-xs font-semibold text-slate-400 uppercase">Costo promedio</p>
+        <p class="text-xl font-bold text-slate-800 mt-1">{fmt(avgUnitCost)}</p>
+      </div>
+    </div>
+
+    <!-- Estado -->
+    <div class="bg-white border border-slate-200 rounded-xl px-5 py-4">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="font-semibold text-slate-800">Seguimiento de la orden</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Estado actual y avance operativo de compra.</p>
+        </div>
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {cfg.cls}">
+          {cfg.label}
+        </span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {#each statusSteps as step, index}
+          {@const done = order.status === 'cancelled' ? false : index <= statusIndex}
+          <div class="flex items-center gap-3 rounded-lg border px-3 py-2 {done ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50'}">
+            <span class="w-8 h-8 rounded-full flex items-center justify-center {done ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">
+              <i class="mdi {step.icon} text-base"></i>
+            </span>
+            <span class="text-sm font-medium {done ? 'text-blue-800' : 'text-slate-500'}">{step.label}</span>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-5">
 
       <!-- Artículos -->
-      <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-200">
-          <h2 class="font-semibold text-slate-700">Artículos</h2>
+      <div class="xl:col-span-3 bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold text-slate-800">Lineas de compra</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Productos, cantidades y costos negociados con el proveedor.</p>
+          </div>
+          <span class="text-xs font-semibold text-slate-500 bg-slate-100 rounded-full px-2.5 py-1">
+            {itemCount} lineas
+          </span>
         </div>
-        <table class="w-full text-sm">
-          <thead class="bg-slate-50">
-            <tr>
-              <th class="px-4 py-3 text-left font-semibold text-slate-600">Artículo</th>
-              <th class="px-4 py-3 text-right font-semibold text-slate-600">Cantidad</th>
-              <th class="px-4 py-3 text-right font-semibold text-slate-600">Costo unit.</th>
-              <th class="px-4 py-3 text-right font-semibold text-slate-600">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            {#each order.items as line}
-              <tr class="hover:bg-slate-50">
-                <td class="px-4 py-3">
-                  <p class="font-medium text-slate-800">{line.item?.name ?? line.item_id}</p>
-                </td>
-                <td class="px-4 py-3 text-right">{line.invoice_quantity}</td>
-                <td class="px-4 py-3 text-right">{fmt(line.average_cost)}</td>
-                <td class="px-4 py-3 text-right font-medium">{fmt(line.line_extension_amount)}</td>
-              </tr>
-            {:else}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50">
               <tr>
-                <td colspan="4" class="px-4 py-8 text-center text-slate-400">Sin artículos</td>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Producto</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Referencia</th>
+                <th class="px-4 py-3 text-right font-semibold text-slate-600">Cantidad</th>
+                <th class="px-4 py-3 text-right font-semibold text-slate-600">Costo unit.</th>
+                <th class="px-4 py-3 text-right font-semibold text-slate-600">Impuestos</th>
+                <th class="px-4 py-3 text-right font-semibold text-slate-600">Subtotal</th>
               </tr>
-            {/each}
-          </tbody>
-          <tfoot class="bg-slate-50 border-t border-slate-200">
-            <tr>
-              <td colspan="3" class="px-4 py-3 text-right font-bold text-slate-700">Total</td>
-              <td class="px-4 py-3 text-right font-bold text-blue-700">{fmt(order.amount)}</td>
-            </tr>
-          </tfoot>
-        </table>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {#each lines as line, index}
+                {@const taxAmount = Array.isArray(line.tax) ? line.tax.reduce((sum, tax) => sum + Number(tax.amount ?? 0), 0) : 0}
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-3 min-w-72">
+                    <div class="flex items-start gap-3">
+                      <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p class="font-medium text-slate-800 leading-tight">{line.item?.name ?? line.item_id}</p>
+                        <p class="text-xs text-slate-400 mt-0.5">{line.item?.internal_code ?? 'Sin codigo interno'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-slate-500">{line.item?.reference ?? '—'}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{Number(line.invoice_quantity).toLocaleString('es-CO')}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{fmt(line.average_cost)}</td>
+                  <td class="px-4 py-3 text-right tabular-nums text-slate-500">{taxAmount > 0 ? fmt(taxAmount) : '—'}</td>
+                  <td class="px-4 py-3 text-right font-semibold tabular-nums text-slate-800">{fmt(line.line_extension_amount)}</td>
+                </tr>
+              {:else}
+                <tr>
+                  <td colspan="6" class="px-4 py-8 text-center text-slate-400">Sin artículos</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Historial -->
-      <div class="lg:col-span-1">
+      <!-- Panel lateral -->
+      <div class="xl:col-span-1 space-y-5">
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div class="px-5 py-4 border-b border-slate-200">
-            <h2 class="font-semibold text-slate-700">Historial</h2>
+            <h2 class="font-semibold text-slate-800">Proveedor</h2>
           </div>
-          <div class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
-            {#each order.histories as h}
-              <div class="px-4 py-3">
-                <p class="text-sm font-medium text-slate-800">{h.history}</p>
-                {#if h.notes}<p class="text-xs text-slate-500 mt-0.5">{h.notes}</p>{/if}
-                <p class="text-xs text-slate-400 mt-1">
+          <div class="px-5 py-4 space-y-3 text-sm">
+            <div>
+              <p class="text-xs font-semibold uppercase text-slate-400">Nombre</p>
+              <p class="font-semibold text-slate-800 mt-0.5">{order.third_party?.name ?? 'Sin proveedor'}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase text-slate-400">Identificacion</p>
+                <p class="text-slate-700 mt-0.5">{order.third_party?.identification_number ?? '—'}</p>
+              </div>
+              <div>
+                <p class="text-xs font-semibold uppercase text-slate-400">Dias pago</p>
+                <p class="text-slate-700 mt-0.5">{order.third_party?.payment_days ?? 0}</p>
+              </div>
+            </div>
+            <div>
+              <p class="text-xs font-semibold uppercase text-slate-400">Contacto</p>
+              <p class="text-slate-700 mt-0.5">{order.third_party?.email ?? '—'}</p>
+              <p class="text-slate-500">{order.third_party?.phone ?? ''}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold uppercase text-slate-400">Direccion</p>
+              <p class="text-slate-700 mt-0.5">{order.third_party?.address ?? '—'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-200">
+            <h2 class="font-semibold text-slate-800">Totales</h2>
+          </div>
+          <div class="px-5 py-4 space-y-2 text-sm">
+            <div class="flex justify-between text-slate-600">
+              <span>Subtotal lineas</span>
+              <span class="font-medium tabular-nums">{fmt(subtotal)}</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Ajustes / fletes</span>
+              <span class="font-medium tabular-nums">{fmt(Number(order.amount ?? 0) - subtotal)}</span>
+            </div>
+            <div class="flex justify-between border-t border-slate-100 pt-3 mt-3">
+              <span class="font-semibold text-slate-800">Total orden</span>
+              <span class="font-bold text-blue-700 tabular-nums">{fmt(order.amount)}</span>
+            </div>
+          </div>
+        </div>
+
+        {#if order.notes}
+          <div class="bg-amber-50 rounded-xl border border-amber-200 px-5 py-4">
+            <h2 class="font-semibold text-amber-900 flex items-center gap-2">
+              <i class="mdi mdi-note-text-outline"></i>
+              Notas internas
+            </h2>
+            <p class="text-sm text-amber-800 mt-2 leading-relaxed">{order.notes}</p>
+          </div>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-slate-800">Historial y trazabilidad</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Cambios de estado, aprobaciones, recepciones y observaciones.</p>
+        </div>
+        <span class="text-xs font-semibold text-slate-500 bg-slate-100 rounded-full px-2.5 py-1">
+          {(order.histories ?? []).length} eventos
+        </span>
+      </div>
+      <div class="divide-y divide-slate-100">
+        {#each order.histories ?? [] as h}
+          <div class="px-5 py-4 flex gap-3">
+            <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+              <i class="mdi mdi-timeline-clock-outline text-slate-500"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm font-semibold text-slate-800">{h.history}</p>
+                <p class="text-xs text-slate-400">
                   {new Date(h.history_issue_date).toLocaleString('es-CO')}
                 </p>
               </div>
-            {:else}
-              <div class="px-4 py-6 text-center text-slate-400 text-sm">Sin historial</div>
-            {/each}
+              {#if h.notes}<p class="text-sm text-slate-500 mt-1">{h.notes}</p>{/if}
+              <p class="text-xs text-slate-400 mt-1">Usuario: {h.user?.name ?? 'Sistema'}</p>
+            </div>
           </div>
-        </div>
+        {:else}
+          <div class="px-4 py-6 text-center text-slate-400 text-sm">Sin historial</div>
+        {/each}
       </div>
     </div>
   </div>

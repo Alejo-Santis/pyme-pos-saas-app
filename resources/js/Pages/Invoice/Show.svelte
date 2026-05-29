@@ -442,7 +442,7 @@
         <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Receptor</h3>
         <div class="space-y-1.5">
           {#if document?.third_party}
-            <p class="font-semibold text-slate-800 text-sm">{thirdName()}</p>
+            <p class="font-semibold text-slate-800 text-sm">{thirdName}</p>
             <p class="text-sm text-slate-500">
               NIT/CC {document.third_party.identification_number}{document.third_party.dv ? `-${document.third_party.dv}` : ''}
             </p>
@@ -964,7 +964,7 @@
                     Total a devolver
                   </td>
                   <td class="px-4 py-2.5 text-right font-bold text-orange-700 tabular-nums">
-                    ${fmt(ncSelectedTotal())}
+                    ${fmt(ncSelectedTotal)}
                   </td>
                 </tr>
               </tfoot>

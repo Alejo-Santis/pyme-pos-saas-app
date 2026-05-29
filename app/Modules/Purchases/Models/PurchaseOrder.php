@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchases\Models;
 
+use App\Models\User;
 use App\Modules\Core\Models\ThirdParty;
 use App\Modules\Invoice\Models\Document;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -47,7 +48,7 @@ class PurchaseOrder extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Modules\Core\Models\User::class ?? \App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function document(): BelongsTo
