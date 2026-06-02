@@ -155,6 +155,15 @@ class AccountingConceptController extends Controller
                 ],
             ],
             [
+                'id'    => 97,
+                'name'  => 'Cierre POS',
+                'slugs' => [
+                    ['slug' => '97_CIERRE_POS_CAJA',     'desc' => 'Caja / efectivo',      'default' => '11050501'],
+                    ['slug' => '97_CIERRE_POS_SOBRANTE', 'desc' => 'Ingreso por sobrante', 'default' => '42959501'],
+                    ['slug' => '97_CIERRE_POS_FALTANTE', 'desc' => 'Gasto por faltante',   'default' => '51959501'],
+                ],
+            ],
+            [
                 'id'    => 20,
                 'name'  => 'Nómina',
                 'slugs' => [

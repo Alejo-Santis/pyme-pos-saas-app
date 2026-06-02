@@ -475,6 +475,7 @@ class AccountingController extends Controller
             14 => 'Compra',
             91 => 'Nota Crédito',
             92 => 'Nota Débito',
+            97 => 'Cierre POS',
             98 => 'Ajuste manual',
             99 => 'Reverso de ajuste',
             default => "Operación {$operationId}",

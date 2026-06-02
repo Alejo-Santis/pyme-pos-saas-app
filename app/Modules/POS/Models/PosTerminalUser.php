@@ -36,6 +36,8 @@ class PosTerminalUser extends Model
         'counted_cash',
         'difference',
         'close_notes',
+        'closing_cash_movement_id',
+        'closing_accounting_document_id',
         'state',
     ];
 

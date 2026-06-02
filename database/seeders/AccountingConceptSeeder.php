@@ -42,6 +42,10 @@ class AccountingConceptSeeder extends Seeder
             ['14_BANCO', 'Comprobante de egreso - banco', '11100501', false],
             ['14_CXC', 'Comprobante de egreso - devolución a cliente', '13050501', false],
             ['14_GASTO', 'Comprobante de egreso - gasto general', '51959501', false],
+
+            ['97_CIERRE_POS_CAJA', 'Cierre POS - caja efectivo', '11050501', false],
+            ['97_CIERRE_POS_SOBRANTE', 'Cierre POS - ingreso por sobrante', '42959501', false],
+            ['97_CIERRE_POS_FALTANTE', 'Cierre POS - gasto por faltante', '51959501', false],
         ];
 
         foreach ($concepts as $concept) {

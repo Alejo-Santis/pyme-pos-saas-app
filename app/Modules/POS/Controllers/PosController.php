@@ -3,6 +3,9 @@
 namespace App\Modules\POS\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Accounting\Models\AccountingConcept;
+use App\Modules\Accounting\Models\AccountingDocument;
+use App\Modules\Accounting\Models\AccountingDocumentDetail;
 use App\Modules\Audit\Services\AuditService;
 use App\Modules\Cash\Models\BankAccount;
 use App\Modules\Cash\Models\BankAccountMovement;
@@ -24,6 +27,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -373,21 +377,41 @@ class PosController extends Controller
         $difference   = $countedCash - $expectedCash;  // + sobrante, - faltante
 
         $original = $shift->getOriginal();
+        $closingAccounting = null;
 
-        $shift->update([
-            'active_shift'    => false,
-            'state'           => false,
-            'total_sales'     => $salesData->total_sales ?? 0,
-            'total_cash'      => $cashTotal,
-            'total_transfer'  => $bankTotal,
-            'final_balance'   => $expectedCash,
-            'counted_cash'    => $countedCash,
-            'difference'      => $difference,
-            'close_notes'     => $data['close_notes'] ?? null,
-            'shift_closed_at' => now(),
-        ]);
+        DB::transaction(function () use (
+            $shift,
+            $terminal,
+            $salesData,
+            $cashTotal,
+            $bankTotal,
+            $expectedCash,
+            $countedCash,
+            $difference,
+            $data,
+            $user,
+            &$closingAccounting
+        ) {
+            $cashMovement = $this->createPosClosingCashMovement($terminal, $shift, $user->id, $difference);
+            $closingAccounting = $this->createPosClosingAccounting($terminal, $shift, $user->id, $difference);
 
-        AuditService::updated($shift, $original, "Turno POS cerrado en {$terminal->name}.", 'POS');
+            $shift->update([
+                'active_shift'                  => false,
+                'state'                         => false,
+                'total_sales'                   => $salesData->total_sales ?? 0,
+                'total_cash'                    => $cashTotal,
+                'total_transfer'                => $bankTotal,
+                'final_balance'                 => $countedCash,
+                'counted_cash'                  => $countedCash,
+                'difference'                    => $difference,
+                'close_notes'                   => $data['close_notes'] ?? null,
+                'closing_cash_movement_id'      => $cashMovement?->id,
+                'closing_accounting_document_id'=> $closingAccounting?->id,
+                'shift_closed_at'               => now(),
+            ]);
+        });
+
+        AuditService::updated($shift->refresh(), $original, "Turno POS cerrado en {$terminal->name}.", 'POS');
 
         $diffLabel = $difference >= 0
             ? 'Sobrante $' . number_format($difference, 0, ',', '.')
@@ -397,8 +421,111 @@ class PosController extends Controller
             'success'     => true,
             'total_sales' => (float) ($salesData->total_sales ?? 0),
             'difference'  => $difference,
+            'accounting_document_id' => $closingAccounting?->id,
             'message'     => "Turno cerrado en {$terminal->name} · Ventas: $" . number_format((float)($salesData->total_sales ?? 0), 0, ',', '.') . " · {$diffLabel}",
         ]);
+    }
+
+    private function createPosClosingCashMovement(
+        PosTerminal $terminal,
+        PosTerminalUser $shift,
+        string $userId,
+        float $difference
+    ): ?CashMovement {
+        if (abs($difference) < 0.01) {
+            return null;
+        }
+
+        $cashBoxId = $terminal->cash_box_id ?? CashBox::getMain()?->id;
+        if (! $cashBoxId) {
+            return null;
+        }
+
+        $isSurplus = $difference > 0;
+
+        return CashMovement::create([
+            'cash_box_id' => $cashBoxId,
+            'user_id' => $userId,
+            'debit' => $isSurplus ? abs($difference) : 0,
+            'credit' => $isSurplus ? 0 : abs($difference),
+            'issue_date' => now()->toDateString(),
+            'description' => ($isSurplus ? 'Sobrante' : 'Faltante') . " cierre POS {$shift->cashier_session_key}",
+            'reference' => $shift->cashier_session_key,
+            'state' => true,
+        ]);
+    }
+
+    private function createPosClosingAccounting(
+        PosTerminal $terminal,
+        PosTerminalUser $shift,
+        string $userId,
+        float $difference
+    ): ?AccountingDocument {
+        if (abs($difference) < 0.01) {
+            return null;
+        }
+
+        $amount = round(abs($difference), 4);
+        $isSurplus = $difference > 0;
+        $cashAccount = $this->posClosingAccount('CAJA');
+        $counterpartAccount = $this->posClosingAccount($isSurplus ? 'SOBRANTE' : 'FALTANTE');
+
+        $voucher = AccountingDocument::create([
+            'uuid' => Str::uuid(),
+            'internal_code' => 'COMP-CIERRE-POS-' . now()->format('Ymd') . '-' . strtoupper(Str::random(5)),
+            'user_id' => $userId,
+            'type_document_operation_id' => 97,
+            'prefix' => 'CPOS',
+            'debit' => $amount,
+            'credit' => $amount,
+            'total' => $amount,
+            'notes' => ($isSurplus ? 'Sobrante' : 'Faltante') . " de cierre POS {$shift->cashier_session_key} en {$terminal->name}.",
+            'issue_date' => now()->toDateString(),
+            'annulled' => false,
+        ]);
+
+        if ($isSurplus) {
+            $this->createPosClosingAccountingLine($voucher, $cashAccount, $amount, 0, $shift->cashier_session_key);
+            $this->createPosClosingAccountingLine($voucher, $counterpartAccount, 0, $amount, $shift->cashier_session_key);
+        } else {
+            $this->createPosClosingAccountingLine($voucher, $counterpartAccount, $amount, 0, $shift->cashier_session_key);
+            $this->createPosClosingAccountingLine($voucher, $cashAccount, 0, $amount, $shift->cashier_session_key);
+        }
+
+        return $voucher;
+    }
+
+    private function createPosClosingAccountingLine(
+        AccountingDocument $voucher,
+        string $accountCode,
+        float $debit,
+        float $credit,
+        string $sessionKey
+    ): void {
+        AccountingDocumentDetail::create([
+            'accounting_document_id' => $voucher->id,
+            'accountable_id' => $accountCode,
+            'accountable_type' => 'chart_account',
+            'document_number' => $sessionKey,
+            'taxable_amount' => max($debit, $credit),
+            'debit' => round($debit, 4),
+            'credit' => round($credit, 4),
+            'issue_date' => $voucher->issue_date,
+        ]);
+    }
+
+    private function posClosingAccount(string $slug): string
+    {
+        $account = AccountingConcept::getAccountCode(97, "CIERRE_POS_{$slug}");
+        if ($account) {
+            return $account;
+        }
+
+        return match ($slug) {
+            'SOBRANTE' => '42959501',
+            'FALTANTE' => '51959501',
+            default => '11050501',
+        };
     }
 
     // ── Gestión de terminales (admin) ─────────────────────────────────────
