@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Core\Models\Company;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,7 +18,7 @@ class CompanyController extends Controller
 {
     public function show(): Response
     {
-        $company = Company::first();
+        $company = $this->currentCompany();
 
         return Inertia::render('Config/Company', [
             'company'        => $company,
@@ -36,8 +37,15 @@ class CompanyController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
+        $company = $this->currentCompany();
+
         $data = $request->validate([
-            'identification_number'           => 'required|string|max:20',
+            'identification_number'           => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('companies', 'identification_number')->ignore($company?->id),
+            ],
             'dv'                              => 'required|string|max:1',
             'business_name'                   => 'required|string|max:255',
             'trade_name'                      => 'nullable|string|max:255',
@@ -64,8 +72,6 @@ class CompanyController extends Controller
             'prices_with_taxes_included'      => 'boolean',
         ]);
 
-        $company = Company::first();
-
         if ($company) {
             $company->update($data);
         } else {
@@ -73,5 +79,14 @@ class CompanyController extends Controller
         }
 
         return back()->with('success', 'Configuración de empresa guardada correctamente.');
+    }
+
+    private function currentCompany(): ?Company
+    {
+        return Company::query()
+            ->orderByDesc('is_active')
+            ->orderByDesc('updated_at')
+            ->orderBy('created_at')
+            ->first();
     }
 }
