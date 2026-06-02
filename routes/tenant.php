@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Accounting\Controllers\AccountingConceptController;
 use App\Modules\Accounting\Controllers\AccountingController;
 use App\Modules\Accounting\Controllers\FinancialReportController;
+use App\Modules\Accounting\Controllers\FiscalPeriodController;
 use App\Modules\Auth\Controllers\ImpersonationController;
 use App\Modules\Auth\Controllers\LoginController;
 use App\Modules\Auth\Controllers\PasswordResetController;
@@ -31,6 +32,7 @@ use App\Modules\Payroll\Controllers\SocialBenefitController;
 use App\Modules\POS\Controllers\PosController;
 use App\Modules\Purchases\Controllers\PurchaseController;
 use App\Modules\Audit\Controllers\AuditController;
+use App\Modules\Audit\Controllers\NotificationController;
 use App\Modules\Tenant\Controllers\SubscriptionController;
 use App\Modules\Reports\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
@@ -118,6 +120,13 @@ Route::middleware([
                 Route::get('/api-logs', [AuditController::class, 'apiLogs'])->name('api-logs');
             });
 
+            // ─── Notificaciones (API JSON para la campana del AppLayout) ──
+            Route::prefix('notifications')->name('notifications.')->group(function () {
+                Route::get('/', [NotificationController::class, 'index'])->name('index');
+                Route::patch('/{notification}/read', [NotificationController::class, 'markRead'])->name('read');
+                Route::patch('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('read-all');
+            });
+
             // ─── Configuración de empresa (Fase 5) ───────────────────────
             Route::prefix('config')->name('config.')->middleware('permission:config.view')->group(function () {
                 // Establecimientos
@@ -135,6 +144,7 @@ Route::middleware([
                 // Configuración de empresa
                 Route::get('/company', [CompanyController::class, 'show'])->name('company');
                 Route::put('/company', [CompanyController::class, 'update'])->name('company.update');
+                Route::post('/company/test-nextpyme', [CompanyController::class, 'testNextpyme'])->name('company.test-nextpyme');
 
                 // Resoluciones DIAN
                 Route::get('/resolutions', [ResolutionController::class, 'index'])->name('resolutions');
@@ -155,6 +165,8 @@ Route::middleware([
                 Route::put('/{thirdParty}', [ThirdPartyController::class, 'update'])->name('update');
                 Route::delete('/{thirdParty}', [ThirdPartyController::class, 'destroy'])->name('destroy');
                 Route::patch('/{thirdParty}/toggle', [ThirdPartyController::class, 'toggleStatus'])->name('toggle');
+                Route::get('/{thirdParty}/retentions', [ThirdPartyController::class, 'retentions'])->name('retentions');
+                Route::post('/{thirdParty}/retentions', [ThirdPartyController::class, 'storeRetentions'])->name('retentions.store');
             });
 
             // ─── Inventario (Fase 7) ──────────────────────────────────────
@@ -206,9 +218,10 @@ Route::middleware([
                 Route::delete('/{document}', [InvoiceController::class, 'destroy'])->name('destroy');
                 Route::post('/{document}/credit-note', [InvoiceController::class, 'storeCreditNote'])->name('credit-note');
                 Route::post('/{document}/debit-note',  [InvoiceController::class, 'storeDebitNote'])->name('debit-note');
-                Route::post('/{document}/retry-dian',  [InvoiceController::class, 'retryDian'])->name('retry-dian')->middleware('throttle:dian-retry');
-                Route::get('/{document}/pdf',          [InvoiceController::class, 'downloadPdf'])->name('pdf');
-                Route::post('/{document}/send-email',  [InvoiceController::class, 'sendEmail'])->name('send-email');
+                Route::post('/{document}/retry-dian',    [InvoiceController::class, 'retryDian'])->name('retry-dian')->middleware('throttle:dian-retry');
+                Route::post('/{document}/radian-event', [InvoiceController::class, 'sendRadianEvent'])->name('radian-event');
+                Route::get('/{document}/pdf',            [InvoiceController::class, 'downloadPdf'])->name('pdf');
+                Route::post('/{document}/send-email',    [InvoiceController::class, 'sendEmail'])->name('send-email');
             });
 
             // ─── Caja y bancos ────────────────────────────────────────────
@@ -234,6 +247,17 @@ Route::middleware([
                 Route::put('/banks/accounts/{account}', [BankController::class, 'updateAccount'])->name('banks.accounts.update');
                 Route::delete('/banks/accounts/{account}', [BankController::class, 'destroyAccount'])->name('banks.accounts.destroy');
                 Route::post('/banks/accounts/{account}/movements', [BankController::class, 'storeMovement'])->name('banks.accounts.movements.store');
+            });
+
+                // Conciliación bancaria
+                Route::prefix('reconciliations')->name('reconciliations.')->group(function () {
+                    Route::get('/', [\App\Modules\Cash\Controllers\BankReconciliationController::class, 'index'])->name('index');
+                    Route::post('/', [\App\Modules\Cash\Controllers\BankReconciliationController::class, 'store'])->name('store');
+                    Route::get('/{reconciliation}', [\App\Modules\Cash\Controllers\BankReconciliationController::class, 'show'])->name('show');
+                    Route::post('/{reconciliation}/statement-line', [\App\Modules\Cash\Controllers\BankReconciliationController::class, 'addStatementLine'])->name('statement-line');
+                    Route::patch('/lines/{line}/toggle', [\App\Modules\Cash\Controllers\BankReconciliationController::class, 'toggleMatch'])->name('lines.toggle');
+                    Route::post('/{reconciliation}/reconcile', [\App\Modules\Cash\Controllers\BankReconciliationController::class, 'reconcile'])->name('reconcile');
+                });
             });
 
             // ─── POS ──────────────────────────────────────────────────────
@@ -275,6 +299,22 @@ Route::middleware([
                 Route::get('/income-statement/export', [FinancialReportController::class,   'exportIncomeStatement'])->name('income-statement.export');
                 Route::get('/balance-sheet', [FinancialReportController::class,   'balanceSheet'])->name('balance-sheet');
                 Route::get('/balance-sheet/export', [FinancialReportController::class,   'exportBalanceSheet'])->name('balance-sheet.export');
+                // Presupuesto vs Real
+                Route::prefix('budget')->name('budget.')->group(function () {
+                    Route::get('/', [\App\Modules\Accounting\Controllers\BudgetController::class, 'index'])->name('index');
+                    Route::get('/create', [\App\Modules\Accounting\Controllers\BudgetController::class, 'create'])->name('create');
+                    Route::post('/', [\App\Modules\Accounting\Controllers\BudgetController::class, 'store'])->name('store');
+                    Route::post('/{budget}/approve', [\App\Modules\Accounting\Controllers\BudgetController::class, 'approve'])->name('approve');
+                    Route::get('/{budget}/compare', [\App\Modules\Accounting\Controllers\BudgetController::class, 'compare'])->name('compare');
+                    Route::get('/{budget}/export', [\App\Modules\Accounting\Controllers\BudgetController::class, 'export'])->name('export');
+                });
+                // Períodos fiscales (cierre contable)
+                Route::prefix('fiscal-periods')->name('fiscal-periods.')->group(function () {
+                    Route::get('/', [FiscalPeriodController::class, 'index'])->name('index');
+                    Route::post('/{fiscalPeriod}/close', [FiscalPeriodController::class, 'close'])->name('close');
+                    Route::post('/{fiscalPeriod}/reopen', [FiscalPeriodController::class, 'reopen'])->name('reopen');
+                    Route::post('/close-year', [FiscalPeriodController::class, 'closeYear'])->name('close-year');
+                });
                 // Configuración de conceptos contables
                 Route::prefix('concepts')->name('concepts.')->group(function () {
                     Route::get('/', [AccountingConceptController::class, 'index'])->name('index');
@@ -322,6 +362,7 @@ Route::middleware([
                     Route::post('/{run}/approve', [PayrollController::class, 'approve'])->name('approve');
                     Route::post('/{run}/mark-paid', [PayrollController::class, 'markPaid'])->name('mark-paid');
                     Route::post('/{run}/cancel', [PayrollController::class, 'cancel'])->name('cancel');
+                    Route::post('/{run}/send-nes', [PayrollController::class, 'sendNES'])->name('send-nes');
                 });
                 // Novedades
                 Route::prefix('novelties')->name('novelties.')->group(function () {
@@ -349,6 +390,10 @@ Route::middleware([
                 Route::get('/cash/export', [ReportController::class, 'exportCash'])->name('cash.export');
                 Route::get('/inventory', [ReportController::class, 'inventory'])->name('inventory');
                 Route::get('/inventory/export', [ReportController::class, 'exportInventory'])->name('inventory.export');
+                Route::get('/payroll', [ReportController::class, 'payroll'])->name('payroll');
+                Route::get('/payroll/export', [ReportController::class, 'exportPayroll'])->name('payroll.export');
+                Route::get('/kardex', [ReportController::class, 'kardex'])->name('kardex');
+                Route::get('/kardex/export', [ReportController::class, 'exportKardex'])->name('kardex.export');
             });
 
             }); // fin middleware tenant.operational
@@ -357,4 +402,3 @@ Route::middleware([
 
     });
 
-});

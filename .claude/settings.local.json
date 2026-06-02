@@ -135,11 +135,35 @@
       "Bash(grep -rn \"Mail\\\\|Mailable\\\\|mail\" /var/www/pyme-pos-saas-app/app/ --include=*.php -l)",
       "Bash(chmod -R 775 /var/www/pyme-pos-saas-app/storage)",
       "Bash(chown -R www-data:www-data /var/www/pyme-pos-saas-app/storage)",
-      "Bash(chown alejo-santis:www-data /var/www/pyme-pos-saas-app/storage/logs/laravel.log)"
+      "Bash(chown alejo-santis:www-data /var/www/pyme-pos-saas-app/storage/logs/laravel.log)",
+      "Bash(find /var/www/xedoc-laravel-svelte -type f -name \"*.php\" -o -name \"*.json\" | head -50)",
+      "Read(//var/www/xedoc-laravel-svelte/**)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Invoice/Builders/EventJsonBuilder.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Invoice/Jobs/SendRadianEventJob.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Invoice/Models/DocumentRadianEvent.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Console/Commands/RetryFailedElectronicDocumentsCommand.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Invoice/Controllers/InvoiceController.php)",
+      "Bash(awk -F: '{print $1, $NF}')",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Payroll/Builders/NESJsonBuilder.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Payroll/Jobs/ProcessElectronicPayrollJob.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Payroll/Models/PayrollElectronicSending.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Accounting/Models/FiscalPeriod.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Accounting/Controllers/FiscalPeriodController.php)",
+      "Bash(xargs -I {} find {} -type f -name \"*.php\")",
+      "Bash(xargs basename -a)",
+      "Bash(cat > *)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Reports/Controllers/ReportController.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Core/Controllers/ThirdPartyController.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Cash/Controllers/BankReconciliationController.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Accounting/Controllers/BudgetController.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Audit/Services/NotificationService.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Inventory/Services/LotTrackingService.php)",
+      "Bash(php -l /var/www/pyme-pos-saas-app/app/Modules/Audit/Controllers/NotificationController.php)"
     ],
     "additionalDirectories": [
       "/etc/apache2/sites-available",
-      "/var/www/pyme-pos-saas-app/resources/views"
+      "/var/www/pyme-pos-saas-app/resources/views",
+      "/tmp"
     ]
   }
 }

@@ -46,6 +46,11 @@ class AccountingConceptSeeder extends Seeder
             ['97_CIERRE_POS_CAJA', 'Cierre POS - caja efectivo', '11050501', false],
             ['97_CIERRE_POS_SOBRANTE', 'Cierre POS - ingreso por sobrante', '42959501', false],
             ['97_CIERRE_POS_FALTANTE', 'Cierre POS - gasto por faltante', '51959501', false],
+
+            // Retenciones en venta — anticipo de impuesto a favor (activo 135xxx)
+            ['1_RETEFUENTE', 'Venta - Retención en la fuente descontable', '13551501', true],
+            ['1_RETEIVA',    'Venta - Retención de IVA descontable',        '13551001', true],
+            ['1_RETEICA',    'Venta - Retención de ICA descontable',        '13552501', true],
         ];
 
         foreach ($concepts as $concept) {

@@ -11,6 +11,8 @@ use App\Modules\Core\Models\Warehouse;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Models\DocumentLine;
+use App\Modules\Payroll\Models\Employee;
+use App\Modules\Payroll\Models\PayrollRun;
 use App\Modules\POS\Models\PosTerminal;
 use App\Modules\POS\Models\PosTerminalUser;
 use App\Shared\Exports\ArrayExport;
@@ -743,5 +745,254 @@ class ReportController extends Controller
         if ($stock <= 0) return 'empty';
         if ($minStock > 0 && $stock <= $minStock) return 'low';
         return 'ok';
+    }
+
+    // ── Reporte de Nómina ─────────────────────────────────────────────────
+
+    public function payroll(Request $request): Response
+    {
+        $year    = (int) $request->input('year', now()->year);
+        $status  = $request->input('status');       // draft|approved|paid|cancelled
+        $runId   = $request->input('run_id');
+
+        $runsQuery = PayrollRun::with('details.employee')
+            ->whereYear('period_start', $year)
+            ->when($status, fn ($q) => $q->where('status', $status))
+            ->orderByDesc('period_start');
+
+        $runs = $runsQuery->get()->map(function (PayrollRun $run) {
+            return [
+                'id'                 => $run->id,
+                'name'               => $run->name,
+                'period_start'       => $run->period_start?->format('Y-m-d'),
+                'period_end'         => $run->period_end?->format('Y-m-d'),
+                'status'             => $run->status,
+                'status_label'       => PayrollRun::statusLabel($run->status),
+                'total_earned'       => (float) $run->total_earned,
+                'total_deductions'   => (float) $run->total_deductions,
+                'total_net'          => (float) $run->total_net,
+                'total_employer_cost'=> (float) $run->total_employer_cost,
+                'employee_count'     => $run->details->count(),
+                'is_electronic'      => (bool) $run->is_electronic,
+                'nes_status'         => $run->nes_status,
+            ];
+        });
+
+        // Detalle por empleado de la liquidación seleccionada
+        $detail = null;
+        if ($runId) {
+            $run = PayrollRun::with('details.employee')->find($runId);
+            if ($run) {
+                $detail = [
+                    'run'      => [
+                        'id'           => $run->id,
+                        'name'         => $run->name,
+                        'period_start' => $run->period_start?->format('Y-m-d'),
+                        'period_end'   => $run->period_end?->format('Y-m-d'),
+                        'status'       => $run->status,
+                        'status_label' => PayrollRun::statusLabel($run->status),
+                    ],
+                    'employees' => $run->details->map(fn ($d) => [
+                        'employee_name'      => $d->employee?->full_name ?? 'N/A',
+                        'identification'     => $d->employee?->identification_number,
+                        'worked_days'        => $d->worked_days,
+                        'basic_salary'       => (float) $d->basic_salary,
+                        'transport'          => (float) $d->transport_allowance,
+                        'overtime'           => (float) $d->overtime_amount,
+                        'total_earned'       => (float) $d->total_earned,
+                        'health_employee'    => (float) $d->health_employee,
+                        'pension_employee'   => (float) $d->pension_employee,
+                        'income_tax'         => (float) $d->income_tax_withholding,
+                        'total_deductions'   => (float) $d->total_deductions,
+                        'net_pay'            => (float) $d->net_pay,
+                        'health_employer'    => (float) $d->health_employer,
+                        'pension_employer'   => (float) $d->pension_employer,
+                        'arl_employer'       => (float) $d->arl_employer,
+                        'ccf_employer'       => (float) $d->ccf_employer,
+                        'sena_employer'      => (float) $d->sena_employer,
+                        'icbf_employer'      => (float) $d->icbf_employer,
+                        'total_employer_cost'=> (float) $d->total_employer_cost,
+                    ])->values(),
+                ];
+            }
+        }
+
+        // Totales acumulados del año
+        $yearTotals = PayrollRun::whereYear('period_start', $year)
+            ->whereNotIn('status', [PayrollRun::STATUS_CANCELLED])
+            ->selectRaw('
+                COUNT(*) as total_runs,
+                COALESCE(SUM(total_earned), 0) as total_earned,
+                COALESCE(SUM(total_deductions), 0) as total_deductions,
+                COALESCE(SUM(total_net), 0) as total_net,
+                COALESCE(SUM(total_employer_cost), 0) as total_employer_cost
+            ')->first();
+
+        return Inertia::render('Reports/Payroll', [
+            'runs'       => $runs,
+            'detail'     => $detail,
+            'yearTotals' => $yearTotals,
+            'filters'    => ['year' => $year, 'status' => $status, 'run_id' => $runId],
+            'years'      => range(now()->year, max(2024, now()->year - 3)),
+        ]);
+    }
+
+    public function exportPayroll(Request $request): mixed
+    {
+        $runId = $request->input('run_id');
+
+        if (! $runId) {
+            return back()->withErrors(['run_id' => 'Seleccione una liquidación para exportar.']);
+        }
+
+        $run = PayrollRun::with('details.employee')->findOrFail($runId);
+        $company = Company::first();
+
+        $headers = [
+            'Empleado', 'Identificación', 'Días', 'Salario Base', 'Subsidio Transporte',
+            'Horas Extra', 'Total Devengado', 'Salud Empleado', 'Pensión Empleado',
+            'Retención Fuente', 'Total Deducciones', 'Neto a Pagar',
+            'Salud Empleador', 'Pensión Empleador', 'ARL', 'Caja Comp.', 'SENA', 'ICBF', 'Costo Total',
+        ];
+
+        $rows = $run->details->map(fn ($d) => [
+            $d->employee?->full_name ?? 'N/A',
+            $d->employee?->identification_number ?? '',
+            $d->worked_days,
+            (float) $d->basic_salary,
+            (float) $d->transport_allowance,
+            (float) $d->overtime_amount,
+            (float) $d->total_earned,
+            (float) $d->health_employee,
+            (float) $d->pension_employee,
+            (float) $d->income_tax_withholding,
+            (float) $d->total_deductions,
+            (float) $d->net_pay,
+            (float) $d->health_employer,
+            (float) $d->pension_employer,
+            (float) $d->arl_employer,
+            (float) $d->ccf_employer,
+            (float) $d->sena_employer,
+            (float) $d->icbf_employer,
+            (float) $d->total_employer_cost,
+        ])->toArray();
+
+        $meta = [
+            $company?->business_name ?? 'Empresa',
+            "Nómina: {$run->name}",
+            "Período: {$run->period_start?->format('d/m/Y')} – {$run->period_end?->format('d/m/Y')}",
+            'Estado: ' . PayrollRun::statusLabel($run->status),
+        ];
+
+        return Excel::download(
+            new ArrayExport($rows, $headers, 'Nómina', $meta),
+            "nomina_{$run->period_start?->format('Y-m')}.xlsx"
+        );
+    }
+
+    // ── Kardex de Inventario ──────────────────────────────────────────────
+
+    public function kardex(Request $request): Response
+    {
+        $itemId      = $request->input('item_id');
+        $warehouseId = $request->input('warehouse_id');
+        $from        = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $to          = $request->input('date_to', now()->toDateString());
+
+        $items      = Item::where('state', true)->orderBy('name')->get(['id', 'name', 'internal_code']);
+        $warehouses = Warehouse::where('state', true)->orderBy('name')->get(['id', 'name']);
+
+        $movements  = collect();
+        $item       = null;
+        $stockInfo  = null;
+
+        if ($itemId) {
+            $item = Item::find($itemId, ['id', 'name', 'internal_code', 'unit_measure_id']);
+
+            $query = DB::table('item_stocktakings as k')
+                ->join('documents as d', 'd.id', '=', 'k.document_id')
+                ->leftJoin('warehouses as w', 'w.id', '=', 'k.warehouse_id')
+                ->where('k.item_id', $itemId)
+                ->whereBetween('d.issue_date', [$from, $to])
+                ->when($warehouseId, fn ($q) => $q->where('k.warehouse_id', $warehouseId))
+                ->orderBy('d.issue_date')
+                ->orderBy('k.id')
+                ->select([
+                    'k.id',
+                    'd.issue_date as date',
+                    'd.internal_code as document',
+                    'w.name as warehouse',
+                    'k.input_quantity',
+                    'k.output_quantity',
+                    'k.purchase_price',
+                    'k.new_average',
+                ]);
+
+            $movements = $query->get()->map(fn ($row) => [
+                'date'            => $row->date,
+                'document'        => $row->document,
+                'warehouse'       => $row->warehouse ?? '—',
+                'input_quantity'  => (float) $row->input_quantity,
+                'output_quantity' => (float) $row->output_quantity,
+                'purchase_price'  => (float) $row->purchase_price,
+                'new_average'     => (float) $row->new_average,
+                'type'            => $row->input_quantity > 0 ? 'in' : 'out',
+            ]);
+
+            // Saldo actual por bodega
+            $stockInfo = DB::table('item_warehouses')
+                ->join('warehouses', 'warehouses.id', '=', 'item_warehouses.warehouse_id')
+                ->where('item_warehouses.item_id', $itemId)
+                ->select('warehouses.name as warehouse', 'item_warehouses.stock', 'item_warehouses.average_cost')
+                ->get();
+        }
+
+        return Inertia::render('Reports/Kardex', [
+            'items'      => $items,
+            'warehouses' => $warehouses,
+            'movements'  => $movements,
+            'item'       => $item,
+            'stockInfo'  => $stockInfo,
+            'filters'    => compact('itemId', 'warehouseId', 'from', 'to'),
+        ]);
+    }
+
+    public function exportKardex(Request $request): mixed
+    {
+        $itemId      = $request->input('item_id');
+        $warehouseId = $request->input('warehouse_id');
+        $from        = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $to          = $request->input('date_to', now()->toDateString());
+
+        $item = Item::findOrFail($itemId, ['name', 'internal_code']);
+
+        $movements = DB::table('item_stocktakings as k')
+            ->join('documents as d', 'd.id', '=', 'k.document_id')
+            ->leftJoin('warehouses as w', 'w.id', '=', 'k.warehouse_id')
+            ->where('k.item_id', $itemId)
+            ->whereBetween('d.issue_date', [$from, $to])
+            ->when($warehouseId, fn ($q) => $q->where('k.warehouse_id', $warehouseId))
+            ->orderBy('d.issue_date')
+            ->select(['d.issue_date as date', 'd.internal_code as document', 'w.name as warehouse',
+                      'k.input_quantity', 'k.output_quantity', 'k.purchase_price', 'k.new_average'])
+            ->get();
+
+        $company = Company::first();
+        $headers = ['Fecha', 'Documento', 'Bodega', 'Entrada', 'Salida', 'Costo Unit.', 'Costo Prom.'];
+        $rows    = $movements->map(fn ($r) => [
+            $r->date, $r->document, $r->warehouse ?? '—',
+            $r->input_quantity, $r->output_quantity, $r->purchase_price, $r->new_average,
+        ])->toArray();
+
+        $meta = [
+            $company?->business_name ?? 'Empresa',
+            "Kardex: {$item->name} ({$item->internal_code})",
+            "Período: {$from} al {$to}",
+        ];
+
+        return Excel::download(
+            new ArrayExport($rows, $headers, 'Kardex', $meta),
+            "kardex_{$item->internal_code}_{$from}_{$to}.xlsx"
+        );
     }
 }

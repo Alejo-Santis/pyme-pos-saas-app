@@ -4,6 +4,7 @@ namespace App\Modules\Core\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Core\Models\Company;
+use App\Modules\Invoice\Services\ApiNextpymeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -79,6 +80,20 @@ class CompanyController extends Controller
         }
 
         return back()->with('success', 'Configuración de empresa guardada correctamente.');
+    }
+
+    public function testNextpyme(ApiNextpymeService $api): RedirectResponse
+    {
+        $result = $api->testConnection();
+        $status = $result['statusCode'] ?? 'sin status';
+        $url = $result['url'] ?? 'sin URL';
+        $message = "{$result['message']} URL: {$url}";
+
+        if (($result['reachable'] ?? false) && ($result['authorized'] ?? false)) {
+            return back()->with('success', $message);
+        }
+
+        return back()->with('error', "Prueba Nextpyme fallida HTTP {$status}. {$message}");
     }
 
     private function currentCompany(): ?Company

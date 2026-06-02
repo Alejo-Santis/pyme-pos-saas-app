@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Modules\Core\Imports\ThirdPartyImport;
 use App\Modules\Core\Models\PartyLinkage;
 use App\Modules\Core\Models\ThirdParty;
+use App\Modules\Core\Models\ThirdPartyRetentionConfig;
 use App\Shared\Exports\ArrayExport;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -108,6 +111,8 @@ class ThirdPartyController extends Controller
             'thirds'         => DB::table('type_thirds')->orderBy('id')->get(['id', 'name']),
             'departments'    => DB::table('departments')->orderBy('name')->get(['id', 'name']),
             'municipalities' => DB::table('municipalities')->orderBy('name')->get(['id', 'name', 'department_id']),
+            'retentions'     => ThirdPartyRetentionConfig::where('third_party_id', $thirdParty->id)
+                ->orderBy('retention_type')->get(['id', 'retention_type', 'label', 'percent', 'base', 'is_active']),
         ]);
     }
 
@@ -212,5 +217,54 @@ class ThirdPartyController extends Controller
             'import_imported' => $import->imported,
             'import_errors'   => $import->errors,
         ]);
+    }
+
+    // ── Retenciones por tercero ───────────────────────────────────────────
+
+    /**
+     * Devuelve las retenciones activas de un tercero (JSON para formulario de factura).
+     * GET /third-parties/{thirdParty}/retentions
+     */
+    public function retentions(ThirdParty $thirdParty): JsonResponse
+    {
+        $configs = ThirdPartyRetentionConfig::where('third_party_id', $thirdParty->id)
+            ->where('is_active', true)
+            ->orderBy('retention_type')
+            ->get(['id', 'retention_type', 'label', 'percent', 'base']);
+
+        return response()->json($configs);
+    }
+
+    /**
+     * Guarda (crea o reemplaza) las retenciones de un tercero.
+     * POST /third-parties/{thirdParty}/retentions
+     */
+    public function storeRetentions(Request $request, ThirdParty $thirdParty): RedirectResponse
+    {
+        $request->validate([
+            'retentions'                  => 'array',
+            'retentions.*.retention_type' => 'required|string|in:retefuente,reteiva,reteica',
+            'retentions.*.label'          => 'required|string|max:80',
+            'retentions.*.percent'        => 'required|numeric|min:0|max:100',
+            'retentions.*.base'           => 'required|string|in:subtotal,tax,total',
+        ]);
+
+        DB::transaction(function () use ($request, $thirdParty) {
+            // Eliminar las anteriores y recrear (reemplazar completo)
+            ThirdPartyRetentionConfig::where('third_party_id', $thirdParty->id)->delete();
+
+            foreach ($request->input('retentions', []) as $item) {
+                ThirdPartyRetentionConfig::create([
+                    'third_party_id' => $thirdParty->id,
+                    'retention_type' => $item['retention_type'],
+                    'label'          => $item['label'],
+                    'percent'        => $item['percent'],
+                    'base'           => $item['base'],
+                    'is_active'      => true,
+                ]);
+            }
+        });
+
+        return back()->with('success', 'Retenciones del tercero guardadas correctamente.');
     }
 }

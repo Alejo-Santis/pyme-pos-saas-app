@@ -5,6 +5,7 @@ namespace App\Modules\Invoice\Models;
 use App\Modules\Core\Models\Resolution;
 use App\Modules\Core\Models\ThirdParty;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Modules\Invoice\Models\DocumentRadianEvent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,6 +40,7 @@ class Document extends Model
         'subtotal',
         'total_discount',
         'total_tax',
+        'total_withholding',
         'total',
         'balance',
         'payment_forms',
@@ -68,6 +70,7 @@ class Document extends Model
         'subtotal'               => 'decimal:4',
         'total_discount'         => 'decimal:4',
         'total_tax'              => 'decimal:4',
+        'total_withholding'      => 'decimal:4',
         'total'                  => 'decimal:4',
         'balance'                => 'decimal:4',
         'payment_forms'          => 'array',
@@ -129,6 +132,11 @@ class Document extends Model
     public function latestSending(): HasOne
     {
         return $this->hasOne(SendingElectronicDocument::class, 'document_id')->latestOfMany();
+    }
+
+    public function radianEvents(): HasMany
+    {
+        return $this->hasMany(DocumentRadianEvent::class, 'document_id');
     }
 
     public function sendings(): HasMany

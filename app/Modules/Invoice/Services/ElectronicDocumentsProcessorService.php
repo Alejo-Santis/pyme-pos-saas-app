@@ -24,12 +24,12 @@ class ElectronicDocumentsProcessorService
     protected int $maxAttempts = 3;
 
     protected array $endpoints = [
-        'invoice'                          => ['url' => '/ubl2.1/invoice',          'method' => 'POST'],
-        'credit_note'                      => ['url' => '/ubl2.1/credit-note',       'method' => 'POST'],
-        'debit_note'                       => ['url' => '/ubl2.1/debit-note',        'method' => 'POST'],
-        'support_document'                 => ['url' => '/ubl2.1/support-document',  'method' => 'POST'],
-        'adjustment_note_support_document' => ['url' => '/ubl2.1/sd-credit-note',   'method' => 'POST'],
-        'events'                           => ['url' => '/ubl2.1/send-event-data',  'method' => 'POST'],
+        'invoice'                          => ['url' => '/ubl2.1/invoice',          'method' => 'POST', 'operation' => 'send_invoice'],
+        'credit_note'                      => ['url' => '/ubl2.1/credit-note',       'method' => 'POST', 'operation' => 'send_credit_note'],
+        'debit_note'                       => ['url' => '/ubl2.1/debit-note',        'method' => 'POST', 'operation' => 'send_debit_note'],
+        'support_document'                 => ['url' => '/ubl2.1/support-document',  'method' => 'POST', 'operation' => 'send_support_document'],
+        'adjustment_note_support_document' => ['url' => '/ubl2.1/sd-credit-note',   'method' => 'POST', 'operation' => 'send_support_document_credit_note'],
+        'events'                           => ['url' => '/ubl2.1/send-event-data',  'method' => 'POST', 'operation' => 'send_event'],
     ];
 
     public function __construct(
@@ -72,7 +72,14 @@ class ElectronicDocumentsProcessorService
         ]);
 
         // Llamada HTTP
-        $response = $this->apiService->makeRequest($endpoint['method'], $endpoint['url'], $json);
+        $response = $this->apiService->makeRequest(
+            method: $endpoint['method'],
+            endpoint: $endpoint['url'],
+            parameters: $json,
+            documentId: $this->document->id,
+            operation: $endpoint['operation'],
+            attempt: $this->currentAttempt,
+        );
 
         // Guardar respuesta filtrada (sin XMLs pesados)
         $sending->update([

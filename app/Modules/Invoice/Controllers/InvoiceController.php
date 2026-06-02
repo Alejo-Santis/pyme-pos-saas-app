@@ -12,8 +12,11 @@ use App\Modules\Core\Models\ThirdParty;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Jobs\ProcessElectronicCreditNoteJob;
+use App\Modules\Invoice\Jobs\ProcessElectronicDebitNoteJob;
 use App\Modules\Invoice\Jobs\ProcessElectronicInvoiceJob;
 use App\Modules\Invoice\Jobs\ProcessElectronicSupportDocumentJob;
+use App\Modules\Invoice\Jobs\SendRadianEventJob;
+use App\Modules\Invoice\Models\DocumentRadianEvent;
 use App\Modules\Invoice\Services\CreditNoteService;
 use App\Modules\Invoice\Services\DebitNoteService;
 use App\Modules\Invoice\Services\InvoiceService;
@@ -367,11 +370,64 @@ class InvoiceController extends Controller
 
         match (true) {
             in_array($typeOperation, [91])         => ProcessElectronicCreditNoteJob::dispatch($document, 1),
+            in_array($typeOperation, [92])         => ProcessElectronicDebitNoteJob::dispatch($document, 1),
             in_array($typeOperation, [5, 14])       => ProcessElectronicSupportDocumentJob::dispatch($document, 1),
             default                                => ProcessElectronicInvoiceJob::dispatch($document, 1),
         };
 
         return back()->with('success', 'Documento encolado para reenvío a la DIAN. Esto puede tardar unos segundos.');
+    }
+
+    /**
+     * Despacha un evento RADIAN para un documento que tiene CUFE.
+     *
+     * Eventos soportados:
+     *   accuse     (030) → Acuse de recibo       — primer paso obligatorio
+     *   received   (032) → Recibo del bien/servicio
+     *   acceptance (033) → Aceptación expresa
+     *   claim      (031) → Reclamo/rechazo (requiere type_rejection_id)
+     */
+    public function sendRadianEvent(Request $request, Document $document): RedirectResponse
+    {
+        $request->validate([
+            'event_key'         => 'required|string|in:accuse,claim,received,acceptance',
+            'type_rejection_id' => 'nullable|integer|min:1',
+        ]);
+
+        if (empty($document->cufe)) {
+            return back()->withErrors(['radian' => 'El documento no tiene CUFE. Solo se pueden enviar eventos RADIAN a facturas aprobadas por la DIAN.']);
+        }
+
+        if ($document->annulled) {
+            return back()->withErrors(['radian' => 'No se pueden enviar eventos RADIAN sobre documentos anulados.']);
+        }
+
+        $eventKey = $request->input('event_key');
+
+        // Verificar que no haya un evento exitoso previo del mismo tipo
+        $existing = $document->radianEvents()
+            ->where('event_key', $eventKey)
+            ->where('status', DocumentRadianEvent::STATUS_SENT)
+            ->exists();
+
+        if ($existing) {
+            return back()->withErrors(['radian' => "El evento «{$eventKey}» ya fue enviado y aprobado por la DIAN para este documento."]);
+        }
+
+        SendRadianEventJob::dispatch(
+            $document->id,
+            $eventKey,
+            $request->integer('type_rejection_id') ?: null
+        );
+
+        $labels = [
+            'accuse'     => 'Acuse de recibo (030)',
+            'claim'      => 'Reclamo (031)',
+            'received'   => 'Recibo del bien (032)',
+            'acceptance' => 'Aceptación expresa (033)',
+        ];
+
+        return back()->with('success', "Evento RADIAN «{$labels[$eventKey]}» encolado para envío a la DIAN.");
     }
 
     // ─── Helpers privados ─────────────────────────────────────────────────

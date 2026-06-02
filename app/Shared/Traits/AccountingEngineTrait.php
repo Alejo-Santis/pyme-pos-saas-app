@@ -5,6 +5,7 @@ namespace App\Shared\Traits;
 use App\Modules\Accounting\Models\AccountingConcept;
 use App\Modules\Accounting\Models\AccountingDocument;
 use App\Modules\Accounting\Models\AccountingDocumentDetail;
+use App\Modules\Accounting\Models\FiscalPeriod;
 use App\Modules\Cash\Models\BankAccountMovement;
 use App\Modules\Cash\Models\CashMovement;
 use App\Modules\Cash\Models\CashReceipt;
@@ -55,6 +56,16 @@ trait AccountingEngineTrait
     public function generateAccountingEntry($document): ?AccountingDocument
     {
         try {
+            $issueDate = $document->issue_date ?? now()->toDateString();
+
+            // Verificar que el período fiscal no esté cerrado
+            if (FiscalPeriod::isDateInClosedPeriod((string) $issueDate)) {
+                Log::warning("Motor contable: período cerrado para {$issueDate}. Asiento rechazado.", [
+                    'document_id' => $document->id ?? null,
+                ]);
+                return null;
+            }
+
             $opId = (int) $document->type_document_operation_id;
 
             $voucher = AccountingDocument::create([
@@ -67,7 +78,7 @@ trait AccountingEngineTrait
                 'total'                      => $document->total,
                 'debit'                      => 0,
                 'credit'                     => 0,
-                'issue_date'                 => $document->issue_date ?? now()->toDateString(),
+                'issue_date'                 => $issueDate,
                 'annulled'                   => false,
             ]);
 
@@ -178,15 +189,48 @@ trait AccountingEngineTrait
      */
     private function entrySale($doc, AccountingDocument $voucher): void
     {
-        $opId      = 1;
-        $subtotal  = (float) ($doc->subtotal ?? 0);
-        $totalTax  = (float) ($doc->total_tax ?? 0);
-        $total     = (float) $doc->total;
-        $costOfSale = $this->calcCostOfSale($doc);
+        $opId             = 1;
+        $subtotal         = (float) ($doc->subtotal ?? 0);
+        $totalTax         = (float) ($doc->total_tax ?? 0);
+        $total            = (float) $doc->total;
+        $totalWithholding = (float) ($doc->total_withholding ?? 0);
+        $costOfSale       = $this->calcCostOfSale($doc);
 
-        // Débito: CXC cliente
-        $this->addLine($voucher, $doc, $opId, 'CXC', $total, 0);
+        // ── Retenciones (ReteIVA, ReteICA, ReteFuente) ──────────────────
+        // El comprador descuenta las retenciones al momento del pago.
+        // Contablemente: CXC = total bruto - retenciones;
+        //                el diferencial va a cuentas deudoras de retención (135515, 135510, 135525).
+        $withholdings = is_array($doc->withholdings_tax) ? $doc->withholdings_tax : [];
 
+        if ($totalWithholding > 0 && ! empty($withholdings)) {
+            // CXC por el valor neto a recibir del cliente
+            $netCxc = $total - $totalWithholding;
+            $this->addLine($voucher, $doc, $opId, 'CXC', $netCxc, 0);
+
+            // Registrar cada retención como anticipo de impuesto a favor
+            foreach ($withholdings as $w) {
+                $amount = (float) ($w['withholding_amount'] ?? $w['tax_amount'] ?? 0);
+                if ($amount <= 0) {
+                    continue;
+                }
+                $type = strtolower($w['retention_type'] ?? $w['type'] ?? 'retefuente');
+
+                // Mapear tipo de retención a slug del concepto contable
+                $conceptSlug = match (true) {
+                    str_contains($type, 'iva')  => 'RETEIVA',
+                    str_contains($type, 'ica')  => 'RETEICA',
+                    default                      => 'RETEFUENTE',
+                };
+
+                // Débito: cuenta deudora de retención (anticipo de impuesto)
+                $this->addLine($voucher, $doc, $opId, $conceptSlug, $amount, 0);
+            }
+        } else {
+            // Sin retenciones: CXC = total bruto
+            $this->addLine($voucher, $doc, $opId, 'CXC', $total, 0);
+        }
+
+        // ── Ingresos y IVA ───────────────────────────────────────────────
         // Crédito: Ingreso operacional
         $this->addLine($voucher, $doc, $opId, 'INGRESO', 0, $subtotal);
 
@@ -195,7 +239,7 @@ trait AccountingEngineTrait
             $this->addLine($voucher, $doc, $opId, 'IVA_GEN', 0, $totalTax);
         }
 
-        // Costo de ventas (solo si hay ítems con costo)
+        // ── Costo de ventas ──────────────────────────────────────────────
         if ($costOfSale > 0) {
             $this->addLine($voucher, $doc, $opId, 'COSTO', $costOfSale, 0);
             $this->addLine($voucher, $doc, $opId, 'INV_SALIDA', 0, $costOfSale);
@@ -402,11 +446,15 @@ trait AccountingEngineTrait
     {
         $defaults = [
             // Ventas (op 1)
-            '1_CXC'        => '13050501', // Clientes nacionales
-            '1_INGRESO'    => '41351001', // Comercio al por mayor
-            '1_IVA_GEN'    => '24080101', // IVA por pagar generado
-            '1_COSTO'      => '61351001', // Costo de ventas
-            '1_INV_SALIDA' => '14350101', // Mercancías no fabricadas
+            '1_CXC'         => '13050501', // Clientes nacionales
+            '1_INGRESO'     => '41351001', // Comercio al por mayor
+            '1_IVA_GEN'     => '24080101', // IVA por pagar generado
+            '1_COSTO'       => '61351001', // Costo de ventas
+            '1_INV_SALIDA'  => '14350101', // Mercancías no fabricadas
+            // Retenciones en la fuente (anticipo a favor — activo deudor)
+            '1_RETEFUENTE'  => '13551501', // Retefuente descontable (Art. 375 ET)
+            '1_RETEIVA'     => '13551001', // ReteIVA descontable (Art. 437-1 ET)
+            '1_RETEICA'     => '13552501', // ReteICA descontable (ICA municipal)
 
             // Compras (op 14)
             '14_INVENTARIO' => '14350101', // Mercancías no fabricadas

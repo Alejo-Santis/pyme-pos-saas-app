@@ -351,4 +351,42 @@ class PayrollController extends Controller
 
         return back()->with('success', 'Novedad eliminada.');
     }
+
+    /**
+     * Envía la Nómina Electrónica (NES) de una liquidación aprobada a la DIAN.
+     *
+     * Despacha un job por cada empleado de la liquidación para envío asincrónico.
+     * Solo se permite enviar liquidaciones en estado 'approved' o 'paid'.
+     */
+    public function sendNES(PayrollRun $run): RedirectResponse
+    {
+        if (! in_array($run->status, [PayrollRun::STATUS_APPROVED, PayrollRun::STATUS_PAID])) {
+            return back()->withErrors(['nes' => 'Solo se puede enviar la NES de liquidaciones aprobadas o pagadas.']);
+        }
+
+        if ($run->nes_status === 'sent') {
+            return back()->withErrors(['nes' => 'Esta liquidación ya fue enviada exitosamente a la DIAN (NES).']);
+        }
+
+        $employees = $run->details()->with(['employee', 'contract'])->get();
+
+        if ($employees->isEmpty()) {
+            return back()->withErrors(['nes' => 'La liquidación no tiene empleados calculados.']);
+        }
+
+        foreach ($employees as $detail) {
+            \App\Modules\Payroll\Jobs\ProcessElectronicPayrollJob::dispatch(
+                $run->id,
+                $detail->id,
+                1
+            );
+        }
+
+        $run->update([
+            'is_electronic' => true,
+            'nes_status'    => 'processing',
+        ]);
+
+        return back()->with('success', "NES encolada para {$employees->count()} empleados. El estado se actualizará conforme se procesen.");
+    }
 }

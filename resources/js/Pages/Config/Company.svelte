@@ -46,6 +46,7 @@
   })
 
   let saving   = $state(false)
+  let testingNextpyme = $state(false)
   let errors   = $derived($page.props.errors ?? {})
   let flash    = $derived($page.props.flash ?? {})
 
@@ -54,6 +55,14 @@
     router.put('/config/company', form, {
       preserveScroll: true,
       onFinish: () => { saving = false },
+    })
+  }
+
+  function testNextpyme() {
+    testingNextpyme = true
+    router.post('/config/company/test-nextpyme', {}, {
+      preserveScroll: true,
+      onFinish: () => { testingNextpyme = false },
     })
   }
 
@@ -88,6 +97,12 @@
       <div class="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
         <i class="mdi mdi-check-circle-outline text-base"></i>
         {flash.success}
+      </div>
+    {/if}
+    {#if flash.error}
+      <div class="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <i class="mdi mdi-alert-circle-outline text-base"></i>
+        {flash.error}
       </div>
     {/if}
 
@@ -268,6 +283,22 @@
                 <label class="block text-xs font-medium text-slate-600 mb-1">Token API (Bearer)</label>
                 <input bind:value={form.api_token_fe} type="password" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-mono" placeholder="••••••••••••••••" />
                 <p class="text-xs text-slate-400 mt-1">Token de autenticación para el proveedor FE. Se guarda cifrado.</p>
+              </div>
+
+              <div class="md:col-span-2 flex items-center justify-between gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                <div>
+                  <p class="text-sm font-medium text-blue-900">Prueba de conexión Nextpyme</p>
+                  <p class="text-xs text-blue-700 mt-0.5">Usa la URL y token guardados. No emite documentos.</p>
+                </div>
+                <button
+                  type="button"
+                  onclick={testNextpyme}
+                  disabled={testingNextpyme}
+                  class="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-60"
+                >
+                  <i class="mdi {testingNextpyme ? 'mdi-loading mdi-spin' : 'mdi-lan-connect'}"></i>
+                  {testingNextpyme ? 'Probando…' : 'Probar'}
+                </button>
               </div>
             </div>
 

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Invoice\Jobs;
 
+use App\Modules\Audit\Services\NotificationService;
 use App\Modules\Invoice\Builders\InvoiceJsonBuilder;
 use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Services\ElectronicDocumentsProcessorService;
@@ -76,6 +77,8 @@ class ProcessElectronicInvoiceJob implements ShouldQueue
             'dian_error'    => substr($e->getMessage(), 0, 250),
             'dian_attempts' => $this->currentAttempt,
         ]);
+
+        NotificationService::dianRejection($this->document, substr($e->getMessage(), 0, 250));
     }
 
     private function scheduleRetry(): void

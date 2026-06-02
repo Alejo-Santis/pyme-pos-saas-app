@@ -61,9 +61,10 @@ class InvoiceService
                 [$prefix, $number] = $this->nextConsecutive($resolution);
             }
 
-            // 3. Calcular totales financieros
-            $lines  = $data['lines'] ?? [];
-            $totals = $this->calculateTotals($lines);
+            // 3. Calcular totales financieros (incluyendo retenciones)
+            $lines        = $data['lines'] ?? [];
+            $withholdings = $data['withholdings_tax'] ?? [];
+            $totals       = $this->calculateTotals($lines, $withholdings);
 
             // 4. Construir JSON DIAN (invoice_lines + legal_monetary_totals)
             $invoiceLinesJson         = $this->buildInvoiceLinesJson($lines);
@@ -88,10 +89,11 @@ class InvoiceService
                 'total_discount'              => $totals['total_discount'],
                 'total_tax'                   => $totals['total_tax'],
                 'total'                       => $totals['total'],
-                'balance'                     => $totals['total'],
+                'total_withholding'           => $totals['total_withholding'],
+                'balance'                     => round($totals['total'] - $totals['total_withholding'], 4),
                 'payment_forms'               => $data['payment_forms'] ?? null,
                 'taxes'                       => $data['taxes'] ?? null,
-                'withholdings_tax'            => $data['withholdings_tax'] ?? null,
+                'withholdings_tax'            => $withholdings ?: null,
                 'order_reference'             => $data['order_reference'] ?? null,
                 'invoice_lines'               => $invoiceLinesJson,
                 'legal_monetary_totals'       => $legalMonetaryTotalsJson,
@@ -195,7 +197,8 @@ class InvoiceService
                 }
 
                 // Recalcular totales y JSON DIAN con las nuevas líneas
-                $totals                  = $this->calculateTotals($lines);
+                $withholdings            = $data['withholdings_tax'] ?? [];
+                $totals                  = $this->calculateTotals($lines, $withholdings);
                 $invoiceLinesJson        = $this->buildInvoiceLinesJson($lines);
                 $legalMonetaryTotalsJson = $this->buildLegalMonetaryTotalsJson($totals, $invoiceLinesJson);
 
@@ -203,7 +206,8 @@ class InvoiceService
                 $data['total_discount']         = $totals['total_discount'];
                 $data['total_tax']              = $totals['total_tax'];
                 $data['total']                  = $totals['total'];
-                $data['balance']                = $totals['total'];
+                $data['total_withholding']      = $totals['total_withholding'];
+                $data['balance']                = round($totals['total'] - $totals['total_withholding'], 4);
                 $data['invoice_lines']          = $invoiceLinesJson;
                 $data['legal_monetary_totals']  = $legalMonetaryTotalsJson;
 
@@ -337,7 +341,7 @@ class InvoiceService
     /**
      * Calcula totales del documento desde las líneas.
      */
-    private function calculateTotals(array $lines): array
+    private function calculateTotals(array $lines, array $withholdings = []): array
     {
         $subtotal      = 0.0;
         $totalDiscount = 0.0;
@@ -352,11 +356,20 @@ class InvoiceService
 
         $total = $subtotal - $totalDiscount + $totalTax;
 
+        // Retenciones (ReteIVA, ReteICA, ReteFuente)
+        // El total bruto de la factura NO cambia (DIAN lo ve completo).
+        // El saldo neto a cobrar = total - retenciones (el comprador descuenta al pagar).
+        $totalWithholding = 0.0;
+        foreach ($withholdings as $w) {
+            $totalWithholding += (float) ($w['withholding_amount'] ?? $w['tax_amount'] ?? 0);
+        }
+
         return [
-            'subtotal'       => round($subtotal, 4),
-            'total_discount' => round($totalDiscount, 4),
-            'total_tax'      => round($totalTax, 4),
-            'total'          => round($total, 4),
+            'subtotal'          => round($subtotal, 4),
+            'total_discount'    => round($totalDiscount, 4),
+            'total_tax'         => round($totalTax, 4),
+            'total'             => round($total, 4),
+            'total_withholding' => round($totalWithholding, 4),
         ];
     }
 
