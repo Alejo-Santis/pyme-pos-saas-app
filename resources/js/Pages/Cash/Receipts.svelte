@@ -1,6 +1,7 @@
 <script>
   import { useForm } from '@inertiajs/svelte'
   import { router } from '@inertiajs/svelte'
+  import { onMount } from 'svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
 
   let {
@@ -60,6 +61,29 @@
       transaction_reference: '',
     }],
     allocations: [],
+  })
+
+  onMount(() => {
+    const params = new URLSearchParams(window.location.search)
+    const type = params.get('type')
+    if (type === 'cash' || type === 'payment') {
+      openModal(type)
+      $form.third_party_id = params.get('third_party_id') ?? ''
+
+      const documentId = params.get('document_id')
+      if (documentId) {
+        $form.allocations = [{
+          document_id: documentId,
+          amount: params.get('amount') ?? selectedDoc(documentId)?.balance ?? '',
+          withholdings_tax: 0,
+          transaction_reference: '',
+        }]
+        const amount = Number(params.get('amount') ?? selectedDoc(documentId)?.balance ?? 0)
+        if (amount > 0) {
+          $form.payment_forms[0].value = amount
+        }
+      }
+    }
   })
 
   function openModal(type) {

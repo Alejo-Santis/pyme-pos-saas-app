@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Cash\Models\CashBox;
 use App\Modules\Cash\Models\CashMovement;
 use App\Modules\Core\Models\Company;
+use App\Modules\Core\Models\ThirdParty;
 use App\Modules\Core\Models\Warehouse;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Invoice\Models\Document;
@@ -14,6 +15,7 @@ use App\Modules\POS\Models\PosTerminal;
 use App\Modules\POS\Models\PosTerminalUser;
 use App\Shared\Exports\ArrayExport;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
@@ -73,6 +75,192 @@ class ReportController extends Controller
                 'date_to'     => $to,
                 'terminal_id' => $terminalId,
                 'group_by'    => $groupBy,
+            ],
+        ]);
+    }
+
+    // ── Cartera de Clientes ───────────────────────────────────────────────
+
+    public function receivables(Request $request): Response
+    {
+        $asOf = $request->input('as_of', now()->toDateString());
+        $thirdPartyId = $request->input('third_party_id');
+        $status = $request->input('status', 'all'); // all | current | due | overdue
+        $search = trim((string) $request->input('search', ''));
+
+        $baseQuery = Document::with('thirdParty:id,name,identification_number,credit_limit,payment_days')
+            ->where('annulled', false)
+            ->where('balance', '>', 0)
+            ->whereDate('issue_date', '<=', $asOf)
+            ->whereIn('type_document_operation_id', [1, 92])
+            ->when($thirdPartyId, fn ($q) => $q->where('third_party_id', $thirdPartyId))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('internal_code', 'ilike', "%{$search}%")
+                        ->orWhere('prefix', 'ilike', "%{$search}%")
+                        ->orWhereHas('thirdParty', function ($party) use ($search) {
+                            $party->where('name', 'ilike', "%{$search}%")
+                                ->orWhere('identification_number', 'ilike', "%{$search}%");
+                        });
+                });
+            });
+
+        $documentsForSummary = (clone $baseQuery)
+            ->orderBy('issue_date')
+            ->get(['id', 'internal_code', 'third_party_id', 'type_document_operation_id', 'issue_date', 'total', 'balance']);
+
+        $allRows = $this->mapReceivableRows($documentsForSummary, $asOf);
+        $filteredIds = $allRows
+            ->filter(fn ($row) => $status === 'all' || $row['status'] === $status)
+            ->pluck('id')
+            ->values();
+
+        $documents = (clone $baseQuery)
+            ->when($status !== 'all', fn ($q) => $q->whereIn('id', $filteredIds))
+            ->orderBy('issue_date')
+            ->paginate(25)
+            ->withQueryString()
+            ->through(fn (Document $document) => $this->mapReceivableRow($document, $asOf));
+
+        $summary = [
+            'total_balance' => round($allRows->sum('balance'), 2),
+            'total_documents' => $allRows->count(),
+            'current' => round($allRows->where('status', 'current')->sum('balance'), 2),
+            'due' => round($allRows->where('status', 'due')->sum('balance'), 2),
+            'overdue' => round($allRows->where('status', 'overdue')->sum('balance'), 2),
+            'bucket_0_30' => round($allRows->where('bucket', '0_30')->sum('balance'), 2),
+            'bucket_31_60' => round($allRows->where('bucket', '31_60')->sum('balance'), 2),
+            'bucket_61_90' => round($allRows->where('bucket', '61_90')->sum('balance'), 2),
+            'bucket_over_90' => round($allRows->where('bucket', 'over_90')->sum('balance'), 2),
+        ];
+
+        $customers = $allRows
+            ->groupBy('third_party_id')
+            ->map(function ($rows) {
+                $first = $rows->first();
+                $balance = (float) $rows->sum('balance');
+                $creditLimit = (float) ($first['credit_limit'] ?? 0);
+
+                return [
+                    'id' => $first['third_party_id'],
+                    'name' => $first['third_party'],
+                    'identification_number' => $first['identification_number'],
+                    'documents' => $rows->count(),
+                    'balance' => round($balance, 2),
+                    'overdue' => round($rows->where('status', 'overdue')->sum('balance'), 2),
+                    'credit_limit' => round($creditLimit, 2),
+                    'credit_usage' => $creditLimit > 0 ? round(($balance / $creditLimit) * 100, 1) : null,
+                    'max_days_overdue' => (int) $rows->max('days_overdue'),
+                ];
+            })
+            ->sortByDesc('balance')
+            ->values()
+            ->take(15);
+
+        return Inertia::render('Reports/Receivables', [
+            'documents' => $documents,
+            'summary' => $summary,
+            'customers' => $customers,
+            'thirdParties' => ThirdParty::active()
+                ->whereHas('linkage', fn ($q) => $q->where('customer', true))
+                ->orderBy('name')
+                ->get(['id', 'name', 'identification_number']),
+            'filters' => [
+                'as_of' => $asOf,
+                'third_party_id' => $thirdPartyId,
+                'status' => $status,
+                'search' => $search,
+            ],
+        ]);
+    }
+
+    // ── Cuentas por Pagar ─────────────────────────────────────────────────
+
+    public function payables(Request $request): Response
+    {
+        $asOf = $request->input('as_of', now()->toDateString());
+        $thirdPartyId = $request->input('third_party_id');
+        $status = $request->input('status', 'all');
+        $search = trim((string) $request->input('search', ''));
+
+        $baseQuery = Document::with('thirdParty:id,name,identification_number,credit_limit,payment_days')
+            ->where('annulled', false)
+            ->where('balance', '>', 0)
+            ->whereDate('issue_date', '<=', $asOf)
+            ->whereIn('type_document_operation_id', [5, 14])
+            ->when($thirdPartyId, fn ($q) => $q->where('third_party_id', $thirdPartyId))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('internal_code', 'ilike', "%{$search}%")
+                        ->orWhere('prefix', 'ilike', "%{$search}%")
+                        ->orWhereHas('thirdParty', function ($party) use ($search) {
+                            $party->where('name', 'ilike', "%{$search}%")
+                                ->orWhere('identification_number', 'ilike', "%{$search}%");
+                        });
+                });
+            });
+
+        $documentsForSummary = (clone $baseQuery)
+            ->orderBy('issue_date')
+            ->get(['id', 'internal_code', 'third_party_id', 'type_document_operation_id', 'issue_date', 'total', 'balance']);
+
+        $allRows = $this->mapPayableRows($documentsForSummary, $asOf);
+        $filteredIds = $allRows
+            ->filter(fn ($row) => $status === 'all' || $row['status'] === $status)
+            ->pluck('id')
+            ->values();
+
+        $documents = (clone $baseQuery)
+            ->when($status !== 'all', fn ($q) => $q->whereIn('id', $filteredIds))
+            ->orderBy('issue_date')
+            ->paginate(25)
+            ->withQueryString()
+            ->through(fn (Document $document) => $this->mapPayableRow($document, $asOf));
+
+        $summary = [
+            'total_balance' => round($allRows->sum('balance'), 2),
+            'total_documents' => $allRows->count(),
+            'current' => round($allRows->where('status', 'current')->sum('balance'), 2),
+            'due' => round($allRows->where('status', 'due')->sum('balance'), 2),
+            'overdue' => round($allRows->where('status', 'overdue')->sum('balance'), 2),
+            'bucket_0_30' => round($allRows->where('bucket', '0_30')->sum('balance'), 2),
+            'bucket_31_60' => round($allRows->where('bucket', '31_60')->sum('balance'), 2),
+            'bucket_61_90' => round($allRows->where('bucket', '61_90')->sum('balance'), 2),
+            'bucket_over_90' => round($allRows->where('bucket', 'over_90')->sum('balance'), 2),
+        ];
+
+        $providers = $allRows
+            ->groupBy('third_party_id')
+            ->map(function ($rows) {
+                $first = $rows->first();
+
+                return [
+                    'id' => $first['third_party_id'],
+                    'name' => $first['third_party'],
+                    'identification_number' => $first['identification_number'],
+                    'documents' => $rows->count(),
+                    'balance' => round((float) $rows->sum('balance'), 2),
+                    'overdue' => round($rows->where('status', 'overdue')->sum('balance'), 2),
+                    'max_days_overdue' => (int) $rows->max('days_overdue'),
+                ];
+            })
+            ->sortByDesc('balance')
+            ->values()
+            ->take(15);
+
+        return Inertia::render('Reports/Payables', [
+            'documents' => $documents,
+            'summary' => $summary,
+            'providers' => $providers,
+            'thirdParties' => ThirdParty::active()
+                ->whereHas('linkage', fn ($q) => $q->where('provider', true))
+                ->orderBy('name')
+                ->get(['id', 'name', 'identification_number']),
+            'filters' => [
+                'as_of' => $asOf,
+                'third_party_id' => $thirdPartyId,
+                'status' => $status,
+                'search' => $search,
             ],
         ]);
     }
@@ -242,6 +430,107 @@ class ReportController extends Controller
             ->groupBy(DB::raw('issue_date::date'))
             ->orderBy('period')
             ->get();
+    }
+
+    private function mapReceivableRows($documents, string $asOf): \Illuminate\Support\Collection
+    {
+        return $documents->map(fn (Document $document) => $this->mapReceivableRow($document, $asOf));
+    }
+
+    private function mapReceivableRow(Document $document, string $asOf): array
+    {
+        $issueDate = Carbon::parse($document->issue_date)->startOfDay();
+        $paymentDays = (int) ($document->thirdParty?->payment_days ?? 0);
+        $dueDate = $issueDate->copy()->addDays($paymentDays);
+        $daysOverdue = max(0, $dueDate->diffInDays(Carbon::parse($asOf)->startOfDay(), false));
+        $daysToDue = max(0, Carbon::parse($asOf)->startOfDay()->diffInDays($dueDate, false));
+
+        $status = match (true) {
+            $daysOverdue > 0 => 'overdue',
+            $daysToDue <= 7 => 'due',
+            default => 'current',
+        };
+
+        $bucket = match (true) {
+            $daysOverdue <= 0 => 'current',
+            $daysOverdue <= 30 => '0_30',
+            $daysOverdue <= 60 => '31_60',
+            $daysOverdue <= 90 => '61_90',
+            default => 'over_90',
+        };
+
+        $total = (float) $document->total;
+        $balance = (float) $document->balance;
+
+        return [
+            'id' => $document->id,
+            'internal_code' => $document->internal_code,
+            'type_document_operation_id' => $document->type_document_operation_id,
+            'third_party_id' => $document->third_party_id,
+            'third_party' => $document->thirdParty?->name ?? 'Sin tercero',
+            'identification_number' => $document->thirdParty?->identification_number,
+            'credit_limit' => $document->thirdParty?->credit_limit,
+            'payment_days' => $paymentDays,
+            'issue_date' => $issueDate->toDateString(),
+            'due_date' => $dueDate->toDateString(),
+            'days_overdue' => $daysOverdue,
+            'days_to_due' => $daysToDue,
+            'status' => $status,
+            'bucket' => $bucket,
+            'total' => round($total, 2),
+            'paid_amount' => round(max(0, $total - $balance), 2),
+            'balance' => round($balance, 2),
+        ];
+    }
+
+    private function mapPayableRows($documents, string $asOf): \Illuminate\Support\Collection
+    {
+        return $documents->map(fn (Document $document) => $this->mapPayableRow($document, $asOf));
+    }
+
+    private function mapPayableRow(Document $document, string $asOf): array
+    {
+        $issueDate = Carbon::parse($document->issue_date)->startOfDay();
+        $paymentDays = (int) ($document->thirdParty?->payment_days ?? 30);
+        $dueDate = $issueDate->copy()->addDays($paymentDays);
+        $daysOverdue = max(0, $dueDate->diffInDays(Carbon::parse($asOf)->startOfDay(), false));
+        $daysToDue = max(0, Carbon::parse($asOf)->startOfDay()->diffInDays($dueDate, false));
+
+        $status = match (true) {
+            $daysOverdue > 0 => 'overdue',
+            $daysToDue <= 7 => 'due',
+            default => 'current',
+        };
+
+        $bucket = match (true) {
+            $daysOverdue <= 0 => 'current',
+            $daysOverdue <= 30 => '0_30',
+            $daysOverdue <= 60 => '31_60',
+            $daysOverdue <= 90 => '61_90',
+            default => 'over_90',
+        };
+
+        $total = (float) $document->total;
+        $balance = (float) $document->balance;
+
+        return [
+            'id' => $document->id,
+            'internal_code' => $document->internal_code,
+            'type_document_operation_id' => $document->type_document_operation_id,
+            'third_party_id' => $document->third_party_id,
+            'third_party' => $document->thirdParty?->name ?? 'Sin proveedor',
+            'identification_number' => $document->thirdParty?->identification_number,
+            'payment_days' => $paymentDays,
+            'issue_date' => $issueDate->toDateString(),
+            'due_date' => $dueDate->toDateString(),
+            'days_overdue' => $daysOverdue,
+            'days_to_due' => $daysToDue,
+            'status' => $status,
+            'bucket' => $bucket,
+            'total' => round($total, 2),
+            'paid_amount' => round(max(0, $total - $balance), 2),
+            'balance' => round($balance, 2),
+        ];
     }
 
     private function salesByProduct(string $from, string $to, ?string $terminalId, int $limit = 0): \Illuminate\Support\Collection

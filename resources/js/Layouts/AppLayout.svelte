@@ -57,6 +57,10 @@
       label: 'Finanzas',
       items: [
         { href: '/cash',                       icon: 'mdi-bank-outline',               label: 'Caja y Bancos' },
+        { href: '/accounting/audit',           icon: 'mdi-clipboard-check-outline',     label: 'Auditoría Contable' },
+        { href: '/accounting/auxiliary',       icon: 'mdi-file-tree-outline',           label: 'Auxiliar Terceros' },
+        { href: '/accounting/differences',     icon: 'mdi-alert-decagram-outline',      label: 'Diferencias' },
+        { href: '/accounting/adjustments',     icon: 'mdi-file-restore-outline',        label: 'Ajustes Contables' },
         { href: '/accounting/journal',         icon: 'mdi-book-open-outline',          label: 'Libro Diario' },
         { href: '/accounting/ledger',          icon: 'mdi-book-multiple-outline',      label: 'Libro Mayor' },
         { href: '/accounting/trial-balance',   icon: 'mdi-scale-balance',              label: 'Balance de Prueba' },
@@ -78,6 +82,8 @@
       label: 'Reportes',
       items: [
         { href: '/reports/sales',     icon: 'mdi-chart-bar',             label: 'Ventas' },
+        { href: '/reports/receivables',icon: 'mdi-account-cash-outline',  label: 'Cartera Clientes' },
+        { href: '/reports/payables',   icon: 'mdi-file-clock-outline',    label: 'Cuentas por Pagar' },
         { href: '/reports/cash',      icon: 'mdi-cash-register',         label: 'Caja' },
         { href: '/reports/inventory', icon: 'mdi-package-variant-closed',label: 'Inventario' },
       ],

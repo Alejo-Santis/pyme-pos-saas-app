@@ -258,6 +258,14 @@ Route::middleware([
 
             // ─── Contabilidad ─────────────────────────────────────────────
             Route::prefix('accounting')->name('accounting.')->middleware('role:admin|contador')->group(function () {
+                Route::get('/audit', [AccountingController::class,        'audit'])->name('audit');
+                Route::post('/audit/regenerate', [AccountingController::class,        'regenerate'])->name('audit.regenerate');
+                Route::get('/auxiliary', [AccountingController::class,        'auxiliary'])->name('auxiliary');
+                Route::get('/differences', [AccountingController::class,        'differences'])->name('differences');
+                Route::post('/differences/adjust', [AccountingController::class,        'storeAdjustment'])->name('differences.adjust');
+                Route::get('/adjustments', [AccountingController::class,        'adjustments'])->name('adjustments');
+                Route::get('/adjustments/export', [AccountingController::class,        'exportAdjustments'])->name('adjustments.export');
+                Route::post('/adjustments/{voucher}/reverse', [AccountingController::class,        'reverseAdjustment'])->name('adjustments.reverse');
                 Route::get('/journal', [AccountingController::class,        'journal'])->name('journal');
                 Route::get('/journal/export', [AccountingController::class,        'exportJournal'])->name('journal.export');
                 Route::get('/ledger', [AccountingController::class,        'ledger'])->name('ledger');
@@ -335,6 +343,8 @@ Route::middleware([
             Route::prefix('reports')->name('reports.')->middleware('permission:reports.view')->group(function () {
                 Route::get('/sales', [ReportController::class, 'sales'])->name('sales');
                 Route::get('/sales/export', [ReportController::class, 'exportSales'])->name('sales.export');
+                Route::get('/receivables', [ReportController::class, 'receivables'])->name('receivables');
+                Route::get('/payables', [ReportController::class, 'payables'])->name('payables');
                 Route::get('/cash', [ReportController::class, 'cash'])->name('cash');
                 Route::get('/cash/export', [ReportController::class, 'exportCash'])->name('cash.export');
                 Route::get('/inventory', [ReportController::class, 'inventory'])->name('inventory');

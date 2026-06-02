@@ -16,11 +16,14 @@ use App\Modules\Invoice\Models\Document;
 use App\Modules\Invoice\Models\DocumentPaymentMethod;
 use App\Modules\POS\Models\PosTerminal;
 use App\Modules\POS\Models\PosTerminalUser;
+use App\Shared\Traits\AccountingEngineTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class PaymentSettlementService
 {
+    use AccountingEngineTrait;
+
     private const CASH_METHOD_ID = 10;
 
     public function createManualCashReceipt(array $data, string $userId): CashReceipt
@@ -48,6 +51,7 @@ class PaymentSettlementService
 
             $this->createCashReceiptDetailsAndApplyBalance($receipt, $data['allocations'] ?? [], $forms);
             $this->registerLooseMovements($receipt, $forms, 'in', $receipt->notes ?: "Recibo de caja {$receipt->internal_code}", $receipt->internal_code);
+            $this->generateCashReceiptAccounting($receipt);
 
             return $receipt->load(['details.document', 'thirdParty']);
         });
@@ -78,6 +82,7 @@ class PaymentSettlementService
 
             $this->createPaymentReceiptDetailsAndApplyBalance($receipt, $data['allocations'] ?? [], $forms);
             $this->registerLooseMovements($receipt, $forms, 'out', $data['notes'] ?? "Comprobante de egreso {$receipt->internal_code}", $receipt->internal_code);
+            $this->generatePaymentReceiptAccounting($receipt);
 
             return $receipt->load(['details.document', 'thirdParty']);
         });
@@ -89,6 +94,8 @@ class PaymentSettlementService
         Document $document,
         array $paymentForms
     ): array {
+        $paymentForms = $this->capPaymentsToDocumentTotal($paymentForms, (float) $document->total);
+
         $totals = $this->registerMovements(
             document: $document,
             paymentForms: $paymentForms,
@@ -179,6 +186,8 @@ class PaymentSettlementService
                         'user_id'        => $document->user_id,
                         'third_party_id' => $document->third_party_id,
                         'document_id'    => $document->id,
+                        'movementable_id' => $receipt->id,
+                        'movementable_type' => $receipt::class,
                         'debit'          => $direction === 'in' ? $amount : 0,
                         'credit'         => $direction === 'out' ? $amount : 0,
                         'issue_date'     => $today,
@@ -207,6 +216,8 @@ class PaymentSettlementService
                     'user_id'         => $document->user_id,
                     'third_party_id'  => $document->third_party_id,
                     'document_id'     => $document->id,
+                    'movementable_id' => $receipt->id,
+                    'movementable_type' => $receipt::class,
                     'debit'           => $direction === 'in' ? $amount : 0,
                     'credit'          => $direction === 'out' ? $amount : 0,
                     'issue_date'      => $today,
@@ -217,6 +228,14 @@ class PaymentSettlementService
             }
 
             $this->createReceiptDetail($receipt, $document, $form, $direction, $amount);
+        }
+
+        if ($direction === 'in' && $receipt instanceof CashReceipt) {
+            $this->generateCashReceiptAccounting($receipt);
+        }
+
+        if ($direction === 'out' && $receipt instanceof PaymentReceipt) {
+            $this->generatePaymentReceiptAccounting($receipt);
         }
 
         return $totals;
@@ -246,6 +265,25 @@ class PaymentSettlementService
         }
 
         return $forms;
+    }
+
+    private function capPaymentsToDocumentTotal(array $paymentForms, float $documentTotal): array
+    {
+        $remaining = $documentTotal;
+
+        return collect($paymentForms)
+            ->map(function (array $form) use (&$remaining) {
+                $value = (float) ($form['value'] ?? $form['amount'] ?? 0);
+                $applied = min($value, max(0, $remaining));
+                $remaining -= $applied;
+
+                $form['value'] = $applied;
+
+                return $form;
+            })
+            ->filter(fn (array $form) => (float) ($form['value'] ?? 0) > 0)
+            ->values()
+            ->all();
     }
 
     private function normalizedForms(array $paymentForms): array

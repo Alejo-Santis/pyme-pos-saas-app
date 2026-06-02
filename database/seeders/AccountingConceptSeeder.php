@@ -28,6 +28,20 @@ class AccountingConceptSeeder extends Seeder
             ['91_IVA_GEN', 'Nota credito - reversa IVA generado', '24080101', true],
             ['91_INV_ENTRA', 'Nota credito - entrada de inventario', '14350101', false],
             ['91_COSTO', 'Nota credito - reversa costo', '61351001', false],
+
+            ['92_CXC', 'Nota debito - cuenta por cobrar clientes', '13050501', false],
+            ['92_INGRESO', 'Nota debito - ingreso/cargo adicional', '41351001', false],
+            ['92_IVA_GEN', 'Nota debito - IVA generado', '24080101', true],
+
+            ['13_CAJA', 'Recibo de caja - efectivo', '11050501', false],
+            ['13_BANCO', 'Recibo de caja - banco', '11100501', false],
+            ['13_CXC', 'Recibo de caja - cruza cartera clientes', '13050501', false],
+            ['13_ANTICIPO_CLIENTE', 'Recibo de caja - anticipo de clientes', '28050501', false],
+
+            ['14_CAJA', 'Comprobante de egreso - efectivo', '11050501', false],
+            ['14_BANCO', 'Comprobante de egreso - banco', '11100501', false],
+            ['14_CXC', 'Comprobante de egreso - devolución a cliente', '13050501', false],
+            ['14_GASTO', 'Comprobante de egreso - gasto general', '51959501', false],
         ];
 
         foreach ($concepts as $concept) {

@@ -115,6 +115,26 @@ class AccountingConceptController extends Controller
                 ],
             ],
             [
+                'id'    => 13,
+                'name'  => 'Recibo de Caja',
+                'slugs' => [
+                    ['slug' => '13_CAJA',             'desc' => 'Caja / efectivo',           'default' => '11050501'],
+                    ['slug' => '13_BANCO',            'desc' => 'Banco',                     'default' => '11100501'],
+                    ['slug' => '13_CXC',              'desc' => 'Clientes × cobrar',         'default' => '13050501'],
+                    ['slug' => '13_ANTICIPO_CLIENTE', 'desc' => 'Anticipos de clientes',     'default' => '28050501'],
+                ],
+            ],
+            [
+                'id'    => 140,
+                'name'  => 'Comprobante de Egreso',
+                'slugs' => [
+                    ['slug' => '14_CAJA',  'desc' => 'Caja / efectivo',       'default' => '11050501'],
+                    ['slug' => '14_BANCO', 'desc' => 'Banco',                 'default' => '11100501'],
+                    ['slug' => '14_CXC',   'desc' => 'Devolución a cliente',  'default' => '13050501'],
+                    ['slug' => '14_GASTO', 'desc' => 'Gasto general',         'default' => '51959501'],
+                ],
+            ],
+            [
                 'id'    => 91,
                 'name'  => 'Nota Crédito',
                 'slugs' => [
@@ -123,6 +143,15 @@ class AccountingConceptController extends Controller
                     ['slug' => '91_IVA_GEN',    'desc' => 'IVA generado (reversa)',    'default' => '24080101'],
                     ['slug' => '91_INV_ENTRA',  'desc' => 'Inventario (reingresa)',    'default' => '14350101'],
                     ['slug' => '91_COSTO',      'desc' => 'Costo ventas (reversa)',    'default' => '61351001'],
+                ],
+            ],
+            [
+                'id'    => 92,
+                'name'  => 'Nota Débito',
+                'slugs' => [
+                    ['slug' => '92_CXC',        'desc' => 'Clientes × Cobrar',        'default' => '13050501'],
+                    ['slug' => '92_INGRESO',    'desc' => 'Ingresos / cargos',         'default' => '41351001'],
+                    ['slug' => '92_IVA_GEN',    'desc' => 'IVA generado',              'default' => '24080101'],
                 ],
             ],
             [

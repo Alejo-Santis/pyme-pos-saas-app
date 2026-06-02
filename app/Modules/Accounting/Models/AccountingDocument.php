@@ -30,8 +30,11 @@ class AccountingDocument extends Model
         'debit',
         'credit',
         'total',
+        'notes',
         'issue_date',
         'annulled',
+        'reversed_at',
+        'reversed_by_accounting_document_id',
     ];
 
     protected $casts = [
@@ -39,6 +42,7 @@ class AccountingDocument extends Model
         'credit'   => 'decimal:4',
         'total'    => 'decimal:4',
         'annulled' => 'boolean',
+        'reversed_at' => 'datetime',
     ];
 
     public function document(): BelongsTo
@@ -49,5 +53,10 @@ class AccountingDocument extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(AccountingDocumentDetail::class, 'accounting_document_id');
+    }
+
+    public function reversal(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reversed_by_accounting_document_id');
     }
 }
