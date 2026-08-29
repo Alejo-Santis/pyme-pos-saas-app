@@ -1,5 +1,6 @@
 <script>
   import { useForm } from '@inertiajs/svelte'
+  import BrandMark from '@/Components/UI/BrandMark.svelte'
 
   let { errors = {} } = $props()
 
@@ -17,7 +18,7 @@
   }
 </script>
 
-<svelte:head><title>Admin — NextPOS SaaS</title></svelte:head>
+<svelte:head><title>Admin — PyME POS SaaS</title></svelte:head>
 
 <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
 
@@ -29,11 +30,11 @@
 
     <!-- Logo -->
     <div class="text-center mb-8">
-      <div class="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-primary/30">
-        <i class="mdi mdi-shield-crown text-white text-3xl"></i>
+      <div class="mx-auto mb-3 w-fit">
+        <BrandMark size={56} rounded="rounded-2xl" />
       </div>
       <h1 class="text-white text-xl font-bold">Panel de Administración</h1>
-      <p class="text-slate-400 text-sm mt-1">NextPOS SaaS</p>
+      <p class="text-slate-400 text-sm mt-1">PyME POS SaaS</p>
     </div>
 
     <!-- Card login -->

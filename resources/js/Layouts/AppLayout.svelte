@@ -3,6 +3,7 @@
   import { onMount } from 'svelte'
   import { fade } from 'svelte/transition'
   import Toast from '@/Components/UI/Toast.svelte'
+  import BrandMark from '@/Components/UI/BrandMark.svelte'
 
   let { children } = $props()
 
@@ -26,7 +27,7 @@
 
   // ── Datos de página ──────────────────────────────────────────────────────────
   const user    = $derived($page.props.auth?.user)
-  const appName = $derived($page.props.appName ?? 'NextPOS SaaS')
+  const appName = $derived($page.props.appName ?? 'PyME POS SaaS')
   const currentPath = $derived($page.url)
 
   // ── Grupos de navegación ─────────────────────────────────────────────────────
@@ -52,6 +53,7 @@
         { href: '/inventory/categories', icon: 'mdi-tag-multiple-outline',    label: 'Categorías' },
         { href: '/inventory/transfers',  icon: 'mdi-transfer',                label: 'Traslados' },
         { href: '/purchases',            icon: 'mdi-cart-outline',            label: 'Compras' },
+        { href: '/tax-mailbox',          icon: 'mdi-email-outline',           label: 'Buzón Tributario' },
       ],
     },
     {
@@ -90,6 +92,7 @@
         { href: '/config/resolutions',    icon: 'mdi-file-certificate-outline',  label: 'Resoluciones DIAN' },
         { href: '/config/establishments', icon: 'mdi-store-outline',             label: 'Establecimientos' },
         { href: '/config/warehouses',     icon: 'mdi-warehouse',                 label: 'Bodegas' },
+        { href: '/config/users',          icon: 'mdi-account-group-outline',     label: 'Usuarios' },
       ],
     },
   ]
@@ -158,12 +161,10 @@
 
     <!-- Logo -->
     <div class="flex items-center gap-3 px-4 h-14 border-b border-white/10 shrink-0">
-      <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
-        <i class="mdi mdi-lightning-bolt text-white text-base"></i>
-      </div>
+      <BrandMark size={32} variant="ghost" />
       {#if sidebarOpen}
         <div class="overflow-hidden">
-          <span class="text-white text-sm font-bold leading-none whitespace-nowrap">NextPOS</span>
+          <span class="text-white text-sm font-bold leading-none whitespace-nowrap">PyME POS</span>
           <span class="text-blue-200 text-sm font-light"> SaaS</span>
         </div>
       {/if}
@@ -340,11 +341,9 @@
 
       <!-- Logo -->
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
-          <i class="mdi mdi-lightning-bolt text-white text-base"></i>
-        </div>
+        <BrandMark size={32} variant="ghost" />
         <div>
-          <span class="text-white text-sm font-bold">NextPOS</span>
+          <span class="text-white text-sm font-bold">PyME POS</span>
           <span class="text-blue-200 text-sm font-light"> SaaS</span>
         </div>
       </div>

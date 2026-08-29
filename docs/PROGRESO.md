@@ -1,4 +1,4 @@
-# NextPOS SaaS — Estado del Proyecto
+# PyME POS SaaS — Estado del Proyecto
 
 > Última actualización: 2026-03-09
 > Stack: Laravel 12 + Svelte 5 (Runes) + Inertia.js v2 + PostgreSQL 16 + Tailwind CSS 4

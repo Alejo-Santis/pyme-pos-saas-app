@@ -1,7 +1,8 @@
 <script>
   import { useForm } from '@inertiajs/svelte'
+  import BrandMark from '@/Components/UI/BrandMark.svelte'
 
-  let { plans = [], errors = {} } = $props()
+  let { plans = [], errors = {}, centralDomain = 'nextpossaas-app.test' } = $props()
 
   // Plan seleccionado por defecto: el del medio (Profesional)
   const defaultPlanSlug = $derived(plans[1]?.slug ?? plans[0]?.slug ?? '')
@@ -60,7 +61,8 @@
     // El register siempre está en el dominio central (sin subdominio),
     // por lo que window.location.hostname ES la base completa.
     const base = window.location.hostname
-    window.location.href = `${window.location.protocol}//${slug}.${base}/login`
+    const port = window.location.port ? `:${window.location.port}` : ''
+    window.location.href = `${window.location.protocol}//${slug}.${base}${port}/login`
   }
 
   function formatPrice(price) {
@@ -90,10 +92,8 @@
     <!-- Cabecera: banda azul con logo -->
     <div class="bg-blue-600 rounded-t-2xl py-5 text-center shadow-md">
       <div class="flex items-center justify-center gap-2">
-        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-          <i class="mdi mdi-lightning-bolt text-white text-lg"></i>
-        </div>
-        <span class="text-white text-2xl font-bold tracking-tight">NextPOS</span>
+        <BrandMark size={32} variant="ghost" />
+        <span class="text-white text-2xl font-bold tracking-tight">PyME POS</span>
         <span class="text-blue-200 text-xl font-light">SaaS</span>
       </div>
       <p class="text-blue-200 text-xs mt-1.5">Crea tu empresa y empieza a facturar electrónicamente</p>
@@ -206,7 +206,7 @@
                 placeholder="mi-empresa"
               />
               <p class="text-slate-400 text-xs mt-1">
-                Tu URL: <span class="text-blue-600 font-medium">{$form.company_slug || 'mi-empresa'}.nextpossaas-app.test</span>
+                Tu URL: <span class="text-blue-600 font-medium">{$form.company_slug || 'mi-empresa'}.{centralDomain}</span>
               </p>
               {#if errors?.company_slug}
                 <p class="text-red-500 text-xs mt-1">{errors.company_slug}</p>
@@ -317,7 +317,7 @@
                 onkeydown={(e) => e.key === 'Enter' && goToLogin()}
                 class="text-slate-700 placeholder-slate-400 outline-none w-24 min-w-0 bg-transparent"
               />
-              <span class="text-slate-400 truncate">.nextpossaas-app.test</span>
+              <span class="text-slate-400 truncate">.{centralDomain}</span>
             </div>
             <button
               type="button"
@@ -334,7 +334,7 @@
     </div>
 
     <p class="text-center text-slate-400 text-xs mt-5">
-      &copy; {new Date().getFullYear()} NextPOS SaaS · Todos los derechos reservados
+      &copy; {new Date().getFullYear()} PyME POS SaaS · Todos los derechos reservados
     </p>
   </div>
 </div>

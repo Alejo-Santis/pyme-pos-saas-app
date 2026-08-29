@@ -1,5 +1,6 @@
 <script>
   import { page, router, inertia } from '@inertiajs/svelte'
+  import BrandMark from '@/Components/UI/BrandMark.svelte'
 
   let { children } = $props()
 
@@ -17,6 +18,7 @@
     { href: '/admin/dashboard', icon: 'mdi-view-dashboard-outline', label: 'Dashboard' },
     { href: '/admin/tenants',   icon: 'mdi-domain',                  label: 'Empresas'  },
     { href: '/admin/plans',     icon: 'mdi-layers-outline',           label: 'Planes'    },
+    { href: '/admin/security',  icon: 'mdi-shield-key-outline',       label: 'Seguridad' },
   ]
 
   const currentPath = $derived($page.url)
@@ -33,11 +35,9 @@
 
     <!-- Logo / título panel -->
     <div class="flex items-center gap-2 px-4 h-14 border-b border-slate-100 shrink-0">
-      <div class="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-        <i class="mdi mdi-shield-crown text-white text-sm"></i>
-      </div>
+      <BrandMark size={28} />
       <div>
-        <span class="text-slate-800 text-sm font-bold">NextPOS</span>
+        <span class="text-slate-800 text-sm font-bold">PyME POS</span>
         <span class="text-xs text-slate-400 block leading-none">Super Admin</span>
       </div>
     </div>
