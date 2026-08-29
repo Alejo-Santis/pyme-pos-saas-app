@@ -42,4 +42,10 @@ class Resolution extends Model
     {
         return $this->belongsTo(Company::class);
     }
+
+    // La migración tiene columna uuid además del id — ambas necesitan UUID auto-generado
+    public function uniqueIds(): array
+    {
+        return ['id', 'uuid'];
+    }
 }

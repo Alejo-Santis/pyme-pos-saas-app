@@ -1,7 +1,7 @@
 @extends('exports._layout')
 @section('content')
 <div class="header">
-  <div class="company-name">{{ $company?->name ?? 'Empresa' }}</div>
+  <div class="company-name">{{ $company?->business_name ?? 'Empresa' }}</div>
   <div class="report-title">Reporte de Inventario</div>
   <div class="report-period">Generado: {{ now()->format('d/m/Y H:i') }}</div>
 </div>

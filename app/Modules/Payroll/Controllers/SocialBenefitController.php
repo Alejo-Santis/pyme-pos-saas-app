@@ -167,7 +167,11 @@ class SocialBenefitController extends Controller
         $amount = match ($type) {
             PayrollSocialBenefit::TYPE_PRIMA               => round($base * $days / 360, 2),
             PayrollSocialBenefit::TYPE_CESANTIAS           => round($base * $days / 360, 2),
-            PayrollSocialBenefit::TYPE_INTERESES_CESANTIAS => round(($base * $days / 360) * 0.12 * ($days / 360), 2),
+            // Intereses = 12% anual sobre las cesantías YA prorrateadas del período
+            // (($base*$days/360) ya es el monto de cesantías del período — no se
+            // vuelve a multiplicar por días/360, eso subestimaba el interés a la
+            // mitad o más en cualquier período distinto de un año completo).
+            PayrollSocialBenefit::TYPE_INTERESES_CESANTIAS => round(($base * $days / 360) * 0.12, 2),
             PayrollSocialBenefit::TYPE_VACACIONES          => round($salary * $days / 720, 2),
             default                                        => 0,
         };

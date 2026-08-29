@@ -25,4 +25,9 @@ class PurchaseOrderHistory extends Model
     {
         return $this->belongsTo(PurchaseOrder::class);
     }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class);
+    }
 }

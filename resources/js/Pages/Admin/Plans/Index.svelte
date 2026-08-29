@@ -2,7 +2,7 @@
   import AdminLayout from '@/Layouts/AdminLayout.svelte'
   import { router } from '@inertiajs/svelte'
   import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
-  import { toast } from '@/Stores/toast.svelte.js'
+  import { toast } from '@/stores/toast.svelte.js'
 
   let { plans = [], allFeatures = [] } = $props()
 

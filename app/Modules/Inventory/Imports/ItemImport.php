@@ -25,11 +25,16 @@ class ItemImport implements ToCollection, WithHeadingRow
             ->pluck('id', 'code')
             ->toArray();
 
-        // Índice por porcentaje: '0' => id, '5' => id, '19' => id
-        $this->taxes = DB::table('taxes')
+        // Índice por porcentaje: '0' => id, '5' => id, '19' => id.
+        // `percent` es numeric(x,4) en BD y llega como string "19.0000" — se
+        // normaliza a entero ("19") para que matchee con $ivaPct en processRow().
+        $rawTaxes = DB::table('taxes')
             ->where('tax_type', 'IVA')
-            ->pluck('id', 'percent')
-            ->toArray();
+            ->pluck('id', 'percent');
+
+        foreach ($rawTaxes as $percent => $id) {
+            $this->taxes[(string) (int) round((float) $percent)] = $id;
+        }
     }
 
     public function collection(Collection $rows): void
@@ -129,8 +134,9 @@ class ItemImport implements ToCollection, WithHeadingRow
             $taxId = $this->taxes[$ivaPct] ?? ($this->taxes['0'] ?? null);
             if ($taxId) {
                 ItemTax::create([
-                    'item_id' => $item->id,
-                    'tax_id'  => $taxId,
+                    'item_id'     => $item->id,
+                    'tax_id'      => $taxId,
+                    'application' => 3, // 1=venta, 2=compra, 3=ambos — sin más contexto se aplica a ambos
                 ]);
             }
         });

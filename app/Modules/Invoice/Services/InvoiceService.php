@@ -77,7 +77,7 @@ class InvoiceService
                 'resolution_id'               => $data['resolution_id'] ?? null,
                 'prefix'                      => $prefix,
                 'number'                      => $number,
-                'currency_id'                 => $data['currency_id'] ?? null,
+                'currency_id'                 => $data['currency_id'] ?? 1, // COP por defecto — un null explícito anularía el default(1) de la columna
                 'issue_date'                  => $data['issue_date'],
                 'note'                        => $data['note'] ?? null,
                 'subtotal'                    => $totals['subtotal'],

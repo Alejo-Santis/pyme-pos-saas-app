@@ -134,7 +134,12 @@ return [
          * disable asset() helper tenancy and explicitly use tenant_asset() calls in places
          * where you want to use tenant-specific assets (product images, avatars, etc).
          */
-        'asset_helper_tenancy' => true,
+        // Deshabilitado: con esto en true, Stancl reescribe TODAS las llamadas a
+        // asset() —incluidas las del build de Vite (@vite)— hacia /tenancy/assets/...,
+        // una ruta pensada para archivos propios de cada tenant. El bundle de Vite es
+        // compartido entre tenants, así que con esto en true el CSS/JS no cargaba en
+        // ningún subdominio de tenant (404 en /tenancy/assets/build/assets/...).
+        'asset_helper_tenancy' => false,
     ],
 
     /**

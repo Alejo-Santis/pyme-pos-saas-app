@@ -2,6 +2,7 @@
 
 namespace App\Modules\Invoice\Services;
 
+use App\Modules\Core\Models\Company;
 use App\Modules\Invoice\Models\Document;
 use App\Modules\Purchases\Models\PurchaseOrder;
 use App\Shared\Services\InternalCodeService;
@@ -91,7 +92,7 @@ class SupportDocumentService
 
             $ds = Document::create([
                 'internal_code'               => $internalCode,
-                'company_id'                  => null,   // se omite por multi-tenancy
+                'company_id'                  => Company::first()?->id, // documents.company_id es NOT NULL
                 'user_id'                     => $userId,
                 'third_party_id'              => $order->third_party_id,
                 'reference_id'                => null,

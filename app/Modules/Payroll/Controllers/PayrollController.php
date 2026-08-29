@@ -317,7 +317,7 @@ class PayrollController extends Controller
                 ->download("nomina_{$run->period_start}_{$run->period_end}.pdf");
         }
 
-        $meta    = [$company?->name ?? 'Empresa', "Liquidación: {$run->name}", "Período: {$run->period_start} al {$run->period_end}"];
+        $meta    = [$company?->business_name ?? 'Empresa', "Liquidación: {$run->name}", "Período: {$run->period_start} al {$run->period_end}"];
         $headers = ['Empleado', 'Cargo', 'Días', 'Sal. Básico', 'Transp.', 'Extras', 'Total Dev.', 'Salud Emp.', 'Pensión Emp.', 'Ret. Fte.', 'Total Ded.', 'NETO', 'Costo Emp.'];
         $rows    = $run->details->map(fn ($d) => [
             ($d->employee?->first_name ?? '') . ' ' . ($d->employee?->last_name ?? ''),

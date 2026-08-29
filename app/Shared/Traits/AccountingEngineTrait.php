@@ -36,6 +36,12 @@ use Illuminate\Support\Str;
  *    91_IVA_GEN    → 2408 (DÉBITO — reduce IVA)
  *    91_INV_ENTRA  → 1435 (DÉBITO — reingresa inventario)
  *    91_COSTO      → 6135 (CRÉDITO — reduce costo)
+ *
+ *  NOTA DÉBITO (op 92) — cargo adicional sobre una venta (intereses, gastos, ajustes):
+ *    92_CXC        → 1305 (DÉBITO — aumenta saldo cliente)
+ *    92_INGRESO    → 4210 (CRÉDITO — ingreso por el cargo)
+ *    92_IVA_GEN    → 2408 (CRÉDITO — IVA generado sobre el cargo, si aplica)
+ *    Sin líneas de costo/inventario: la ND no mueve stock.
  */
 trait AccountingEngineTrait
 {
@@ -67,6 +73,7 @@ trait AccountingEngineTrait
                 1       => $this->entrySale($document, $voucher),
                 14      => $this->entryPurchase($document, $voucher),
                 91      => $this->entryCreditNote($document, $voucher),
+                92      => $this->entryDebitNote($document, $voucher),
                 default => Log::info("Motor contable: tipo {$opId} sin asiento definido"),
             };
 
@@ -175,6 +182,31 @@ trait AccountingEngineTrait
         }
     }
 
+    /**
+     * Nota Débito (op 92) — cargo adicional sobre una venta existente
+     * (intereses, gastos por cobrar, ajuste de valor facturado).
+     * Db: CXC cliente (aumenta lo que debe) | Cr: Ingreso + IVA generado
+     * No mueve inventario: la ND no devuelve ni reingresa mercancía.
+     */
+    private function entryDebitNote($doc, AccountingDocument $voucher): void
+    {
+        $opId     = 92;
+        $subtotal = (float) ($doc->subtotal ?? 0);
+        $totalTax = (float) ($doc->total_tax ?? 0);
+        $total    = (float) $doc->total;
+
+        // Débito: CXC cliente (aumenta saldo por cobrar)
+        $this->addLine($voucher, $doc, $opId, 'CXC', $total, 0);
+
+        // Crédito: Ingreso por el cargo adicional
+        $this->addLine($voucher, $doc, $opId, 'INGRESO', 0, $subtotal);
+
+        // Crédito: IVA generado sobre el cargo (si aplica)
+        if ($totalTax > 0) {
+            $this->addLine($voucher, $doc, $opId, 'IVA_GEN', 0, $totalTax);
+        }
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────
 
     /**
@@ -249,6 +281,11 @@ trait AccountingEngineTrait
             '91_IVA_GEN'   => '24080101',
             '91_INV_ENTRA' => '14350101',
             '91_COSTO'     => '61351001',
+
+            // ND (op 92)
+            '92_CXC'       => '13050501', // Clientes nacionales (mismo que ventas)
+            '92_INGRESO'   => '42109505', // Ingresos financieros — intereses y otros cargos
+            '92_IVA_GEN'   => '24080101', // IVA por pagar generado
         ];
 
         return $defaults["{$opId}_{$slug}"] ?? '999999'; // cuenta genérica si no existe

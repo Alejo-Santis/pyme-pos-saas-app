@@ -2,7 +2,7 @@
   import { router, page } from '@inertiajs/svelte'
   import { connect, isConnected, printRaw } from '@/Services/QzTrayService.js'
   import { buildReceipt, buildShiftReport } from '@/Services/ReceiptBuilder.js'
-  import { toast } from '@/Stores/toast.svelte.js'
+  import { toast } from '@/stores/toast.svelte.js'
 
   let { terminal, shift, items, thirds, recentSales, taxes, company } = $props()
 

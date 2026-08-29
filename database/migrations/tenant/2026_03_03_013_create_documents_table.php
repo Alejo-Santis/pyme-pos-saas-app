@@ -49,7 +49,9 @@ return new class extends Migration
             $table->uuid('resolution_id')->nullable();
             $table->foreign('resolution_id')->references('id')->on('resolutions')->nullOnDelete();
             $table->string('prefix', 10)->nullable();         // prefijo del documento
-            $table->unsignedInteger('number');                // número consecutivo
+            // Nullable: resolution_id es opcional (documentos internos sin numeración DIAN),
+            // así que el consecutivo solo se asigna cuando el documento tiene una resolución.
+            $table->unsignedInteger('number')->nullable();    // número consecutivo
 
             // Totales financieros
             $table->unsignedBigInteger('currency_id')->default(1); // FK → public.type_currencies (COP=1)
@@ -155,7 +157,7 @@ return new class extends Migration
 
         // Movimientos de inventario (kardex)
         Schema::create('item_stocktakings', function (Blueprint $table) {
-            $table->bigIncrements('id');
+            $table->uuid('id')->primary();
             $table->uuid('document_id');
             $table->foreign('document_id')->references('id')->on('documents')->cascadeOnDelete();
             $table->bigInteger('document_details_id')->nullable();
@@ -168,6 +170,10 @@ return new class extends Migration
             $table->decimal('new_average', 15, 4)->default(0);
             $table->uuid('warehouse_id')->nullable();
             $table->foreign('warehouse_id')->references('id')->on('warehouses')->nullOnDelete();
+            $table->string('description')->nullable();
+            $table->string('type_moviment', 10)->nullable();   // IN / OUT — ver ToolTrait::updateItemStocktaking
+            $table->boolean('annulled')->default(false);
+            $table->boolean('state')->default(true);
             $table->timestamps();
         });
 

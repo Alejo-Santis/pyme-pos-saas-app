@@ -51,4 +51,10 @@ class AccountingDocument extends Model
     {
         return $this->hasMany(AccountingDocumentDetail::class, 'accounting_document_id');
     }
+
+    // La migración tiene columna uuid además del id — ambas necesitan UUID auto-generado
+    public function uniqueIds(): array
+    {
+        return ['id', 'uuid'];
+    }
 }

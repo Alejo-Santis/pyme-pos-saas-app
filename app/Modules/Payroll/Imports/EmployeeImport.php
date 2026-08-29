@@ -22,7 +22,7 @@ class EmployeeImport implements ToCollection, WithHeadingRow
     private array $periods        = [];
     private array $maritalStatuses = [];
 
-    public function __construct()
+    public function __construct(private readonly ?string $userId = null)
     {
         $this->contractTypes  = DB::table('payroll_type_contracts')->pluck('id', 'code')->toArray();
         $this->workerTypes    = DB::table('payroll_type_workers')->pluck('id', 'code')->toArray();
@@ -134,6 +134,7 @@ class EmployeeImport implements ToCollection, WithHeadingRow
 
             EmployeeContract::create([
                 'employee_id'           => $employee->id,
+                'created_by'            => $this->userId,
                 'type_contract_id'      => $contractTypeId,
                 'type_worker_id'        => $workerTypeId,
                 'payroll_period_id'     => $periodId,

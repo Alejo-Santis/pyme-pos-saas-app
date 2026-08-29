@@ -181,7 +181,9 @@ class InvoiceController extends Controller
             'correction_concept' => 'required|integer|between:1,5',
             'note'               => 'required|string|max:500',
             'selected_lines'     => 'nullable|array',
-            'selected_lines.*.line_id' => 'required|uuid',
+            // documents_details.id es bigIncrements, no uuid — CreditNoteService::buildNcLines()
+            // busca por ese id numérico (ver $selMap->get($line->id)).
+            'selected_lines.*.line_id' => 'required|integer',
             'selected_lines.*.qty'     => 'required|numeric|min:0.001',
         ]);
 

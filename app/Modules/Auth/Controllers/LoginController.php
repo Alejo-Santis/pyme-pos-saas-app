@@ -30,7 +30,9 @@ class LoginController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        // 'is_active' => true se agrega a la condición WHERE de Auth::attempt():
+        // un usuario desactivado no debe poder autenticarse, aunque la contraseña sea correcta.
+        if (! Auth::attempt($credentials + ['is_active' => true], $request->boolean('remember'))) {
             return back()->withErrors([
                 'email' => 'Las credenciales no coinciden con nuestros registros.',
             ])->onlyInput('email');

@@ -29,6 +29,7 @@ class RegisterController extends Controller
 
         return Inertia::render('Auth/Register', [
             'plans' => $plans,
+            'centralDomain' => env('CENTRAL_DOMAIN', 'nextpossaas-app.test'),
         ]);
     }
 
@@ -134,7 +135,9 @@ class RegisterController extends Controller
         // 5. Redirigir al login del subdominio del tenant.
         // ?registered=1 le indica al LoginController que muestre el mensaje de bienvenida,
         // ya que el flash de sesión no cruza entre dominios distintos (central → tenant).
-        $loginUrl = 'http://' . $domain . '/login?registered=1';
+        $port = $request->getPort();
+        $portSuffix = in_array($port, [80, 443], true) ? '' : ':' . $port;
+        $loginUrl = 'http://' . $domain . $portSuffix . '/login?registered=1';
 
         return redirect($loginUrl);
     }

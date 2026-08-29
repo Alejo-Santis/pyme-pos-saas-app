@@ -2,7 +2,7 @@
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import ConfirmModal from '@/Components/UI/ConfirmModal.svelte'
   import { router, page } from '@inertiajs/svelte'
-  import { toast } from '@/Stores/toast.svelte.js'
+  import { toast } from '@/stores/toast.svelte.js'
 
   let { terminals, myShift, cashBoxes = [] } = $props()
 

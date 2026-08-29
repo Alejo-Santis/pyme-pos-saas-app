@@ -1,5 +1,6 @@
 <script>
   import { useForm, router, inertia } from '@inertiajs/svelte'
+  import BrandMark from '@/Components/UI/BrandMark.svelte'
 
   let {
     organizations  = [],
@@ -107,11 +108,9 @@
 
   <!-- Logo / título -->
   <div class="flex items-center gap-2 mb-8">
-    <div class="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow">
-      <i class="mdi mdi-point-of-sale text-white text-xl"></i>
-    </div>
+    <BrandMark size={36} rounded="rounded-xl" />
     <div>
-      <span class="text-slate-800 text-xl font-bold">NextPOS</span>
+      <span class="text-slate-800 text-xl font-bold">PyME POS</span>
       <span class="text-slate-400 text-sm ml-2">SaaS</span>
     </div>
   </div>
@@ -588,5 +587,5 @@
 
   </div>
 
-  <p class="text-slate-400 text-xs mt-6">NextPOS SaaS © {new Date().getFullYear()}</p>
+  <p class="text-slate-400 text-xs mt-6">PyME POS SaaS © {new Date().getFullYear()}</p>
 </div>

@@ -47,7 +47,7 @@ class PurchaseOrder extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Modules\Core\Models\User::class ?? \App\Models\User::class);
+        return $this->belongsTo(\App\Models\User::class);
     }
 
     public function document(): BelongsTo
@@ -94,5 +94,11 @@ class PurchaseOrder extends Model
                 $model->internal_code = 'OC' . str_pad($next, 5, '0', STR_PAD_LEFT);
             }
         });
+    }
+
+    // La migración tiene columna uuid además del id — ambas necesitan UUID auto-generado
+    public function uniqueIds(): array
+    {
+        return ['id', 'uuid'];
     }
 }
