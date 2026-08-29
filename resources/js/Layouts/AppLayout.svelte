@@ -156,16 +156,16 @@
 
 <div class="flex h-screen bg-body overflow-hidden">
 
-  <!-- Sidebar azul -->
-  <aside class="flex flex-col bg-primary-dark transition-all duration-300 shrink-0 {sidebarOpen ? 'w-60' : 'w-16'}">
+  <!-- Sidebar claro -->
+  <aside class="flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shrink-0 {sidebarOpen ? 'w-60' : 'w-16'}">
 
     <!-- Logo -->
-    <div class="flex items-center gap-3 px-4 h-14 border-b border-white/10 shrink-0">
-      <BrandMark size={32} variant="ghost" />
+    <div class="flex items-center gap-3 px-4 h-14 border-b border-slate-100 shrink-0">
+      <BrandMark size={32} />
       {#if sidebarOpen}
         <div class="overflow-hidden">
-          <span class="text-white text-sm font-bold leading-none whitespace-nowrap">PyME POS</span>
-          <span class="text-blue-200 text-sm font-light"> SaaS</span>
+          <span class="text-slate-800 text-sm font-bold leading-none whitespace-nowrap">PyME POS</span>
+          <span class="text-slate-400 text-sm font-light"> SaaS</span>
         </div>
       {/if}
     </div>
@@ -181,11 +181,11 @@
               href={item.href}
               class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors group
                 {isActive(item.href)
-                  ? 'bg-white/20 text-white font-medium'
-                  : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                  ? 'bg-primary-soft text-primary-dark font-medium'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}"
               title={!sidebarOpen ? item.label : undefined}
             >
-              <i class="mdi {item.icon} text-lg shrink-0 {isActive(item.href) ? 'text-white' : 'text-blue-200 group-hover:text-white'}"></i>
+              <i class="mdi {item.icon} text-lg shrink-0 {isActive(item.href) ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'}"></i>
               {#if sidebarOpen}
                 <span class="truncate">{item.label}</span>
               {/if}
@@ -198,12 +198,12 @@
             <button
               onclick={() => toggleGroup(group.label)}
               class="w-full flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-colors
-                {groupHasActive(group) ? 'text-white' : 'text-blue-300 hover:text-blue-100'}"
+                {groupHasActive(group) ? 'text-slate-700' : 'text-slate-400 hover:text-slate-600'}"
             >
               <span class="text-[10px] font-bold uppercase tracking-wider">{group.label}</span>
               <i class="mdi text-sm transition-transform duration-200
                 {isGroupOpen(group) ? 'mdi-chevron-down' : 'mdi-chevron-right'}
-                {groupHasActive(group) ? 'text-blue-200' : 'text-blue-400'}">
+                {groupHasActive(group) ? 'text-slate-400' : 'text-slate-300'}">
               </i>
             </button>
 
@@ -216,10 +216,10 @@
                       href={item.href}
                       class="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-lg text-sm transition-colors group
                         {isActive(item.href)
-                          ? 'bg-white/20 text-white font-medium'
-                          : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                          ? 'bg-primary-soft text-primary-dark font-medium'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}"
                     >
-                      <i class="mdi {item.icon} text-base shrink-0 {isActive(item.href) ? 'text-white' : 'text-blue-300 group-hover:text-white'}"></i>
+                      <i class="mdi {item.icon} text-base shrink-0 {isActive(item.href) ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'}"></i>
                       <span class="truncate">{item.label}</span>
                     </a>
                   </li>
@@ -230,15 +230,15 @@
 
         {:else}
           <!-- Sidebar colapsado → solo iconos con tooltip, agrupar con separador -->
-          <div class="border-t border-white/10 mx-1 my-1"></div>
+          <div class="border-t border-slate-100 mx-1 my-1"></div>
           {#each group.items as item}
             <a
               use:inertia
               href={item.href}
               class="flex items-center justify-center w-10 h-10 mx-auto rounded-lg text-sm transition-colors group
                 {isActive(item.href)
-                  ? 'bg-white/20 text-white'
-                  : 'text-blue-200 hover:bg-white/10 hover:text-white'}"
+                  ? 'bg-primary-soft text-primary'
+                  : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}"
               title={item.label}
             >
               <i class="mdi {item.icon} text-lg"></i>
@@ -249,24 +249,24 @@
     </nav>
 
     <!-- Usuario (pie del sidebar) -->
-    <div class="border-t border-white/10 p-3 shrink-0">
+    <div class="border-t border-slate-100 p-3 shrink-0">
       {#if sidebarOpen}
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-            <span class="text-white text-xs font-semibold">
+          <div class="w-8 h-8 bg-primary-soft rounded-full flex items-center justify-center shrink-0">
+            <span class="text-primary-dark text-xs font-semibold">
               {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
             </span>
           </div>
           <div class="flex-1 overflow-hidden">
-            <p class="text-white text-xs font-medium truncate">{user?.name ?? 'Usuario'}</p>
-            <p class="text-blue-300 text-[10px] truncate">{user?.email ?? ''}</p>
+            <p class="text-slate-700 text-xs font-medium truncate">{user?.name ?? 'Usuario'}</p>
+            <p class="text-slate-400 text-[10px] truncate">{user?.email ?? ''}</p>
           </div>
-          <button onclick={logout} class="text-blue-300 hover:text-red-300 transition cursor-pointer" title="Cerrar sesión">
+          <button onclick={logout} class="text-slate-400 hover:text-red-500 transition cursor-pointer" title="Cerrar sesión">
             <i class="mdi mdi-logout text-base"></i>
           </button>
         </div>
       {:else}
-        <button onclick={logout} class="w-full flex justify-center text-blue-300 hover:text-red-300 transition cursor-pointer" title="Cerrar sesión">
+        <button onclick={logout} class="w-full flex justify-center text-slate-400 hover:text-red-500 transition cursor-pointer" title="Cerrar sesión">
           <i class="mdi mdi-logout text-base"></i>
         </button>
       {/if}
@@ -333,46 +333,46 @@
 
 <div class="flex flex-col h-screen bg-body overflow-hidden">
 
-  <!-- Barra de navegación superior azul -->
-  <header class="bg-primary-dark shrink-0 shadow-md overflow-visible">
+  <!-- Barra de navegación superior clara -->
+  <header class="bg-white border-b border-slate-200 shrink-0 shadow-sm overflow-visible">
 
     <!-- Primera fila: logo + controles de usuario -->
-    <div class="flex items-center justify-between px-4 h-14 border-b border-white/10">
+    <div class="flex items-center justify-between px-4 h-14 border-b border-slate-100">
 
       <!-- Logo -->
       <div class="flex items-center gap-3">
-        <BrandMark size={32} variant="ghost" />
+        <BrandMark size={32} />
         <div>
-          <span class="text-white text-sm font-bold">PyME POS</span>
-          <span class="text-blue-200 text-sm font-light"> SaaS</span>
+          <span class="text-slate-800 text-sm font-bold">PyME POS</span>
+          <span class="text-slate-400 text-sm font-light"> SaaS</span>
         </div>
       </div>
 
       <!-- Derecha: nombre app + toggle + usuario + logout -->
       <div class="flex items-center gap-4">
-        <span class="text-blue-200 text-xs hidden md:block">{appName}</span>
+        <span class="text-slate-400 text-xs hidden md:block">{appName}</span>
 
         <!-- Botón cambiar a modo vertical -->
         <button
           onclick={switchNavMode}
           title="Cambiar a menú lateral"
-          class="text-blue-200 hover:text-white transition cursor-pointer"
+          class="text-slate-400 hover:text-primary transition cursor-pointer"
         >
           <i class="mdi mdi-view-split-vertical text-xl"></i>
         </button>
 
         <!-- Avatar + nombre -->
         <div class="flex items-center gap-2">
-          <div class="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center">
-            <span class="text-white text-xs font-semibold">
+          <div class="w-7 h-7 bg-primary-soft rounded-full flex items-center justify-center">
+            <span class="text-primary-dark text-xs font-semibold">
               {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
             </span>
           </div>
-          <span class="text-white text-sm font-medium hidden sm:block">{user?.name ?? ''}</span>
+          <span class="text-slate-700 text-sm font-medium hidden sm:block">{user?.name ?? ''}</span>
         </div>
 
         <!-- Logout -->
-        <button onclick={logout} title="Cerrar sesión" class="text-blue-200 hover:text-red-300 transition cursor-pointer">
+        <button onclick={logout} title="Cerrar sesión" class="text-slate-400 hover:text-red-500 transition cursor-pointer">
           <i class="mdi mdi-logout text-lg"></i>
         </button>
       </div>
@@ -390,8 +390,8 @@
               href={item.href}
               class="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors
                 {isActive(item.href)
-                  ? 'bg-white/20 text-white font-medium'
-                  : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                  ? 'bg-primary-soft text-primary-dark font-medium'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}"
             >
               <i class="mdi {item.icon} text-base"></i>
               <span>{item.label}</span>
@@ -404,8 +404,8 @@
               onclick={() => toggleDropdown(idx)}
               class="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors cursor-pointer
                 {groupHasActive(group) || activeDropdown === idx
-                  ? 'bg-white/20 text-white font-medium'
-                  : 'text-blue-100 hover:bg-white/10 hover:text-white'}"
+                  ? 'bg-primary-soft text-primary-dark font-medium'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}"
             >
               <i class="mdi {group.items[0].icon} text-base"></i>
               <span>{group.label}</span>

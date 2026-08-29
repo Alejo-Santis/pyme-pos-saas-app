@@ -1,59 +1,86 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { router, inertia } from '@inertiajs/svelte'
+  import { page, router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import {
-    Chart, BarController, BarElement, LineController, LineElement,
-    CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend,
+    Chart, LineController, LineElement, Filler,
+    CategoryScale, LinearScale, PointElement, Tooltip,
   } from 'chart.js'
 
-  Chart.register(BarController, BarElement, LineController, LineElement,
-    CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend)
+  Chart.register(LineController, LineElement, Filler,
+    CategoryScale, LinearScale, PointElement, Tooltip)
 
-  let { auth, stats = {}, sales = [], purchases = [], year = new Date().getFullYear(), flash = {} } = $props()
+  let {
+    stats = {}, sales = [], purchases = [], year = new Date().getFullYear(),
+    salesTrend = null, purchasesTrend = null, recentActivity = [], flash = {},
+  } = $props()
+
+  const user = $derived($page.props.auth?.user)
 
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   const currentYear = new Date().getFullYear()
   const years = [currentYear, currentYear - 1, currentYear - 2]
 
-  // Referencias DOM para los canvas
-  let canvasSales, canvasPurchases
-  let chartSales, chartPurchases
+  const greeting = (() => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Buenos días'
+    if (h < 19) return 'Buenas tardes'
+    return 'Buenas noches'
+  })()
 
-  const renderCharts = () => {
-    if (chartSales)     chartSales.destroy()
-    if (chartPurchases) chartPurchases.destroy()
+  const kpis = $derived([
+    { label: 'Comprobantes contables', value: stats.accounting_receipts ?? 0, icon: 'mdi-file-document-multiple-outline', href: '/accounting', trend: salesTrend },
+    { label: 'Productos activos', value: stats.items ?? 0,               icon: 'mdi-package-variant-closed',         href: '/inventory',      trend: null },
+    { label: 'Terceros',          value: stats.third_parties ?? 0,       icon: 'mdi-account-group-outline',          href: '/third-parties',  trend: null },
+    { label: 'Usuarios activos',  value: stats.users ?? 0,                icon: 'mdi-account-multiple-outline',       href: '/config/users',   trend: null },
+  ])
 
-    const ctxS = canvasSales.getContext('2d')
-    const gradS = ctxS.createLinearGradient(0, 0, 0, 300)
-    gradS.addColorStop(0, 'rgba(78,115,223,0.85)')
-    gradS.addColorStop(1, 'rgba(78,115,223,0.2)')
+  const activityIcon = { document: 'mdi-file-document-outline', third_party: 'mdi-account-plus-outline' }
+  const activityLabel = (row) => row.type === 'document' ? `Documento ${row.label} creado` : `Nuevo tercero: ${row.label}`
 
-    chartSales = new Chart(canvasSales, {
-      type: 'bar',
+  function timeAgo(dateStr) {
+    const diff = (Date.now() - new Date(dateStr.replace(' ', 'T'))) / 1000
+    if (diff < 3600) return `Hace ${Math.max(1, Math.round(diff / 60))} min`
+    if (diff < 86400) return `Hace ${Math.round(diff / 3600)} h`
+    return `Hace ${Math.round(diff / 86400)} d`
+  }
+
+  let canvasChart
+  let chart
+
+  const renderChart = () => {
+    if (chart) chart.destroy()
+
+    const ctx = canvasChart.getContext('2d')
+    const gradSales = ctx.createLinearGradient(0, 0, 0, 220)
+    gradSales.addColorStop(0, 'rgba(37,99,235,0.22)')
+    gradSales.addColorStop(1, 'rgba(37,99,235,0)')
+
+    chart = new Chart(canvasChart, {
+      type: 'line',
       data: {
         labels: months,
-        datasets: [{ label: 'Ventas', data: sales,
-          backgroundColor: gradS, borderColor: 'rgba(78,115,223,1)',
-          borderWidth: 2, borderRadius: 6 }],
+        datasets: [
+          {
+            label: 'Ventas', data: sales, borderColor: '#185FA5', backgroundColor: gradSales,
+            borderWidth: 2.5, tension: 0.35, fill: true, pointRadius: 0, pointHoverRadius: 4,
+          },
+          {
+            label: 'Compras', data: purchases, borderColor: '#639922', backgroundColor: 'transparent',
+            borderWidth: 2, borderDash: [5, 4], tension: 0.35, fill: false, pointRadius: 0, pointHoverRadius: 4,
+          },
+        ],
       },
-      options: { responsive: true, plugins: { legend: { display: false } } },
-    })
-
-    const ctxP = canvasPurchases.getContext('2d')
-    const gradP = ctxP.createLinearGradient(0, 0, 0, 300)
-    gradP.addColorStop(0, 'rgba(28,200,138,0.85)')
-    gradP.addColorStop(1, 'rgba(28,200,138,0.2)')
-
-    chartPurchases = new Chart(canvasPurchases, {
-      type: 'bar',
-      data: {
-        labels: months,
-        datasets: [{ label: 'Compras', data: purchases,
-          backgroundColor: gradP, borderColor: 'rgba(28,200,138,1)',
-          borderWidth: 2, borderRadius: 6 }],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
+          y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, color: '#94a3b8' }, beginAtZero: true },
+        },
       },
-      options: { responsive: true, plugins: { legend: { display: false } } },
     })
   }
 
@@ -61,108 +88,96 @@
     router.get(window.location.pathname, { year: y }, { preserveState: false })
   }
 
-  onMount(() => renderCharts())
-  onDestroy(() => { chartSales?.destroy(); chartPurchases?.destroy() })
+  onMount(() => renderChart())
+  onDestroy(() => chart?.destroy())
 </script>
 
 <AppLayout>
 
-  <!-- Flash de éxito -->
   {#if flash?.success}
     <div class="mb-4 flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-4 py-3 text-sm">
       <i class="mdi mdi-check-circle shrink-0"></i><span>{flash.success}</span>
     </div>
   {/if}
 
-  <!-- Selector de período -->
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm px-5 py-3 mb-4 flex items-center justify-between flex-wrap gap-3">
-    <span class="text-slate-500 text-sm flex items-center gap-1.5">
-      <i class="mdi mdi-calendar-clock text-blue-500"></i> Seleccionar Período
-    </span>
+  <!-- Encabezado: saludo + selector de año -->
+  <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
+    <div>
+      <p class="text-sm text-slate-500">{greeting}</p>
+      <h1 class="text-xl font-bold text-slate-800">{user?.name ?? 'Bienvenido'}</h1>
+    </div>
     <div class="flex gap-2">
       {#each years as y}
         <button
           type="button"
           onclick={() => changeYear(y)}
-          class="px-5 py-1.5 rounded text-sm font-semibold transition border cursor-pointer
+          class="px-4 py-1.5 rounded-lg text-sm font-medium transition border cursor-pointer
                  {year === y
-                   ? 'bg-blue-600 border-blue-600 text-white'
-                   : 'bg-white border-blue-500 text-blue-600 hover:bg-blue-50'}"
+                   ? 'bg-primary border-primary text-white'
+                   : 'bg-white border-slate-200 text-slate-500 hover:border-primary hover:text-primary'}"
         >{y}</button>
       {/each}
     </div>
   </div>
 
-  <!-- Tarjetas métricas con gradientes (estilo Xedoc) -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
-
-    <!-- Productos -->
-    <div class="rounded-xl shadow-sm text-white flex items-center gap-4 p-5"
-         style="background: linear-gradient(45deg,#4e73df,#224abe)">
-      <i class="mdi mdi-cube text-5xl opacity-90"></i>
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-wide opacity-80">Productos creados</p>
-        <a use:inertia href="/inventory" class="text-white text-3xl font-bold leading-none">{(stats.items ?? 0).toLocaleString()}</a>
-      </div>
-    </div>
-
-    <!-- Usuarios -->
-    <div class="rounded-xl shadow-sm text-white flex items-center gap-4 p-5"
-         style="background: linear-gradient(45deg,#1cc88a,#13855c)">
-      <i class="mdi mdi-account-multiple text-5xl opacity-90"></i>
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-wide opacity-80">Usuarios Activos</p>
-        <a use:inertia href="/config" class="text-white text-3xl font-bold leading-none">{(stats.users ?? 0).toLocaleString()}</a>
-      </div>
-    </div>
-
-    <!-- Terceros -->
-    <div class="rounded-xl shadow-sm text-white flex items-center gap-4 p-5"
-         style="background: linear-gradient(45deg,#f6c23e,#dda20a)">
-      <i class="mdi mdi-account-tie text-5xl opacity-90"></i>
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-wide opacity-80">Terceros</p>
-        <a use:inertia href="/third-parties" class="text-white text-3xl font-bold leading-none">{(stats.third_parties ?? 0).toLocaleString()}</a>
-      </div>
-    </div>
-
-    <!-- Documentos -->
-    <div class="rounded-xl shadow-sm text-white flex items-center gap-4 p-5"
-         style="background: linear-gradient(45deg,#e74a3b,#be2617)">
-      <i class="mdi mdi-file-document-multiple-outline text-5xl opacity-90"></i>
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-wide opacity-80">Comprob. Contable</p>
-        <a use:inertia href="/accounting" class="text-white text-3xl font-bold leading-none">{(stats.accounting_receipts ?? 0).toLocaleString()}</a>
-      </div>
-    </div>
-
+  <!-- Tarjetas KPI -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+    {#each kpis as kpi}
+      <a use:inertia href={kpi.href} class="bg-white rounded-xl border border-slate-200 p-4 hover:border-primary/40 transition-colors">
+        <div class="w-9 h-9 rounded-lg bg-primary-soft flex items-center justify-center mb-3">
+          <i class="mdi {kpi.icon} text-primary-dark text-lg"></i>
+        </div>
+        <p class="text-xs text-slate-500 mb-0.5">{kpi.label}</p>
+        <p class="text-xl font-bold text-slate-800 leading-tight">{kpi.value.toLocaleString()}</p>
+        {#if kpi.trend !== null}
+          <p class="text-xs mt-1.5 flex items-center gap-1 {kpi.trend >= 0 ? 'text-emerald-600' : 'text-red-500'}">
+            <i class="mdi {kpi.trend >= 0 ? 'mdi-arrow-up-right' : 'mdi-arrow-down-right'}"></i>
+            {Math.abs(kpi.trend)}% vs mes anterior
+          </p>
+        {:else}
+          <p class="text-xs mt-1.5 text-slate-400">Sin variación registrada</p>
+        {/if}
+      </a>
+    {/each}
   </div>
 
-  <!-- Gráficas Ventas / Compras -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <!-- Gráfica + actividad reciente -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-    <!-- Ventas -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-        <h5 class="font-bold text-blue-600 flex items-center gap-2 text-sm">
-          <i class="mdi mdi-cash-multiple text-lg"></i> Ventas
-        </h5>
+    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-4">
+      <div class="flex items-center gap-4 mb-3">
+        <h2 class="text-sm font-semibold text-slate-700">Ventas vs compras</h2>
+        <span class="flex items-center gap-1.5 text-xs text-slate-400">
+          <svg width="14" height="4"><line x1="0" y1="2" x2="14" y2="2" stroke="#185FA5" stroke-width="2"/></svg>
+          Ventas
+        </span>
+        <span class="flex items-center gap-1.5 text-xs text-slate-400">
+          <svg width="14" height="4"><line x1="0" y1="2" x2="14" y2="2" stroke="#639922" stroke-width="2" stroke-dasharray="3 2"/></svg>
+          Compras
+        </span>
       </div>
-      <div class="p-4">
-        <canvas bind:this={canvasSales} height="160"></canvas>
+      <div style="height: 220px">
+        <canvas bind:this={canvasChart}></canvas>
       </div>
     </div>
 
-    <!-- Compras -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-        <h5 class="font-bold text-emerald-600 flex items-center gap-2 text-sm">
-          <i class="mdi mdi-cart-outline text-lg"></i> Compras
-        </h5>
-      </div>
-      <div class="p-4">
-        <canvas bind:this={canvasPurchases} height="160"></canvas>
-      </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <h2 class="text-sm font-semibold text-slate-700 mb-3">Actividad reciente</h2>
+      {#if recentActivity.length}
+        <ul class="space-y-3">
+          {#each recentActivity as row}
+            <li class="flex items-start gap-2.5">
+              <i class="mdi {activityIcon[row.type] ?? 'mdi-circle-small'} text-primary text-base mt-0.5"></i>
+              <div class="min-w-0">
+                <p class="text-xs text-slate-600 truncate">{activityLabel(row)}</p>
+                <p class="text-[11px] text-slate-400">{timeAgo(row.created_at)}</p>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="text-xs text-slate-400">Todavía no hay actividad registrada.</p>
+      {/if}
     </div>
 
   </div>
