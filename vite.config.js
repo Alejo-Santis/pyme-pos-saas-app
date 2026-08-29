@@ -20,11 +20,18 @@ export default defineConfig({
     server: {
         host: '0.0.0.0', // necesario para Docker
         port: 5173,
+        // Sin esto, el navegador bloquea los <script type="module"> de Vite por CORS
+        // cuando la página se sirve desde un subdominio de tenant (ej. empresa.lvh.me:8000)
+        // en vez de localhost:8000 — origen distinto al de este dev server (localhost:5173).
+        cors: true,
         hmr: {
             host: 'localhost',
         },
         watch: {
-            ignored: ['**/storage/framework/views/**'],
+            // vendor/ y storage/ nunca cambian por HMR y suman miles de archivos —
+            // vigilarlos agota el límite de inotify del sistema (ENOSPC) en proyectos
+            // Laravel grandes. node_modules ya lo ignora chokidar por defecto.
+            ignored: ['**/vendor/**', '**/storage/**', '**/.git/**'],
         },
     },
 });
