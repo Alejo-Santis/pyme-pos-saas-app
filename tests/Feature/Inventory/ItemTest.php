@@ -3,7 +3,6 @@
 use App\Models\User;
 use App\Modules\Inventory\Models\Item;
 use App\Modules\Inventory\Models\ItemCategory;
-use App\Modules\Core\Models\Warehouse;
 
 // ── Helpers del archivo ───────────────────────────────────────────────────────
 
@@ -11,24 +10,14 @@ function adminUser(): User
 {
     $user = User::factory()->create();
     $user->assignRole('admin');
-    return $user;
-}
 
-function createWarehouse(): Warehouse
-{
-    return Warehouse::create([
-        'name'          => 'Bodega Test',
-        'internal_code' => 'BOD-01',
-        'is_default'    => true,
-        'state'         => true,
-    ]);
+    return $user;
 }
 
 function createCategory(): ItemCategory
 {
     return ItemCategory::create([
-        'name'  => 'Categoría Test',
-        'state' => true,
+        'name' => 'Categoría Test',
     ]);
 }
 
@@ -37,14 +26,14 @@ function createCategory(): ItemCategory
 test('admin puede ver el listado de artículos', function () {
     $this->actingAs(adminUser());
 
-    $response = $this->tenantGet('/inventory/items');
+    $response = $this->tenantGet('/inventory');
 
     $response->assertStatus(200)
              ->assertInertia(fn ($page) => $page->component('Inventory/Items'));
 });
 
 test('usuario sin autenticación es redirigido al login', function () {
-    $response = $this->tenantGet('/inventory/items');
+    $response = $this->tenantGet('/inventory');
     $response->assertRedirect('/login');
 });
 
@@ -54,14 +43,13 @@ test('admin puede crear un artículo', function () {
     $this->actingAs(adminUser());
     $cat = createCategory();
 
-    $response = $this->tenantPost('/inventory/items', [
-        'name'              => 'Artículo Test',
-        'internal_code'     => 'ART-001',
-        'item_category_id'  => $cat->id,
-        'default_sale_price'=> 10000,
-        'default_cost_price'=> 5000,
-        'type'              => 'product',
-        'state'             => true,
+    $response = $this->tenantPost('/inventory', [
+        'name'               => 'Artículo Test',
+        'internal_code'      => 'ART-001',
+        'item_category_id'   => $cat->id,
+        'default_sale_price' => 10000,
+        'type'               => 'product',
+        'is_active'          => true,
     ]);
 
     $response->assertRedirect();
@@ -70,7 +58,6 @@ test('admin puede crear un artículo', function () {
 
 test('artículo con código duplicado falla validación', function () {
     $this->actingAs(adminUser());
-    $cat = createCategory();
 
     Item::create([
         'name'          => 'Existente',
@@ -78,7 +65,7 @@ test('artículo con código duplicado falla validación', function () {
         'type'          => 'product',
     ]);
 
-    $response = $this->tenantPost('/inventory/items', [
+    $response = $this->tenantPost('/inventory', [
         'name'          => 'Nuevo',
         'internal_code' => 'DUP-001',
         'type'          => 'product',
@@ -96,14 +83,14 @@ test('admin puede actualizar un artículo', function () {
         'name'          => 'Original',
         'internal_code' => 'UPD-001',
         'type'          => 'product',
-        'state'         => true,
+        'is_active'     => true,
     ]);
 
-    $response = $this->tenantPut("/inventory/items/{$item->id}", [
+    $response = $this->tenantPut("/inventory/{$item->id}", [
         'name'          => 'Actualizado',
         'internal_code' => 'UPD-001',
         'type'          => 'product',
-        'state'         => true,
+        'is_active'     => true,
     ]);
 
     $response->assertRedirect();
@@ -121,7 +108,7 @@ test('admin puede eliminar un artículo (soft delete)', function () {
         'type'          => 'product',
     ]);
 
-    $this->tenantDelete("/inventory/items/{$item->id}")->assertRedirect();
+    $this->tenantDelete("/inventory/{$item->id}")->assertRedirect();
 
     $this->assertSoftDeleted('items', ['id' => $item->id]);
 });

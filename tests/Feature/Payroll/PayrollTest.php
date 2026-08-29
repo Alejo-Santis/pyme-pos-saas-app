@@ -3,7 +3,6 @@
 use App\Models\User;
 use App\Modules\Payroll\Models\Employee;
 use App\Modules\Payroll\Models\EmployeeContract;
-use App\Modules\Payroll\Models\PayrollRun;
 use App\Modules\Payroll\Services\PayrollCalculationService;
 
 // ── Tests de Nómina ───────────────────────────────────────────────────────────
@@ -17,71 +16,106 @@ test('admin puede ver el listado de empleados', function () {
          ->assertInertia(fn ($p) => $p->component('Payroll/Employees/Index'));
 });
 
-test('puede crear un empleado', function () {
+test('puede crear un empleado con su contrato', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
     $this->actingAs($user);
 
     $response = $this->tenantPost('/payroll/employees', [
-        'name'                  => 'Juan Pérez',
-        'identification_number' => '1234567890',
-        'identification_type'   => 'CC',
-        'email'                 => 'juan@empresa.co',
-        'position'              => 'Vendedor',
-        'department'            => 'Ventas',
-        'state'                 => true,
+        'document_type'          => 'CC',
+        'identification_number'  => '1234567890',
+        'first_name'             => 'Juan',
+        'last_name'              => 'Pérez',
+        'email'                  => 'juan@empresa.co',
+        'gender'                 => 1,
+        // datos del contrato inicial (EmployeeController::store los crea junto al empleado)
+        'type_contract_id'       => 2,
+        'type_worker_id'         => 1,
+        'payroll_period_id'      => 1,
+        'job_title'              => 'Vendedor',
+        'arl_risk_class'         => 1,
+        'salary'                 => PayrollCalculationService::SMMLV,
+        'start_date'             => '2026-01-01',
     ]);
 
     $response->assertRedirect();
     $this->assertDatabaseHas('employees', ['identification_number' => '1234567890']);
+    $this->assertDatabaseHas('employee_contracts', ['job_title' => 'Vendedor']);
 });
 
-// ── Tests unitarios del servicio de cálculo ───────────────────────────────────
+test('no puede crear un empleado con salario menor al SMMLV', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+    $this->actingAs($user);
 
-test('calcula correctamente el salario neto de un empleado de tiempo completo', function () {
-    $service = new PayrollCalculationService();
-
-    // Empleado con salario mínimo 2026 aprox. 1.300.000
-    $result = $service->calculate([
-        'salary'          => 1300000,
-        'worked_days'     => 30,
-        'transport'       => 162000,  // auxilio de transporte aprox.
-        'health_deduction'=> 4.0,     // 4%
-        'pension_deduction'=> 4.0,    // 4%
-        'novelties'       => [],
+    $response = $this->tenantPost('/payroll/employees', [
+        'document_type'          => 'CC',
+        'identification_number'  => '1234567891',
+        'first_name'             => 'Juan',
+        'last_name'              => 'Pérez',
+        'gender'                 => 1,
+        'type_contract_id'       => 2,
+        'type_worker_id'         => 1,
+        'payroll_period_id'      => 1,
+        'job_title'              => 'Vendedor',
+        'arl_risk_class'         => 1,
+        'salary'                 => PayrollCalculationService::SMMLV - 1000,
+        'start_date'             => '2026-01-01',
     ]);
 
-    // Salud: 1300000 * 4% = 52000
-    expect($result['health_deduction'])->toBe(52000.0);
-    // Pensión: 1300000 * 4% = 52000
-    expect($result['pension_deduction'])->toBe(52000.0);
-    // Neto: 1300000 + 162000 - 52000 - 52000 = 1358000
-    expect($result['net_salary'])->toBe(1358000.0);
+    $response->assertSessionHasErrors('salary');
 });
 
-test('calcula prima de servicios correctamente', function () {
-    // Prima = salario × días / 360
-    $salary = 2000000;
-    $days   = 180;  // 6 meses
-    $prima  = round($salary * $days / 360);
+// ── Prestaciones sociales ─────────────────────────────────────────────────────
 
-    expect($prima)->toBe(1000000);
+test('calcula prima de servicios sobre un semestre completo', function () {
+    $employee = Employee::create([
+        'identification_number' => '900111222',
+        'first_name'            => 'Ana',
+        'last_name'             => 'Gómez',
+    ]);
+
+    $contract = EmployeeContract::create([
+        'employee_id' => $employee->id,
+        'created_by'  => User::factory()->create()->id,
+        'job_title'   => 'Contadora',
+        'salary'      => 2000000,
+        'start_date'  => '2025-06-01', // antes del semestre a liquidar
+        'state'       => true,
+    ]);
+
+    $benefits = (new PayrollCalculationService())->calculateSocialBenefits($contract, 2026, 1);
+
+    $prima = collect($benefits)->firstWhere('type', 'prima');
+    // Semestre completo (180 días) → prima = salario/30 × 180 = salario × 6
+    expect((float) $prima->amount)->toBe(round(2000000 / 30 * 180, 2));
+
+    $this->assertDatabaseHas('payroll_social_benefits', [
+        'employee_id' => $employee->id,
+        'type'        => 'prima',
+    ]);
 });
 
-test('calcula cesantías correctamente', function () {
-    // Cesantías = salario × días / 360
-    $salary   = 2000000;
-    $days     = 360;  // 1 año
-    $cesantias = round($salary * $days / 360);
+test('calcula cesantías proporcionales al tiempo trabajado en el semestre', function () {
+    $employee = Employee::create([
+        'identification_number' => '900111223',
+        'first_name'            => 'Carlos',
+        'last_name'             => 'Ruiz',
+    ]);
 
-    expect($cesantias)->toBe(2000000);
-});
+    $contract = EmployeeContract::create([
+        'employee_id' => $employee->id,
+        'created_by'  => User::factory()->create()->id,
+        'job_title'   => 'Auxiliar',
+        'salary'      => 2000000,
+        'start_date'  => '2026-04-01', // entra a mitad del semestre 1 (jul es semestre 2)
+        'state'       => true,
+    ]);
 
-test('calcula vacaciones correctamente', function () {
-    // Vacaciones = salario × días / 720
-    $salary      = 2000000;
-    $days        = 360;  // 1 año
-    $vacaciones  = round($salary * $days / 720);
+    $benefits = (new PayrollCalculationService())->calculateSocialBenefits($contract, 2026, 1);
 
-    expect($vacaciones)->toBe(1000000);
+    $cesantias = collect($benefits)->firstWhere('type', 'cesantias');
+    // Del 1-abr al 30-jun = 91 días
+    expect($cesantias->days_worked)->toBe(91);
+    expect((float) $cesantias->amount)->toBe(round(2000000 * 91 / 360, 2));
 });

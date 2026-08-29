@@ -120,7 +120,7 @@ test('usuario no puede abrir dos turnos simultáneos', function () {
     ]);
 
     $response = $this->tenantPost("/pos/{$terminal2->id}/open", ['initial_balance' => 0]);
-    $response->assertSessionHasErrors('shift');
+    $response->assertSessionHasErrors('terminal');
 });
 
 // ── Configuración de impresora ────────────────────────────────────────────────
