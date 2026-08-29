@@ -81,9 +81,10 @@ abstract class TestCase extends BaseTestCase
 
         tenancy()->initialize($tenant);
 
-        if (!\Spatie\Permission\Models\Role::where('name', 'admin')->exists()) {
-            (new TenantRolesSeeder())->run();
-        }
+        // Siempre corre (firstOrCreate/syncPermissions es idempotente y barato):
+        // así un permiso nuevo agregado al seeder queda disponible de inmediato,
+        // sin depender de borrar a mano el schema del tenant de pruebas.
+        (new TenantRolesSeeder())->run();
 
         // PUC Colombia — lo necesita cualquier test de contabilidad/motor
         // contable. Como corre fuera de la transacción por-test, solo se
