@@ -3,6 +3,7 @@
 use App\Http\Middleware\AdminAuthenticate;
 use App\Modules\Admin\Controllers\AdminAuthController;
 use App\Modules\Admin\Controllers\AdminBillingController;
+use App\Modules\Admin\Controllers\AdminSecurityController;
 use App\Modules\Admin\Controllers\AdminDashboardController;
 use App\Modules\Admin\Controllers\AdminPlanController;
 use App\Modules\Admin\Controllers\AdminTenantController;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 // ─── Onboarding público ────────────────────────────────────────────────────
 // Sin middleware 'guest': el dominio central no tiene tabla users en public schema.
 Route::get('/register',  [RegisterController::class, 'show'])->name('register');
-Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+Route::post('/register', [RegisterController::class, 'store'])->name('register.store')->middleware('throttle:5,1');
 
 // ─── Panel super-admin — Auth ──────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -31,10 +32,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/login',  [AdminAuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AdminAuthController::class, 'login'])->name('login.store')->middleware('throttle:admin-login');
 
+    // Segundo factor (sin guard admin todavía: el usuario está "a medias" en sesión)
+    Route::get('/two-factor',  [AdminAuthController::class, 'showTwoFactor'])->name('two-factor');
+    Route::post('/two-factor', [AdminAuthController::class, 'verifyTwoFactor'])->name('two-factor.verify')->middleware('throttle:5,1');
+
     // Rutas protegidas con guard admin
     Route::middleware(AdminAuthenticate::class)->group(function () {
 
         Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
+
+        // Seguridad — activar/desactivar 2FA
+        Route::prefix('security')->name('security.')->group(function () {
+            Route::get('/',          [AdminSecurityController::class, 'show'])->name('show');
+            Route::post('/enable',   [AdminSecurityController::class, 'enable'])->name('enable');
+            Route::post('/confirm',  [AdminSecurityController::class, 'confirm'])->name('confirm');
+            Route::post('/disable',  [AdminSecurityController::class, 'disable'])->name('disable');
+        });
 
         // Dashboard general
         Route::get('/',          AdminDashboardController::class)->name('dashboard');

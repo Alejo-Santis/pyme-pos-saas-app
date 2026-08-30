@@ -4,6 +4,7 @@
   import { fade } from 'svelte/transition'
   import BrandLogo from '@/Components/BrandLogo.svelte'
   import Toast from '@/Components/UI/Toast.svelte'
+  import BrandMark from '@/Components/UI/BrandMark.svelte'
 
   let { children } = $props()
 
@@ -24,7 +25,7 @@
   }
 
   const user    = $derived($page.props.auth?.user)
-  const appName = $derived($page.props.appName ?? 'PymePOS SaaS')
+  const appName = $derived($page.props.appName ?? 'PyME POS SaaS')
   const impersonation = $derived($page.props.impersonation)
   const currentPath = $derived($page.url)
 
@@ -51,6 +52,7 @@
         { href: '/inventory/categories', icon: 'mdi-tag-multiple-outline',   label: 'Categorías' },
         { href: '/inventory/transfers',  icon: 'mdi-transfer',               label: 'Traslados' },
         { href: '/purchases',            icon: 'mdi-cart-outline',           label: 'Compras' },
+        { href: '/tax-mailbox',          icon: 'mdi-email-outline',           label: 'Buzón Tributario' },
       ],
     },
     {
@@ -256,6 +258,7 @@
           </div>
 
         {:else}
+          <!-- Sidebar colapsado → solo iconos con tooltip, agrupar con separador -->
           <div class="border-t border-slate-100 mx-1 my-1"></div>
           {#each group.items as item}
             <a

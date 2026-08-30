@@ -4,7 +4,6 @@ namespace App\Modules\Core\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Resolución de numeración DIAN por empresa.
@@ -37,4 +36,9 @@ class Resolution extends Model
         'is_active'       => 'boolean',
     ];
 
+    // La migración tiene columna uuid además del id — ambas necesitan UUID auto-generado
+    public function uniqueIds(): array
+    {
+        return ['id', 'uuid'];
+    }
 }

@@ -42,10 +42,11 @@ use Illuminate\Support\Str;
  *    91_INV_ENTRA  → 1435 (DÉBITO — reingresa inventario)
  *    91_COSTO      → 6135 (CRÉDITO — reduce costo)
  *
- *  NOTA DÉBITO (op 92):
+ *  NOTA DÉBITO (op 92) — cargo adicional sobre una venta (intereses, gastos, ajustes):
  *    92_CXC        → 1305 (DÉBITO — aumenta saldo cliente)
  *    92_INGRESO    → 4135 (CRÉDITO — mayor ingreso/cargo)
- *    92_IVA_GEN    → 2408 (CRÉDITO — mayor IVA generado)
+ *    92_IVA_GEN    → 2408 (CRÉDITO — IVA generado sobre el cargo, si aplica)
+ *    Sin líneas de costo/inventario: la ND no mueve stock.
  */
 trait AccountingEngineTrait
 {
@@ -301,8 +302,10 @@ trait AccountingEngineTrait
     }
 
     /**
-     * Nota Débito (op 92) — cargo adicional sobre la venta.
-     * Db: CXC | Cr: Ingreso + IVA generado.
+     * Nota Débito (op 92) — cargo adicional sobre una venta existente
+     * (intereses, gastos por cobrar, ajuste de valor facturado).
+     * Db: CXC cliente (aumenta lo que debe) | Cr: Ingreso + IVA generado
+     * No mueve inventario: la ND no devuelve ni reingresa mercancía.
      */
     private function entryDebitNote($doc, AccountingDocument $voucher): void
     {
@@ -311,9 +314,13 @@ trait AccountingEngineTrait
         $totalTax = (float) ($doc->total_tax ?? 0);
         $total    = (float) $doc->total;
 
+        // Débito: CXC cliente (aumenta saldo por cobrar)
         $this->addLine($voucher, $doc, $opId, 'CXC', $total, 0);
+
+        // Crédito: Ingreso por el cargo adicional
         $this->addLine($voucher, $doc, $opId, 'INGRESO', 0, $subtotal);
 
+        // Crédito: IVA generado sobre el cargo (si aplica)
         if ($totalTax > 0) {
             $this->addLine($voucher, $doc, $opId, 'IVA_GEN', 0, $totalTax);
         }
@@ -469,9 +476,9 @@ trait AccountingEngineTrait
             '91_COSTO'     => '61351001',
 
             // ND (op 92)
-            '92_CXC'     => '13050501',
-            '92_INGRESO' => '41351001',
-            '92_IVA_GEN' => '24080101',
+            '92_CXC'     => '13050501', // Clientes nacionales (mismo que ventas)
+            '92_INGRESO' => '41351001', // Ingreso por el cargo adicional (mismo que ventas; ver AccountingConceptSeeder)
+            '92_IVA_GEN' => '24080101', // IVA por pagar generado
 
             // Recibos de caja (op 13)
             '13_CAJA'             => '11050501',

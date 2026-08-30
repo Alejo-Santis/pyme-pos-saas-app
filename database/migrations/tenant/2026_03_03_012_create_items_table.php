@@ -105,13 +105,14 @@ return new class extends Migration
 
         // Stock por ítem y bodega
         Schema::create('item_warehouse', function (Blueprint $table) {
-            $table->bigIncrements('id');
+            $table->uuid('id')->primary();
             $table->uuid('item_id');
             $table->foreign('item_id')->references('id')->on('items')->cascadeOnDelete();
             $table->uuid('warehouse_id');
             $table->foreign('warehouse_id')->references('id')->on('warehouses')->cascadeOnDelete();
             $table->decimal('stock', 15, 4)->default(0);        // existencia actual
             $table->decimal('average_cost', 15, 4)->default(0); // costo promedio en esta bodega
+            $table->boolean('state')->default(true);            // registro activo (usado por ToolTrait/InvoiceService)
             $table->timestamps();
             $table->unique(['item_id', 'warehouse_id']);
         });

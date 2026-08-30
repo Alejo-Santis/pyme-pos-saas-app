@@ -623,7 +623,7 @@ class ReportController extends Controller
 
         $company = Company::first();
         $meta    = [
-            $company?->name ?? 'Empresa',
+            $company?->business_name ?? 'Empresa',
             "Reporte de Ventas — {$groupBy}",
             "Período: {$from} al {$to}",
         ];
@@ -666,7 +666,7 @@ class ReportController extends Controller
             ->get();
 
         $company = Company::first();
-        $meta    = [$company?->name ?? 'Empresa', "Reporte de Caja — {$from} al {$to}"];
+        $meta    = [$company?->business_name ?? 'Empresa', "Reporte de Caja — {$from} al {$to}"];
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('exports.cash', compact('movements', 'meta', 'from', 'to', 'company'))
@@ -723,7 +723,7 @@ class ReportController extends Controller
         });
 
         $company = Company::first();
-        $meta    = [$company?->name ?? 'Empresa', 'Reporte de Inventario — ' . now()->toDateString()];
+        $meta    = [$company?->business_name ?? 'Empresa', 'Reporte de Inventario — ' . now()->toDateString()];
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('exports.inventory', compact('items', 'meta', 'company'))

@@ -799,7 +799,7 @@ class AccountingController extends Controller
                 ->download("balance_prueba_{$from}_{$to}.pdf");
         }
 
-        $meta      = [$company?->name ?? 'Empresa', "Balance de Prueba — {$from} al {$to}"];
+        $meta      = [$company?->business_name ?? 'Empresa', "Balance de Prueba — {$from} al {$to}"];
         $headers   = ['Clase', 'Código', 'Cuenta', 'Débito Total', 'Crédito Total', 'Saldo Débito', 'Saldo Crédito'];
         $excelRows = $rows->map(fn ($r) => [
             $r->class_name,

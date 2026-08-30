@@ -3,7 +3,7 @@
    * Componente de renderizado de toasts.
    * - Escucha flash messages de Inertia automáticamente.
    * - Se coloca una sola vez en AppLayout.svelte.
-   * - Para uso programático importar { toast } desde '@/stores/toast.svelte.js'.
+   * - Para uso programático importar { toast } desde '@/Stores/toast.svelte.js'.
    */
   import { page } from '@inertiajs/svelte'
   import { toast, dismiss, getToasts } from '@/Stores/toast.svelte.js'

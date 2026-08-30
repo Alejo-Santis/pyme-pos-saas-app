@@ -96,7 +96,8 @@
     const slug = loginSlug.trim()
     if (!slug) return
     const base = tenantDomainMode === 'suffix' ? tenantDomainSuffix : window.location.hostname
-    window.location.href = `${window.location.protocol}//${slug}.${base}/login`
+    const port = window.location.port ? `:${window.location.port}` : ''
+    window.location.href = `${window.location.protocol}//${slug}.${base}${port}/login`
   }
 
   function formatPrice(price) {
@@ -456,7 +457,7 @@
     </div>
 
     <p class="text-center text-slate-400 text-xs mt-5">
-      &copy; {new Date().getFullYear()} PymePOS SaaS · Todos los derechos reservados
+      &copy; {new Date().getFullYear()} PyME POS SaaS · Todos los derechos reservados
     </p>
   </div>
 </div>

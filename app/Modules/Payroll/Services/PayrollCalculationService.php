@@ -190,7 +190,12 @@ class PayrollCalculationService
                     ]);
             }
 
-            $run->update($runTotals + ['status' => PayrollRun::STATUS_APPROVED]);
+            // Solo totales: NO tocar el status. El run entra en 'draft' desde el
+            // controller y solo PayrollController::approve() debe pasarlo a
+            // 'approved' (ahí también se genera el asiento contable). Si este
+            // método lo marcaba 'approved' de una vez, el botón "Aprobar" quedaba
+            // inalcanzable (approve() exige estado draft) y el asiento nunca se creaba.
+            $run->update($runTotals);
         });
 
         return $run->fresh();
@@ -229,7 +234,8 @@ class PayrollCalculationService
         $bonuses         = $novelties['bonuses'];
         $disabilityAmt   = $novelties['disability_amount'];
         $vacationAmt     = $novelties['vacation_amount'];
-        $unpaidDays      = $novelties['unpaid_days'];
+        $unpaidDays      = $novelties['unpaidDays'];
+        $loansDeduction  = $novelties['loans_deduction'];
 
         // Ajustar salario por días no remunerados
         if ($unpaidDays > 0) {
@@ -263,7 +269,7 @@ class PayrollCalculationService
             : 0;
 
         $totalDeductions = $healthEmployee + $pensionEmployee + $solidarityFund
-                         + $incomeTax + $voluntaryHealth + $voluntaryPension;
+                         + $incomeTax + $voluntaryHealth + $voluntaryPension + $loansDeduction;
 
         $netPay = round($totalEarned - $totalDeductions, 2);
 
@@ -281,7 +287,10 @@ class PayrollCalculationService
             ? 0
             : round($proportionalBase * $params['icbf_rate'], 2);
 
-        $totalEmployerCost = $salary + $transportAllowance
+        // $basicSalary (prorrateado por días trabajados), no $salary —
+        // en meses completos son iguales, pero en períodos parciales (ingreso
+        // o retiro a mitad de mes) usar $salary infla el costo real del período.
+        $totalEmployerCost = $basicSalary + $transportAllowance
                            + $healthEmployer + $pensionEmployer + $arlEmployer
                            + $ccfEmployer + $senaEmployer + $icbfEmployer;
 
@@ -308,6 +317,7 @@ class PayrollCalculationService
             'income_tax_withholding'   => $incomeTax,
             'voluntary_health_deduction'  => $voluntaryHealth,
             'voluntary_pension_deduction' => $voluntaryPension,
+            'loans_deduction'          => $loansDeduction,
             'total_deductions'         => $totalDeductions,
             // neto
             'net_pay'                  => $netPay,
@@ -447,6 +457,7 @@ class PayrollCalculationService
         $disability = 0;
         $vacation   = 0;
         $unpaidDays = 0;
+        $loans      = 0;
         $detail     = [];
 
         $hourlyRate = round($salary / 30 / 8, 2); // valor hora ordinaria
@@ -495,6 +506,11 @@ class PayrollCalculationService
                     $detail[] = ['type' => 'unpaid_leave', 'days' => $novelty->unpaid_leave_days, 'amount' => 0];
                     break;
 
+                case PayrollNovelty::TYPE_LOAN:
+                    $loans += (float) $novelty->amount;
+                    $detail[] = ['type' => 'loan', 'amount' => $novelty->amount, 'description' => $novelty->description];
+                    break;
+
                 case PayrollNovelty::TYPE_OTHER:
                     if ($novelty->amount > 0) {
                         $bonuses += (float) $novelty->amount;
@@ -504,10 +520,11 @@ class PayrollCalculationService
             }
         }
 
-        return compact('overtime', 'commissions', 'bonuses', 'disability', 'vacation', 'unpaidDays', 'detail') + [
+        return compact('overtime', 'commissions', 'bonuses', 'disability', 'vacation', 'unpaidDays', 'loans', 'detail') + [
             'overtime_amount'  => $overtime,
             'disability_amount' => $disability,
             'vacation_amount'  => $vacation,
+            'loans_deduction'  => $loans,
         ];
     }
 

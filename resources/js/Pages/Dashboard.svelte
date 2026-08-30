@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { router, inertia } from '@inertiajs/svelte'
+  import { page, router, inertia } from '@inertiajs/svelte'
   import AppLayout from '@/Layouts/AppLayout.svelte'
   import {
     Chart, BarController, BarElement, LineController, LineElement,
@@ -14,8 +14,18 @@
     auth, stats = {}, sales = [], revenue = [], purchases = [],
     recentDocuments = [],
     setup = {},
+    salesTrend = null, purchasesTrend = null,
     year = new Date().getFullYear(), flash = {}
   } = $props()
+
+  const user = $derived($page.props.auth?.user)
+
+  const greeting = (() => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Buenos días'
+    if (h < 19) return 'Buenas tardes'
+    return 'Buenas noches'
+  })()
 
   const months     = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   const monthsFull = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -50,6 +60,7 @@
       bg:     '#eff6ff',
       text:   '#1d4ed8',
       format: 'count',
+      trend:  salesTrend,
     },
     {
       label:  'Artículos',
@@ -271,12 +282,11 @@
     </div>
   {/if}
 
-  <!-- ── Encabezado ────────────────────────────────────────────────────────── -->
+  <!-- ── Encabezado: saludo + selector de año ─────────────────────────────── -->
   <div class="flex items-start justify-between mb-6 flex-wrap gap-3">
     <div>
-      <h1 class="text-slate-800 text-xl font-bold">
-        Hola, {auth?.user?.name?.split(' ')[0] ?? 'usuario'} 👋
-      </h1>
+      <p class="text-sm text-slate-500">{greeting}</p>
+      <h1 class="text-xl font-bold text-slate-800">{user?.name ?? auth?.user?.name ?? 'Bienvenido'}</h1>
       <p class="text-slate-400 text-sm mt-0.5">
         {monthsFull[today.getMonth()]} {today.getDate()}, {today.getFullYear()} · {stats.plan_name ?? '—'}
         {#if stats.trial_ends}
@@ -288,13 +298,15 @@
     </div>
 
     <!-- Selector de año -->
-    <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+    <div class="flex gap-2">
       {#each years as y}
         <button
           type="button"
           onclick={() => changeYear(y)}
-          class="px-4 py-1.5 rounded-lg text-sm font-semibold transition cursor-pointer
-                 {year === y ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}"
+          class="px-4 py-1.5 rounded-lg text-sm font-medium transition border cursor-pointer
+                 {year === y
+                   ? 'bg-primary border-primary text-white'
+                   : 'bg-white border-slate-200 text-slate-500 hover:border-primary hover:text-primary'}"
         >{y}</button>
       {/each}
     </div>
@@ -364,6 +376,12 @@
             : kpi.value.toLocaleString('es-CO')}
         </div>
         <div class="text-slate-500 text-sm mt-0.5">{kpi.label}</div>
+        {#if kpi.trend !== undefined && kpi.trend !== null}
+          <div class="text-xs mt-1.5 flex items-center gap-1 {kpi.trend >= 0 ? 'text-emerald-600' : 'text-red-500'}">
+            <i class="mdi {kpi.trend >= 0 ? 'mdi-arrow-up-right' : 'mdi-arrow-down-right'}"></i>
+            {Math.abs(kpi.trend)}% vs mes anterior
+          </div>
+        {/if}
       </a>
     {/each}
   </div>

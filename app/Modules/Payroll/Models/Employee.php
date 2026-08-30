@@ -50,6 +50,8 @@ class Employee extends Model
 
     public function activeContract()
     {
+        // No se usa latestOfMany() porque Postgres no tiene MAX(uuid) nativo,
+        // y esa relación termina agregando por employee_id (uuid) en vez de start_date.
         return $this->hasOne(EmployeeContract::class)
             ->where('state', true)
             ->orderByDesc('start_date')

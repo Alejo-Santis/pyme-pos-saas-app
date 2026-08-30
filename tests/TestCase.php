@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Stancl\Tenancy\Facades\Tenancy;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -19,30 +18,32 @@ abstract class TestCase extends BaseTestCase
     protected static string  $testSlug   = 'testempresa';
 
     /**
-     * Antes de todos los tests del archivo: crea tenant y corre seeders.
-     * Se reutiliza el mismo tenant entre tests para mayor velocidad.
-     */
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-    }
-
-    /**
-     * Inicializa el tenant de prueba antes de cada test Feature.
-     * Si el tenant no existe, lo crea con su schema.
+     * Inicializa el tenant de prueba antes de cada test Feature, y abre una
+     * transacción SOLO sobre la conexión 'tenant' (no la landlord/pgsql):
+     * el tenant y su schema se crean una única vez por proceso (crear el
+     * schema completo — ~40 migraciones — es caro), pero los datos de negocio
+     * que cada test inserta (usuarios, facturas, ítems...) se revierten al
+     * terminar el test para que no contaminen el siguiente.
      */
     protected function setUp(): void
     {
         parent::setUp();
         $this->initTenant();
+        DB::connection('tenant')->beginTransaction();
     }
 
     protected function tearDown(): void
     {
-        // Terminar tenancy si está activa
+        // Rollback ANTES de terminar tenancy: end() puede reconfigurar/
+        // desconectar la conexión 'tenant', y ya no habría nada que revertir.
+        if (DB::connection('tenant')->transactionLevel() > 0) {
+            DB::connection('tenant')->rollBack();
+        }
+
         if (tenancy()->initialized) {
             tenancy()->end();
         }
+
         parent::tearDown();
     }
 
@@ -56,7 +57,7 @@ abstract class TestCase extends BaseTestCase
         $this->cleanupSqliteTenantDatabase();
 
         // Asegurarse de tener un plan
-        $plan = Plan::firstOrCreate(
+        Plan::firstOrCreate(
             ['slug' => 'test-plan'],
             [
                 'name'          => 'Plan Test',
@@ -69,22 +70,21 @@ abstract class TestCase extends BaseTestCase
             ]
         );
 
-        // Crear tenant si no existe
+        // Crear tenant si no existe (dispara CreateDatabase + MigrateDatabase
+        // la primera vez — costoso, por eso solo pasa una vez por proceso).
         $tenant = Tenant::firstOrCreate(
             ['id' => static::$testSlug],
             [
-                'name'  => 'Empresa Test S.A.S',
-                'email' => 'test@empresa.co',
-                'nit'   => '900000000-1',
+                'name'   => 'Empresa Test S.A.S',
+                'email'  => 'test@empresa.co',
+                'status' => 'active',
             ]
         );
 
-        // Crear dominio si no existe
         if ($tenant->domains()->count() === 0) {
             $tenant->createDomain(['domain' => $this->tenantHost()]);
         }
 
-        // Inicializar tenancy → cambia al schema del tenant
         tenancy()->initialize($tenant);
         $this->seedSqliteTenantCatalogs();
 
@@ -150,7 +150,11 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Simula una petición HTTP en el contexto del tenant.
-     * Agrega el header de dominio para que el middleware lo resuelva.
+     *
+     * IMPORTANTE: el host debe ir en la URL misma, no en un header 'HOST' vía
+     * withHeaders() — Symfony\Request::create() reconstruye SERVER_NAME/
+     * HTTP_HOST a partir del host de la URI y PISA cualquier header enviado,
+     * así que un header por sí solo nunca cambia el dominio que ve la app.
      */
     protected function tenantGet(string $uri, array $headers = [])
     {

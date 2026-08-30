@@ -34,6 +34,7 @@ use App\Modules\Purchases\Controllers\PurchaseController;
 use App\Modules\Audit\Controllers\AuditController;
 use App\Modules\Audit\Controllers\NotificationController;
 use App\Modules\Tenant\Controllers\SubscriptionController;
+use App\Modules\Purchases\Controllers\TaxMailboxController;
 use App\Modules\Reports\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
@@ -55,6 +56,11 @@ Route::middleware([
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
 ])->group(function () {
+
+    // Nota: la raíz "/" NO se define aquí — vive en routes/web.php, que detecta
+    // si el dominio es un tenant o el central y actúa según corresponda. Si se
+    // define "/" también en este archivo, ambas rutas quedan sin distinción de
+    // dominio y Laravel solo puede quedarse con una — rompiendo la otra.
 
     // ─── Auth (públicas dentro del tenant) ────────────────────────────────
     Route::get('/impersonate/{token}', [ImpersonationController::class, 'consume'])
@@ -225,7 +231,7 @@ Route::middleware([
             });
 
             // ─── Caja y bancos ────────────────────────────────────────────
-            Route::prefix('cash')->name('cash.')->group(function () {
+            Route::prefix('cash')->name('cash.')->middleware('permission:cash.view')->group(function () {
                 // Cajas de efectivo
                 Route::get('/', [CashBoxController::class, 'index'])->name('index');
                 Route::post('/boxes', [CashBoxController::class, 'store'])->name('boxes.store');
@@ -336,6 +342,15 @@ Route::middleware([
                 Route::post('/{purchase}/receive', [PurchaseController::class, 'receive'])->name('receive');
                 Route::post('/{purchase}/annul', [PurchaseController::class, 'annul'])->name('annul');
                 Route::post('/{purchase}/support-document', [PurchaseController::class, 'storeSupportDocument'])->name('support-document');
+            });
+
+            // ─── Buzón tributario ─────────────────────────────────────────
+            Route::prefix('tax-mailbox')->name('tax-mailbox.')->middleware('permission:tax-mailbox.view')->group(function () {
+                Route::get('/', [TaxMailboxController::class, 'index'])->name('index');
+                Route::post('/', [TaxMailboxController::class, 'store'])->name('store');
+                Route::get('/{taxMailbox}', [TaxMailboxController::class, 'show'])->name('show');
+                Route::get('/{taxMailbox}/download', [TaxMailboxController::class, 'download'])->name('download');
+                Route::delete('/{taxMailbox}', [TaxMailboxController::class, 'destroy'])->name('destroy');
             });
 
             // ─── Nómina ───────────────────────────────────────────────────

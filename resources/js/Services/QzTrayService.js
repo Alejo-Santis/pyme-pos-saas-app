@@ -125,6 +125,8 @@ export async function listPrinters() {
  */
 export async function printerExists(printerName) {
   if (!printerName) return false
+  if (!isConnected()) await connect()
+  if (!isConnected()) return false
   try {
     const found = await qz.printers.find(printerName)
     return !!found

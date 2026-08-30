@@ -49,14 +49,14 @@ class CreditNoteService
      * @param  string    $note             Observación obligatoria
      * @param  array     $selectedLines    Líneas a devolver: [['line_id' => ..., 'qty' => ...]]
      *                                     Si vacío, devuelve todas las líneas completas
-     * @param  int|null  $userId
+     * @param  string|null  $userId
      */
     public function create(
         Document $original,
         int      $correctionConcept,
         string   $note,
         array    $selectedLines = [],
-        ?int     $userId        = null
+        ?string  $userId        = null
     ): Document {
         if ($original->annulled) {
             throw ValidationException::withMessages([

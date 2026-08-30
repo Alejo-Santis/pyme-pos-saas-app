@@ -123,6 +123,37 @@ class DashboardController extends Controller
             ])
             ->toArray();
 
+        // ── Tendencia mes actual vs anterior (solo tiene sentido en el año en curso) ──
+        $trend = function (array $monthly) use ($year) {
+            if ($year !== now()->year || now()->month < 2) {
+                return null;
+            }
+
+            $current  = $monthly[now()->month - 1];
+            $previous = $monthly[now()->month - 2];
+
+            if ($previous === 0) {
+                return null;
+            }
+
+            return round((($current - $previous) / $previous) * 100);
+        };
+
+        // ── Actividad reciente (últimos documentos y terceros creados) ───────
+        $recentActivity = DB::table('documents')
+            ->selectRaw("'document' AS type, internal_code AS label, created_at")
+            ->orderByDesc('created_at')
+            ->limit(3)
+            ->unionAll(
+                DB::table('third_parties')
+                    ->selectRaw("'third_party' AS type, name AS label, created_at")
+                    ->orderByDesc('created_at')
+                    ->limit(2)
+            )
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
         return Inertia::render('Dashboard', [
             'stats'           => $stats,
             'setup'           => app(SetupProgressService::class)->progress(),
@@ -131,6 +162,9 @@ class DashboardController extends Controller
             'purchases'       => $purchases,
             'year'            => $year,
             'recentDocuments' => $recentDocuments,
+            'salesTrend'      => $trend($sales),
+            'purchasesTrend'  => $trend($purchases),
+            'recentActivity'  => $recentActivity,
         ]);
     }
 }

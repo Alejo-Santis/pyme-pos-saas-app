@@ -14,19 +14,36 @@ class ThirdPartyImport implements ToCollection, WithHeadingRow
     public int   $imported = 0;
     public array $errors   = [];
 
+    // Siglas que la plantilla le pide al usuario → código numérico DIAN real.
+    // La tabla type_document_identifications guarda el código DIAN ('13', '31'...)
+    // en su columna `code`, no la sigla ('CC', 'NIT'...), así que hay que traducir.
+    private const DOC_TYPE_DIAN_CODES = [
+        'RC' => '11', 'TI' => '12', 'CC' => '13', 'TE' => '21', 'CE' => '22',
+        'NIT' => '31', 'PASAPORTE' => '41', 'PEP' => '47', 'PPT' => '48', 'NUIP' => '91',
+    ];
+
     // Catálogo en memoria para no hacer N queries por fila
     private array $docTypes = [];
     private array $orgTypes = [];
 
     public function __construct()
     {
-        $this->docTypes = DB::table('type_document_identifications')
+        $dianCodeToId = DB::table('type_document_identifications')
             ->pluck('id', 'code')
             ->toArray();
 
-        $this->orgTypes = DB::table('type_organizations')
-            ->pluck('id', 'code')
-            ->toArray();
+        foreach (self::DOC_TYPE_DIAN_CODES as $abbr => $dianCode) {
+            if (isset($dianCodeToId[$dianCode])) {
+                $this->docTypes[$abbr] = $dianCodeToId[$dianCode];
+            }
+        }
+
+        // Igual que arriba: la plantilla pide N/J, pero type_organizations
+        // guarda '1'/'2' en `code` — se busca por nombre en vez de por código.
+        $this->orgTypes = [
+            'J' => DB::table('type_organizations')->where('name', 'Persona Jurídica')->value('id'),
+            'N' => DB::table('type_organizations')->where('name', 'Persona Natural')->value('id'),
+        ];
     }
 
     public function collection(Collection $rows): void
@@ -76,23 +93,34 @@ class ThirdPartyImport implements ToCollection, WithHeadingRow
         $regimeId    = DB::table('type_regimes')->value('id');
         $liabilityId = DB::table('type_liabilities')->value('id');
 
+        // type_third_id es NOT NULL: se infiere de es_cliente/es_proveedor
+        // (catálogo type_thirds: 1=Cliente, 2=Proveedor, 5=Otro)
+        $typeThirdId = $customer ? 1 : ($provider ? 2 : 5);
+
+        // "ciudad" en la plantilla es un nombre libre — se resuelve contra el
+        // catálogo de municipios; si no hay match, queda sin bodega asociada
+        $municipalityId = $city
+            ? DB::table('municipalities')->where('name', 'ilike', "%{$city}%")->value('id')
+            : null;
+
         DB::transaction(function () use (
-            $idNumber, $dv, $docTypeId, $orgTypeId, $regimeId, $liabilityId,
-            $name, $surname, $email, $phone, $address, $city, $customer, $provider
+            $idNumber, $dv, $docTypeId, $orgTypeId, $regimeId, $liabilityId, $typeThirdId,
+            $name, $surname, $email, $phone, $address, $municipalityId, $customer, $provider
         ) {
             $third = ThirdParty::create([
                 'identification_number'          => $idNumber,
-                'check_digit'                    => $dv,
+                'dv'                              => $dv ?: null,
                 'type_document_identification_id'=> $docTypeId,
                 'type_organization_id'           => $orgTypeId,
                 'type_regime_id'                 => $regimeId,
                 'type_liability_id'              => $liabilityId,
+                'type_third_id'                  => $typeThirdId,
                 'name'                           => $name,
                 'surname'                        => $surname ?: null,
                 'email'                          => $email    ?: null,
                 'phone'                          => $phone    ?: null,
                 'address'                        => $address  ?: null,
-                'city'                           => $city     ?: null,
+                'municipality_id'                => $municipalityId,
                 'is_active'                      => true,
             ]);
 

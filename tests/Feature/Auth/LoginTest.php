@@ -52,3 +52,18 @@ test('logout cierra la sesión', function () {
     $this->tenantPost('/logout')->assertRedirect('/login');
     $this->assertGuest();
 });
+
+test('el login se bloquea después de varios intentos fallidos', function () {
+    $attempt = fn () => $this->tenantPost('/login', [
+        'email'    => 'ataque@empresa.co',
+        'password' => 'wrongpassword',
+    ]);
+
+    // Las primeras 5 pasan la capa de throttle (fallan por credenciales, no por límite).
+    for ($i = 0; $i < 5; $i++) {
+        $attempt()->assertSessionHasErrors('email');
+    }
+
+    // El sexto intento en el mismo minuto debe ser bloqueado por el rate limiter.
+    $attempt()->assertStatus(429);
+});

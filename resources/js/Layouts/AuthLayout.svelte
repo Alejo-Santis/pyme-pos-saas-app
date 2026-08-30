@@ -38,7 +38,7 @@
 
     <!-- Footer -->
     <p class="text-center text-slate-400 text-xs mt-5">
-      &copy; {new Date().getFullYear()} PymePOS SaaS · Todos los derechos reservados
+      &copy; {new Date().getFullYear()} PyME POS SaaS · Todos los derechos reservados
     </p>
 
   </div>

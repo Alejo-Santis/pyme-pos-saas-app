@@ -48,4 +48,10 @@ class AccountingConcept extends Model
 
         return $concept?->accountable_id;
     }
+
+    // La migración tiene columna uuid además del id — ambas necesitan UUID auto-generado
+    public function uniqueIds(): array
+    {
+        return ['id', 'uuid'];
+    }
 }

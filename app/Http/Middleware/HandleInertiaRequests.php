@@ -66,6 +66,13 @@ class HandleInertiaRequests extends Middleware
                 'error'   => fn () => $request->session()->get('error'),
                 'warning' => fn () => $request->session()->get('warning'),
                 'info'    => fn () => $request->session()->get('info'),
+                // Resultado de importaciones masivas (ver ImportModal.svelte, que lee
+                // $page.props.flash.import_imported / import_errors)
+                'import_imported' => fn () => $request->session()->get('import_imported'),
+                'import_errors'   => fn () => $request->session()->get('import_errors'),
+                // Códigos de recuperación 2FA — solo se muestran una vez al confirmar
+                // la activación (ver Admin/Security.svelte).
+                'recoveryCodes'   => fn () => $request->session()->get('recoveryCodes'),
             ],
 
             'impersonation' => fn () => $request->session()->get('impersonated_by_admin'),

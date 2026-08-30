@@ -139,7 +139,7 @@ class FinancialReportController extends Controller
                 ->download("estado_resultados_{$from}_{$to}.pdf");
         }
 
-        $meta = [$company?->name ?? 'Empresa', "Estado de Resultados — {$from} al {$to}"];
+        $meta = [$company?->business_name ?? 'Empresa', "Estado de Resultados — {$from} al {$to}"];
         $rows = [
             ['Ingresos Operacionales', '', number_format($summary['ingresos_operacionales'], 2, ',', '.')],
             ['(–) Costo de Ventas', '', '(' . number_format($summary['costo_ventas'], 2, ',', '.') . ')'],
@@ -188,7 +188,7 @@ class FinancialReportController extends Controller
                 ->download("balance_general_{$to}.pdf");
         }
 
-        $meta = [$company?->name ?? 'Empresa', "Balance General al {$to}"];
+        $meta = [$company?->business_name ?? 'Empresa', "Balance General al {$to}"];
         $rows = [
             ['ACTIVOS', number_format($summary['total_activos'], 2, ',', '.'), '', 'PASIVOS + PATRIMONIO', number_format($summary['total_pasivos'] + $summary['patrimonio_total'], 2, ',', '.')],
             ['Total Activos', number_format($summary['total_activos'], 2, ',', '.'), '', 'Total Pasivos', number_format($summary['total_pasivos'], 2, ',', '.')],

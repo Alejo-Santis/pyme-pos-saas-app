@@ -16,7 +16,9 @@ class ItemTax extends Model
     protected $fillable = [
         'item_id',
         'tax_id',
+        'application',
         'percent',
+        'amount',
     ];
 
     protected $casts = [

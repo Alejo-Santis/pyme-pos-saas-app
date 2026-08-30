@@ -30,8 +30,20 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'is_active' => true,
+            // false por defecto en la migración — un usuario de test normalmente
+            // representa a alguien ya operando el sistema, no a mitad del wizard.
             'onboarding_completed' => true,
         ];
+    }
+
+    /**
+     * Usuario que todavía no completó el wizard de onboarding.
+     */
+    public function pendingOnboarding(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'onboarding_completed' => false,
+        ]);
     }
 
     /**

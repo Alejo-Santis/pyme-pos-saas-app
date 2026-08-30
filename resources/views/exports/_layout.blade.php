@@ -29,7 +29,7 @@
 <body>
 @yield('content')
 <div class="footer">
-  Generado el {{ now()->format('d/m/Y H:i') }} — {{ $company?->name ?? '' }}
+  Generado el {{ now()->format('d/m/Y H:i') }} — {{ $company?->business_name ?? '' }}
   @if(isset($company) && $company?->nit) — NIT {{ $company->nit }} @endif
 </div>
 </body>

@@ -38,8 +38,12 @@ class TenantRolesSeeder extends Seeder
             'inventory.view', 'inventory.create', 'inventory.edit',
             // POS
             'pos.view', 'pos.operate',
+            // Caja y bancos
+            'cash.view', 'cash.edit',
             // Compras
             'purchases.view', 'purchases.create',
+            // Buzón tributario
+            'tax-mailbox.view',
             // Reportes
             'reports.view',
             // Configuración
@@ -61,6 +65,8 @@ class TenantRolesSeeder extends Seeder
         $contador->syncPermissions([
             'invoices.view', 'invoices.create', 'invoices.edit', 'invoices.send',
             'purchases.view', 'purchases.create',
+            'tax-mailbox.view',
+            'cash.view', 'cash.edit',
             'reports.view',
         ]);
 
@@ -77,6 +83,7 @@ class TenantRolesSeeder extends Seeder
         $cajero = Role::findByName('cajero');
         $cajero->syncPermissions([
             'pos.view', 'pos.operate',
+            'cash.view', 'cash.edit',
         ]);
 
         // ── Permisos del almacenista ──────────────────────────────────────

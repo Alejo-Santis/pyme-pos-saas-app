@@ -20,7 +20,7 @@
   }
 </script>
 
-<svelte:head><title>Admin — PymePOS SaaS</title></svelte:head>
+<svelte:head><title>Admin — PyME POS SaaS</title></svelte:head>
 
 <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
 
@@ -42,7 +42,7 @@
     <div class="text-center mb-8">
       <BrandLogo variant="mark" size="lg" class="justify-center mb-3" />
       <h1 class="text-white text-xl font-bold">Panel de Administración</h1>
-      <p class="text-slate-400 text-sm mt-1">PymePOS SaaS</p>
+      <p class="text-slate-400 text-sm mt-1">PyME POS SaaS</p>
     </div>
 
     <!-- Card login -->

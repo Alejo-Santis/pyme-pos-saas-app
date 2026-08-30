@@ -20,6 +20,7 @@
     { href: '/admin/plans',     icon: 'mdi-layers-outline',           label: 'Planes'    },
     { href: '/admin/billing',   icon: 'mdi-credit-card-outline',      label: 'Cartera'   },
     { href: '/admin/users',     icon: 'mdi-shield-account-outline',   label: 'Admins'    },
+    { href: '/admin/security',  icon: 'mdi-shield-key-outline',       label: 'Seguridad' },
     { href: '/admin/audit',     icon: 'mdi-history',                  label: 'Auditoría' },
   ]
 

@@ -35,4 +35,10 @@ class Establishment extends Model
     {
         return $this->hasMany(Warehouse::class);
     }
+
+    // La migración tiene columna uuid además del id — ambas necesitan UUID auto-generado
+    public function uniqueIds(): array
+    {
+        return ['id', 'uuid'];
+    }
 }

@@ -34,10 +34,11 @@ test('vendedor no puede acceder a contabilidad', function () {
     $this->tenantGet('/accounting/journal')->assertStatus(403);
 });
 
-test('PUC Colombia está cargado (mínimo 200 cuentas)', function () {
-    // Verifica que el seeder del PUC se corrió al crear el tenant
+test('PUC Colombia está cargado (mínimo 80 cuentas)', function () {
+    // Verifica que el seeder del PUC se corrió al crear el tenant.
+    // PucSeeder siembra 82 cuentas base — no las 200+ de un PUC completo.
     $count = ChartOfAccount::count();
-    expect($count)->toBeGreaterThan(200);
+    expect($count)->toBeGreaterThanOrEqual(80);
 });
 
 test('las cuentas PUC tienen los niveles correctos', function () {

@@ -212,7 +212,11 @@ class PurchaseService
                 return collect($tax)->sum('tax_amount') ?? 0;
             });
             $accountingDoc = (object) [
-                'id'                         => $order->id,
+                // NULL a propósito: una orden de compra no tiene un registro en "documents"
+                // (eso solo existe si se genera un documento soporte DIAN). Si se pusiera
+                // $order->id aquí, generateAccountingEntry() lo usaría como document_id y
+                // violaría la FK hacia documents, abortando el asiento en silencio.
+                'id'                         => null,
                 'type_document_operation_id' => 14,
                 'user_id'                    => Auth::id(),
                 'third_party_id'             => $order->third_party_id,

@@ -583,5 +583,5 @@
 
   </div>
 
-  <p class="text-slate-400 text-xs mt-6">PymePOS SaaS © {new Date().getFullYear()}</p>
+  <p class="text-slate-400 text-xs mt-6">PyME POS SaaS © {new Date().getFullYear()}</p>
 </div>

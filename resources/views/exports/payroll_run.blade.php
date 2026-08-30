@@ -1,7 +1,7 @@
 @extends('exports._layout')
 @section('content')
 <div class="header">
-  <div class="company-name">{{ $company?->name ?? 'Empresa' }}</div>
+  <div class="company-name">{{ $company?->business_name ?? 'Empresa' }}</div>
   <div class="report-title">Liquidación de Nómina — {{ $run->name }}</div>
   <div class="report-period">
     Período: {{ \Carbon\Carbon::parse($run->period_start)->format('d/m/Y') }}
