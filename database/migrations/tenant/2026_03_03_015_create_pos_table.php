@@ -12,21 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Usuarios asignados a terminales POS con saldo de caja
-        Schema::create('pos_terminal_users', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->uuid('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->uuid('establishment_id')->nullable();
-            $table->foreign('establishment_id')->references('id')->on('establishments')->nullOnDelete();
-            $table->uuid('warehouse_id')->nullable();
-            $table->foreign('warehouse_id')->references('id')->on('warehouses')->nullOnDelete();
-            $table->decimal('initial_balance', 15, 4)->default(0);  // efectivo inicial del turno
-            $table->decimal('current_balance', 15, 4)->default(0);  // saldo actual
-            $table->boolean('active_shift')->default(false);         // turno activo
-            $table->string('cashier_session_key', 100)->nullable();  // clave de sesión activa
-            $table->timestamps();
-        });
+        // Nota: 'pos_terminal_users' NO se crea aquí — la crea
+        // 2026_03_13_013_create_pos_terminal_users_table.php, con UUID como
+        // PK y el vínculo a 'pos_terminals' que el modelo PosTerminalUser espera.
 
         // Cierres de caja por turno
         Schema::create('cash_register_counts', function (Blueprint $table) {
@@ -186,6 +174,5 @@ return new class extends Migration
         Schema::dropIfExists('income_and_expenses');
         Schema::dropIfExists('cash_with_drawals');
         Schema::dropIfExists('cash_register_counts');
-        Schema::dropIfExists('pos_terminal_users');
     }
 };

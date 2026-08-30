@@ -8,33 +8,14 @@ return new class extends Migration
 {
     /**
      * Agrega columnas faltantes a pos_terminal_users y pos_terminals.
-     * La tabla fue creada inicialmente por 2026_03_03_015 sin todas las columnas.
+     *
+     * pos_terminal_users ya se crea completa (con pos_terminal_id, state,
+     * deleted_at y su FK) desde 2026_03_13_013_create_pos_terminal_users_table —
+     * el bloque que la parcheaba aquí se eliminó porque quedó redundante y su
+     * intento de agregar una FK duplicada abortaba la transacción de la migración.
      */
     public function up(): void
     {
-        // ── pos_terminal_users ────────────────────────────────────────────────
-        Schema::table('pos_terminal_users', function (Blueprint $table) {
-            if (! Schema::hasColumn('pos_terminal_users', 'pos_terminal_id')) {
-                $table->uuid('pos_terminal_id')->nullable()->after('id');
-            }
-            if (! Schema::hasColumn('pos_terminal_users', 'state')) {
-                $table->boolean('state')->default(true)->after('cashier_session_key');
-            }
-            if (! Schema::hasColumn('pos_terminal_users', 'deleted_at')) {
-                $table->softDeletes();
-            }
-        });
-
-        // Agregar FK si no existe
-        try {
-            Schema::table('pos_terminal_users', function (Blueprint $table) {
-                $table->foreign('pos_terminal_id')
-                      ->references('id')->on('pos_terminals')->nullOnDelete();
-            });
-        } catch (\Throwable $e) {
-            // FK ya existe, ignorar
-        }
-
         // ── pos_terminals: verificar columnas necesarias ───────────────────────
         Schema::table('pos_terminals', function (Blueprint $table) {
             if (! Schema::hasColumn('pos_terminals', 'serial_number')) {
@@ -66,8 +47,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('pos_terminal_users', function (Blueprint $table) {
-            $table->dropColumn(['pos_terminal_id', 'state', 'deleted_at']);
-        });
+        // No-op: las columnas que este archivo pudo agregar en pos_terminals
+        // son todas nullable/guardadas por hasColumn — no se revierten aquí
+        // para no arriesgar borrar columnas creadas por otra migración.
     }
 };

@@ -324,10 +324,10 @@ class TenantCeramicsDemoSeeder extends Seeder
 
             foreach ($warehouseIds as $index => $warehouseId) {
                 $stock = $product['stock'][$index] ?? 0;
-                DB::table('item_warehouse')->updateOrInsert(
-                    ['item_id' => $id, 'warehouse_id' => $warehouseId],
-                    ['stock' => $stock, 'average_cost' => $product['cost'], 'created_at' => $now, 'updated_at' => $now]
-                );
+                $this->uuidRecord('item_warehouse', ['item_id' => $id, 'warehouse_id' => $warehouseId], [
+                    'stock' => $stock,
+                    'average_cost' => $product['cost'],
+                ], $now);
 
                 DB::table('item_price_lists')->updateOrInsert(
                     ['item_id' => $id, 'warehouse_id' => $warehouseId],
@@ -887,7 +887,7 @@ class TenantCeramicsDemoSeeder extends Seeder
         ], $now, withSecondaryUuid: true);
 
         $this->uuidRecord('system_notifications', ['type' => 'inventory', 'title' => 'Inventario bajo en Porcelanato Calacatta'], [
-            'message' => 'La bodega de exhibicion Medellin esta por debajo del punto minimo sugerido.',
+            'body' => 'La bodega de exhibicion Medellin esta por debajo del punto minimo sugerido.',
             'read_at' => null,
         ], $now);
 
@@ -976,19 +976,14 @@ class TenantCeramicsDemoSeeder extends Seeder
                 ]
             );
 
-            DB::table('item_stocktakings')->updateOrInsert(
-                ['document_id' => $documentId, 'item_id' => $itemId],
-                [
-                    'inventory_concept_id' => ($header['movement_type'] ?? 'OUT') === 'IN' ? 3 : 1,
-                    'input_quantity' => ($header['movement_type'] ?? 'OUT') === 'IN' ? $line['qty'] : 0,
-                    'output_quantity' => ($header['movement_type'] ?? 'OUT') === 'IN' ? 0 : $line['qty'],
-                    'purchase_price' => 0,
-                    'new_average' => 0,
-                    'warehouse_id' => $header['warehouse_out'] ?? $header['warehouse_in'] ?? null,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]
-            );
+            $this->uuidRecord('item_stocktakings', ['document_id' => $documentId, 'item_id' => $itemId], [
+                'inventory_concept_id' => ($header['movement_type'] ?? 'OUT') === 'IN' ? 3 : 1,
+                'input_quantity' => ($header['movement_type'] ?? 'OUT') === 'IN' ? $line['qty'] : 0,
+                'output_quantity' => ($header['movement_type'] ?? 'OUT') === 'IN' ? 0 : $line['qty'],
+                'purchase_price' => 0,
+                'new_average' => 0,
+                'warehouse_id' => $header['warehouse_out'] ?? $header['warehouse_in'] ?? null,
+            ], $now);
         }
 
         DB::table('document_payment_methods')->updateOrInsert(
