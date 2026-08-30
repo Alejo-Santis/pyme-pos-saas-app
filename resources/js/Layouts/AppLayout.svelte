@@ -126,24 +126,28 @@
     router.post('/logout')
   }
 
-  let collapsedGroups = $state({})
+  // Acordeón: solo un grupo abierto a la vez, para mantener el foco en la
+  // sección donde estás. Por defecto se abre el grupo de la ruta activa;
+  // al navegar a otra página se descarta cualquier apertura manual y el
+  // acordeón vuelve a seguir la selección actual.
+  const activeGroupLabel = $derived(navGroups.find(g => g.label && groupHasActive(g))?.label ?? null)
 
-  onMount(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('sidebarGroups') ?? '{}')
-      collapsedGroups = saved
-    } catch {}
+  let openGroupOverride = $state(null)
+
+  $effect(() => {
+    currentPath
+    openGroupOverride = null
   })
 
   function toggleGroup(label) {
-    collapsedGroups = { ...collapsedGroups, [label]: !collapsedGroups[label] }
-    localStorage.setItem('sidebarGroups', JSON.stringify(collapsedGroups))
+    const currentlyOpen = openGroupOverride ?? activeGroupLabel
+    openGroupOverride = currentlyOpen === label ? '__none__' : label
   }
 
   function isGroupOpen(group) {
     if (!group.label) return true
-    if (groupHasActive(group)) return true
-    return collapsedGroups[group.label] !== true
+    const target = openGroupOverride ?? activeGroupLabel
+    return target === group.label
   }
 
   function toggleDropdown(idx) {
