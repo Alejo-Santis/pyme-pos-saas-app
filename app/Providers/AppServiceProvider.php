@@ -44,5 +44,21 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(3)
                 ->by('dian|' . ($request->route('document') ?? '') . '|' . $request->ip());
         });
+
+        // Imports masivos (Excel: terceros, items, empleados): pesados en
+        // CPU/IO — sin límite, un tenant podía tumbar el servidor sin querer.
+        RateLimiter::for('imports', function (Request $request) {
+            return Limit::perMinute(5)
+                ->by('import|' . ($request->user()?->id ?? $request->ip()))
+                ->response(fn () => back()->withErrors([
+                    'file' => 'Demasiadas importaciones seguidas. Espera un minuto e intenta de nuevo.',
+                ]));
+        });
+
+        // Exportaciones/reportes (PDF, Excel): generación pesada bajo demanda.
+        RateLimiter::for('exports', function (Request $request) {
+            return Limit::perMinute(15)
+                ->by('export|' . ($request->user()?->id ?? $request->ip()));
+        });
     }
 }

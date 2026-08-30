@@ -166,7 +166,7 @@ Route::middleware([
                 Route::get('/create', [ThirdPartyController::class, 'create'])->name('create');
                 Route::post('/', [ThirdPartyController::class, 'store'])->name('store');
                 Route::get('/import/template', [ThirdPartyController::class, 'downloadTemplate'])->name('import.template');
-                Route::post('/import', [ThirdPartyController::class, 'import'])->name('import');
+                Route::post('/import', [ThirdPartyController::class, 'import'])->name('import')->middleware('throttle:imports');
                 Route::get('/{thirdParty}/edit', [ThirdPartyController::class, 'edit'])->name('edit');
                 Route::put('/{thirdParty}', [ThirdPartyController::class, 'update'])->name('update');
                 Route::delete('/{thirdParty}', [ThirdPartyController::class, 'destroy'])->name('destroy');
@@ -185,7 +185,7 @@ Route::middleware([
                 Route::get('/create', [ItemController::class, 'create'])->name('create');
                 Route::post('/', [ItemController::class, 'store'])->name('store');
                 Route::get('/import/template', [ItemController::class, 'downloadTemplate'])->name('import.template');
-                Route::post('/import', [ItemController::class, 'import'])->name('import');
+                Route::post('/import', [ItemController::class, 'import'])->name('import')->middleware('throttle:imports');
                 Route::get('/{item}/edit', [ItemController::class, 'edit'])->name('edit')->whereUuid('item');
                 Route::put('/{item}', [ItemController::class, 'update'])->name('update')->whereUuid('item');
                 Route::put('/items/{item}', [ItemController::class, 'update'])->name('items.update')->whereUuid('item');
@@ -226,7 +226,7 @@ Route::middleware([
                 Route::post('/{document}/debit-note',  [InvoiceController::class, 'storeDebitNote'])->name('debit-note');
                 Route::post('/{document}/retry-dian',    [InvoiceController::class, 'retryDian'])->name('retry-dian')->middleware('throttle:dian-retry');
                 Route::post('/{document}/radian-event', [InvoiceController::class, 'sendRadianEvent'])->name('radian-event');
-                Route::get('/{document}/pdf',            [InvoiceController::class, 'downloadPdf'])->name('pdf');
+                Route::get('/{document}/pdf',            [InvoiceController::class, 'downloadPdf'])->name('pdf')->middleware('throttle:exports');
                 Route::post('/{document}/send-email',    [InvoiceController::class, 'sendEmail'])->name('send-email');
             });
 
@@ -294,17 +294,17 @@ Route::middleware([
                 Route::get('/differences', [AccountingController::class,        'differences'])->name('differences');
                 Route::post('/differences/adjust', [AccountingController::class,        'storeAdjustment'])->name('differences.adjust');
                 Route::get('/adjustments', [AccountingController::class,        'adjustments'])->name('adjustments');
-                Route::get('/adjustments/export', [AccountingController::class,        'exportAdjustments'])->name('adjustments.export');
+                Route::get('/adjustments/export', [AccountingController::class,        'exportAdjustments'])->name('adjustments.export')->middleware('throttle:exports');
                 Route::post('/adjustments/{voucher}/reverse', [AccountingController::class,        'reverseAdjustment'])->name('adjustments.reverse');
                 Route::get('/journal', [AccountingController::class,        'journal'])->name('journal');
-                Route::get('/journal/export', [AccountingController::class,        'exportJournal'])->name('journal.export');
+                Route::get('/journal/export', [AccountingController::class,        'exportJournal'])->name('journal.export')->middleware('throttle:exports');
                 Route::get('/ledger', [AccountingController::class,        'ledger'])->name('ledger');
                 Route::get('/trial-balance', [AccountingController::class,        'trialBalance'])->name('trial-balance');
-                Route::get('/trial-balance/export', [AccountingController::class,        'exportTrialBalance'])->name('trial-balance.export');
+                Route::get('/trial-balance/export', [AccountingController::class,        'exportTrialBalance'])->name('trial-balance.export')->middleware('throttle:exports');
                 Route::get('/income-statement', [FinancialReportController::class,   'incomeStatement'])->name('income-statement');
-                Route::get('/income-statement/export', [FinancialReportController::class,   'exportIncomeStatement'])->name('income-statement.export');
+                Route::get('/income-statement/export', [FinancialReportController::class,   'exportIncomeStatement'])->name('income-statement.export')->middleware('throttle:exports');
                 Route::get('/balance-sheet', [FinancialReportController::class,   'balanceSheet'])->name('balance-sheet');
-                Route::get('/balance-sheet/export', [FinancialReportController::class,   'exportBalanceSheet'])->name('balance-sheet.export');
+                Route::get('/balance-sheet/export', [FinancialReportController::class,   'exportBalanceSheet'])->name('balance-sheet.export')->middleware('throttle:exports');
                 // Presupuesto vs Real
                 Route::prefix('budget')->name('budget.')->group(function () {
                     Route::get('/', [\App\Modules\Accounting\Controllers\BudgetController::class, 'index'])->name('index');
@@ -312,7 +312,7 @@ Route::middleware([
                     Route::post('/', [\App\Modules\Accounting\Controllers\BudgetController::class, 'store'])->name('store');
                     Route::post('/{budget}/approve', [\App\Modules\Accounting\Controllers\BudgetController::class, 'approve'])->name('approve');
                     Route::get('/{budget}/compare', [\App\Modules\Accounting\Controllers\BudgetController::class, 'compare'])->name('compare');
-                    Route::get('/{budget}/export', [\App\Modules\Accounting\Controllers\BudgetController::class, 'export'])->name('export');
+                    Route::get('/{budget}/export', [\App\Modules\Accounting\Controllers\BudgetController::class, 'export'])->name('export')->middleware('throttle:exports');
                 });
                 // Períodos fiscales (cierre contable)
                 Route::prefix('fiscal-periods')->name('fiscal-periods.')->group(function () {
@@ -361,7 +361,7 @@ Route::middleware([
                     Route::get('/create', [EmployeeController::class, 'create'])->name('create');
                     Route::post('/', [EmployeeController::class, 'store'])->name('store');
                     Route::get('/import/template', [EmployeeController::class, 'downloadTemplate'])->name('import.template');
-                    Route::post('/import', [EmployeeController::class, 'import'])->name('import');
+                    Route::post('/import', [EmployeeController::class, 'import'])->name('import')->middleware('throttle:imports');
                     Route::get('/{employee}', [EmployeeController::class, 'show'])->name('show');
                     Route::get('/{employee}/edit', [EmployeeController::class, 'edit'])->name('edit');
                     Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
@@ -373,7 +373,7 @@ Route::middleware([
                     Route::get('/create', [PayrollController::class, 'create'])->name('create');
                     Route::post('/', [PayrollController::class, 'store'])->name('store');
                     Route::get('/{run}', [PayrollController::class, 'show'])->name('show');
-                    Route::get('/{run}/export', [PayrollController::class, 'export'])->name('export');
+                    Route::get('/{run}/export', [PayrollController::class, 'export'])->name('export')->middleware('throttle:exports');
                     Route::post('/{run}/approve', [PayrollController::class, 'approve'])->name('approve');
                     Route::post('/{run}/mark-paid', [PayrollController::class, 'markPaid'])->name('mark-paid');
                     Route::post('/{run}/cancel', [PayrollController::class, 'cancel'])->name('cancel');
@@ -398,17 +398,17 @@ Route::middleware([
             // ─── Reportes ─────────────────────────────────────────────────
             Route::prefix('reports')->name('reports.')->middleware('permission:reports.view')->group(function () {
                 Route::get('/sales', [ReportController::class, 'sales'])->name('sales');
-                Route::get('/sales/export', [ReportController::class, 'exportSales'])->name('sales.export');
+                Route::get('/sales/export', [ReportController::class, 'exportSales'])->name('sales.export')->middleware('throttle:exports');
                 Route::get('/receivables', [ReportController::class, 'receivables'])->name('receivables');
                 Route::get('/payables', [ReportController::class, 'payables'])->name('payables');
                 Route::get('/cash', [ReportController::class, 'cash'])->name('cash');
-                Route::get('/cash/export', [ReportController::class, 'exportCash'])->name('cash.export');
+                Route::get('/cash/export', [ReportController::class, 'exportCash'])->name('cash.export')->middleware('throttle:exports');
                 Route::get('/inventory', [ReportController::class, 'inventory'])->name('inventory');
-                Route::get('/inventory/export', [ReportController::class, 'exportInventory'])->name('inventory.export');
+                Route::get('/inventory/export', [ReportController::class, 'exportInventory'])->name('inventory.export')->middleware('throttle:exports');
                 Route::get('/payroll', [ReportController::class, 'payroll'])->name('payroll');
-                Route::get('/payroll/export', [ReportController::class, 'exportPayroll'])->name('payroll.export');
+                Route::get('/payroll/export', [ReportController::class, 'exportPayroll'])->name('payroll.export')->middleware('throttle:exports');
                 Route::get('/kardex', [ReportController::class, 'kardex'])->name('kardex');
-                Route::get('/kardex/export', [ReportController::class, 'exportKardex'])->name('kardex.export');
+                Route::get('/kardex/export', [ReportController::class, 'exportKardex'])->name('kardex.export')->middleware('throttle:exports');
             });
 
             }); // fin middleware tenant.operational
