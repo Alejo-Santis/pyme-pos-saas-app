@@ -55,10 +55,31 @@ trait ToolTrait
         float  $unitCost,
         string $movementType = 'OUT'
     ): void {
-        $pivot = ItemWarehouse::firstOrCreate(
-            ['item_id' => $itemId, 'warehouse_id' => $warehouseId],
-            ['stock' => 0, 'average_cost' => 0, 'state' => true]
-        );
+        // Bloqueo pesimista: sin esto, dos movimientos concurrentes sobre el
+        // mismo item+bodega pueden leer el mismo stock, calcular por separado
+        // y el segundo UPDATE pisa el resultado del primero (sobreventa).
+        $pivot = ItemWarehouse::where('item_id', $itemId)
+            ->where('warehouse_id', $warehouseId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $pivot) {
+            try {
+                $pivot = ItemWarehouse::create([
+                    'item_id'       => $itemId,
+                    'warehouse_id'  => $warehouseId,
+                    'stock'         => 0,
+                    'average_cost'  => 0,
+                    'state'         => true,
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Otra transacción concurrente ya creó la fila — la bloqueamos ahora.
+                $pivot = ItemWarehouse::where('item_id', $itemId)
+                    ->where('warehouse_id', $warehouseId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+            }
+        }
 
         $currentStock = (float) $pivot->stock;
         $currentAvg   = (float) $pivot->average_cost;

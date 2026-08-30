@@ -84,50 +84,64 @@ class PosController extends Controller
     {
         $user = Auth::user();
 
-        // Verificar que no tenga otro turno activo
-        $existingShift = PosTerminalUser::where('user_id', $user->id)
-            ->where('active_shift', true)
-            ->first();
-
-        if ($existingShift && $existingShift->pos_terminal_id !== $terminal->id) {
-            $message = 'Ya tienes un turno activo en otra terminal. Ciérralo primero.';
-            return back()->withErrors(['terminal' => $message, 'shift' => $message]);
-        }
-
-        // Verificar que la terminal no tenga otro usuario activo
-        $terminalBusy = PosTerminalUser::where('pos_terminal_id', $terminal->id)
-            ->where('active_shift', true)
-            ->where('user_id', '!=', $user->id)
-            ->exists();
-
-        if ($terminalBusy) {
-            return back()->withErrors(['terminal' => 'Esta terminal ya está siendo usada por otro cajero.']);
-        }
-
         $data = $request->validate([
             'initial_balance' => 'required|numeric|min:0',
         ]);
 
-        // Crear o reactivar turno
-        $shift = PosTerminalUser::updateOrCreate(
-            ['pos_terminal_id' => $terminal->id, 'user_id' => $user->id],
-            [
-                'initial_balance'     => $data['initial_balance'],
-                'current_balance'     => $data['initial_balance'],
-                'final_balance'       => 0,
-                'total_sales'         => 0,
-                'total_cash'          => 0,
-                'total_card'          => 0,
-                'total_transfer'      => 0,
-                'active_shift'        => true,
-                'cashier_session_key' => PosTerminalUser::generateSessionKey(),
-                'shift_opened_at'     => now(),
-                'shift_closed_at'     => null,
-                'state'               => true,
-            ]
-        );
+        $result = DB::transaction(function () use ($request, $terminal, $user, $data) {
+            // Bloquea la fila de la terminal para serializar la apertura de
+            // turno — sin esto, dos clics rápidos o dos pestañas pueden pasar
+            // ambas verificaciones antes de que cualquiera cree su turno,
+            // dejando dos cajeros con la misma terminal simultáneamente.
+            PosTerminal::where('id', $terminal->id)->lockForUpdate()->first();
 
-        AuditService::created($shift, "Turno POS abierto en {$terminal->name}.", 'POS');
+            // Verificar que no tenga otro turno activo
+            $existingShift = PosTerminalUser::where('user_id', $user->id)
+                ->where('active_shift', true)
+                ->first();
+
+            if ($existingShift && $existingShift->pos_terminal_id !== $terminal->id) {
+                $message = 'Ya tienes un turno activo en otra terminal. Ciérralo primero.';
+                return ['error' => $message];
+            }
+
+            // Verificar que la terminal no tenga otro usuario activo
+            $terminalBusy = PosTerminalUser::where('pos_terminal_id', $terminal->id)
+                ->where('active_shift', true)
+                ->where('user_id', '!=', $user->id)
+                ->exists();
+
+            if ($terminalBusy) {
+                return ['error' => 'Esta terminal ya está siendo usada por otro cajero.'];
+            }
+
+            // Crear o reactivar turno
+            $shift = PosTerminalUser::updateOrCreate(
+                ['pos_terminal_id' => $terminal->id, 'user_id' => $user->id],
+                [
+                    'initial_balance'     => $data['initial_balance'],
+                    'current_balance'     => $data['initial_balance'],
+                    'final_balance'       => 0,
+                    'total_sales'         => 0,
+                    'total_cash'          => 0,
+                    'total_card'          => 0,
+                    'total_transfer'      => 0,
+                    'active_shift'        => true,
+                    'cashier_session_key' => PosTerminalUser::generateSessionKey(),
+                    'shift_opened_at'     => now(),
+                    'shift_closed_at'     => null,
+                    'state'               => true,
+                ]
+            );
+
+            AuditService::created($shift, "Turno POS abierto en {$terminal->name}.", 'POS');
+
+            return ['shift' => $shift];
+        });
+
+        if (isset($result['error'])) {
+            return back()->withErrors(['terminal' => $result['error'], 'shift' => $result['error']]);
+        }
 
         return redirect()
             ->route('pos.terminal', $terminal)

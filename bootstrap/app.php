@@ -1,11 +1,20 @@
 <?php
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
+    ->withSchedule(function (Schedule $schedule): void {
+        // Backup diario (BD + archivos) — requiere BACKUP_DISK apuntando a
+        // almacenamiento durable (S3/R2) en producción; 'local' solo sirve
+        // para probar el comando en desarrollo.
+        $schedule->command('backup:run')->daily()->at('02:00')->onOneServer();
+        $schedule->command('backup:clean')->daily()->at('01:30')->onOneServer();
+    })
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
@@ -33,6 +42,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+
+        // Reporta excepciones no manejadas a Sentry — no hace nada si
+        // SENTRY_LARAVEL_DSN no está definido en .env (SDK hace no-op).
+        Integration::handles($exceptions);
 
         // ── Tenant no encontrado por dominio ────────────────────────────────
         $exceptions->render(function (

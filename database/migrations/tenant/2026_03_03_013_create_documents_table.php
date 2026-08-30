@@ -27,7 +27,7 @@ return new class extends Migration
         Schema::create('documents', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();                   // UUID para DIAN y URLs públicas
-            $table->string('internal_code', 50)->nullable();  // código interno correlativo
+            $table->string('internal_code', 50)->nullable()->unique(); // código interno correlativo (único; Postgres permite múltiples NULL)
 
             // Quién emite y quién recibe
             $table->uuid('user_id')->nullable();              // usuario que creó el documento

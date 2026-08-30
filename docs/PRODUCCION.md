@@ -173,7 +173,7 @@ REDIS_PASSWORD=null
 QUEUE_CONNECTION=redis
 
 # Cache
-CACHE_DRIVER=redis
+CACHE_STORE=redis
 SESSION_DRIVER=redis
 
 # Sanctum — dominios SPA autorizados (wildcard)
@@ -464,34 +464,37 @@ Para validación inicial con pocos clientes. Más costoso a escala.
 
 ---
 
-## 12. Backups PostgreSQL
+## 12. Backups — spatie/laravel-backup + scheduler de Laravel
+
+El backup (dump completo de Postgres — incluye el schema `public` y el de
+cada tenant — más los archivos de `storage/app`) corre con
+`spatie/laravel-backup`, ya configurado en `config/backup.php` y programado
+en `bootstrap/app.php` (`backup:run` diario a las 2am, `backup:clean` a la
+1:30am para aplicar la retención).
+
+Para que esa programación realmente se ejecute en producción hace falta el
+cron de Laravel (esto es aparte del Supervisor de Horizon — Horizon corre
+los *workers* de colas, este cron dispara las tareas programadas):
 
 ```bash
-# Script de backup diario
-# /usr/local/bin/backup-pymepossaas.sh
-
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M)
-BACKUP_DIR=/backups/pymepossaas
-mkdir -p $BACKUP_DIR
-
-# Dump completo (todos los schemas: public + todos los tenants)
-pg_dump -U pymepossaas_user -h 127.0.0.1 pymepossaas_prod \
-  | gzip > $BACKUP_DIR/backup_$DATE.sql.gz
-
-# Mantener solo los últimos 30 días
-find $BACKUP_DIR -name "*.sql.gz" -mtime +30 -delete
-
-echo "Backup completado: backup_$DATE.sql.gz"
-```
-
-```bash
-# Programar en cron (cada día a las 2am)
 crontab -e
-0 2 * * * /usr/local/bin/backup-pymepossaas.sh >> /var/log/backup.log 2>&1
+* * * * * cd /var/www/pymepossaas && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Subir backups a S3/R2 para redundancia geográfica es altamente recomendado.
+Configurar el destino en `.env`:
+```env
+BACKUP_DISK=s3   # apunta a R2/S3 (ver sección 4) — "local" no sobrevive si se pierde el servidor
+```
+
+Verificar manualmente:
+```bash
+php artisan backup:run
+php artisan backup:list
+```
+
+Subir backups a un disco distinto al del servidor (S3/R2) para redundancia
+geográfica es lo que hace `BACKUP_DISK=s3` — no dejar el default `local` en
+producción.
 
 ---
 
